@@ -17,6 +17,7 @@ type CartMap = Record<string, number>;
 interface CartContextValue {
   quantities: CartMap;
   itemCount: number;
+  lineCount: number;
   subtotal: number;
   setQuantity: (code: string, qty: number) => void;
   increment: (code: string) => void;
@@ -87,21 +88,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clear = () => setQuantities({});
 
-  const { itemCount, subtotal } = useMemo(() => {
+  const { itemCount, lineCount, subtotal } = useMemo(() => {
     let count = 0;
+    let lines = 0;
     let total = 0;
     for (const [code, qty] of Object.entries(quantities)) {
       const product = PRODUCTS.find((p) => p.code === code);
-      if (!product) continue;
+      if (!product || qty <= 0) continue;
       count += qty;
+      lines += 1;
       total += product.price * qty;
     }
-    return { itemCount: count, subtotal: total };
+    return { itemCount: count, lineCount: lines, subtotal: total };
   }, [quantities]);
 
   return (
     <CartContext.Provider
-      value={{ quantities, itemCount, subtotal, setQuantity, increment, decrement, clear }}
+      value={{
+        quantities,
+        itemCount,
+        lineCount,
+        subtotal,
+        setQuantity,
+        increment,
+        decrement,
+        clear,
+      }}
     >
       {children}
     </CartContext.Provider>

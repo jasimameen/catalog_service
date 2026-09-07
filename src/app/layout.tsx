@@ -1,33 +1,60 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter } from "next/font/google";
+import { Archivo, IBM_Plex_Sans } from "next/font/google";
+import { CartProvider } from "@/lib/catalog/cart-context";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-display",
+const archivo = Archivo({
+  variable: "--kl-font-display",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["600", "700"],
 });
 
-const inter = Inter({
-  variable: "--font-body",
+const plexSans = IBM_Plex_Sans({
+  variable: "--kl-font-body",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "600"],
 });
+
+const title = "Kleaner Catalogue — Order Cleaning Supplies";
+const description =
+  "Browse the full Kleaner cleaning products catalogue — mops, brooms, brushes, scourers, cloths and more. Add items to your order and we'll call to confirm stock and delivery.";
 
 export const metadata: Metadata = {
-  title: "NULLSPACE — Software Built for What's Next",
-  description:
-    "NULLSPACE is a software design & engineering studio — we build products, platforms, and interfaces for teams who refuse to ship the expected.",
+  title,
+  description,
+  keywords: [
+    "Kleaner",
+    "cleaning supplies Qatar",
+    "cleaning products catalogue",
+    "wholesale cleaning supplies",
+    "mops and brooms",
+    "Citadel Trading",
+  ],
+  applicationName: "Kleaner Catalogue",
+  robots: { index: false, follow: false },
+  openGraph: {
+    title,
+    description,
+    type: "website",
+    locale: "en_QA",
+    siteName: "Kleaner Catalogue",
+  },
+  twitter: {
+    card: "summary",
+    title,
+    description,
+  },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export const viewport = {
+  themeColor: "#0b5fce",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} h-full`}
-    >
-      <body className="min-h-full bg-paper text-ink antialiased">
-        {children}
+    <html lang="en" className={`${archivo.variable} ${plexSans.variable} h-full`}>
+      <body className="min-h-full antialiased">
+        <CartProvider>{children}</CartProvider>
       </body>
     </html>
   );

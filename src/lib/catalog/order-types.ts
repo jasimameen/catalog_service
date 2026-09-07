@@ -9,6 +9,7 @@ export interface OrderPayload {
   shopName: string;
   phone: string;
   location: string;
+  mapsLink?: string;
   notes?: string;
   items: OrderItem[];
 }

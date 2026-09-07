@@ -1,5 +1,5 @@
-import Experience from "@/components/Experience";
+import { CatalogApp } from "./CatalogApp";
 
 export default function Home() {
-  return <Experience />;
+  return <CatalogApp />;
 }

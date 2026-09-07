@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   const shopName = clean(body.shopName, 120);
   const phone = clean(body.phone, 40);
   const location = clean(body.location, 300);
+  const mapsLink = clean(body.mapsLink, 300);
   const notes = clean(body.notes, 500);
   const requestedItems = Array.isArray(body.items) ? body.items : [];
 
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
   }
 
   const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const reference = `KL-${Math.floor(1000 + Math.random() * 9000)}`;
 
   const {
     SMTP_HOST,
@@ -83,12 +85,12 @@ export async function POST(request: Request) {
     )
     .join("\n");
 
-  const textBody = `New Kleaner catalogue order
+  const textBody = `New Kleaner catalogue order — ${reference}
 
 Shop name: ${shopName}
 Phone: ${phone}
 Location: ${location}
-${notes ? `Notes: ${notes}\n` : ""}
+${mapsLink ? `Maps link: ${mapsLink}\n` : ""}${notes ? `Notes: ${notes}\n` : ""}
 Items:
 ${itemRows}
 
@@ -113,10 +115,12 @@ Total: QAR ${total.toFixed(2)}
 
   const htmlBody = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:640px;">
-      <h2 style="margin:0 0 12px;">New Kleaner catalogue order</h2>
+      <h2 style="margin:0 0 4px;">New Kleaner catalogue order</h2>
+      <p style="margin:0 0 12px;color:#46505e;">Reference: <strong>${reference}</strong></p>
       <p style="margin:0 0 4px;"><strong>Shop name:</strong> ${shopName}</p>
       <p style="margin:0 0 4px;"><strong>Phone:</strong> ${phone}</p>
       <p style="margin:0 0 4px;"><strong>Location:</strong> ${location}</p>
+      ${mapsLink ? `<p style="margin:0 0 4px;"><strong>Maps link:</strong> <a href="${mapsLink}">${mapsLink}</a></p>` : ""}
       ${notes ? `<p style="margin:0 0 12px;"><strong>Notes:</strong> ${notes}</p>` : ""}
       <table style="border-collapse:collapse;width:100%;margin-top:12px;">
         <thead>
@@ -139,7 +143,7 @@ Total: QAR ${total.toFixed(2)}
       from: ORDER_FROM_EMAIL || SMTP_USER,
       to: ORDER_TO_EMAIL,
       replyTo: undefined,
-      subject: `New order from ${shopName} (${phone})`,
+      subject: `New order ${reference} from ${shopName} (${phone})`,
       text: textBody,
       html: htmlBody,
     });
@@ -151,5 +155,5 @@ Total: QAR ${total.toFixed(2)}
     );
   }
 
-  return Response.json({ ok: true, total });
+  return Response.json({ ok: true, total, reference, itemCount: items.reduce((s, i) => s + i.qty, 0), lineCount: items.length });
 }
