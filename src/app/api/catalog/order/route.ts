@@ -2,6 +2,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { sendMail } from "@/lib/mail";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { generateOrderReference, formatMoney } from "@/lib/catalog/currency";
+import { applyPhonePrefix, missingRequiredLabels, parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import type { OrderPayload } from "@/lib/catalog/order-types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 
@@ -26,21 +27,10 @@ export async function POST(request: Request) {
   }
 
   const catalogId = clean(body.catalogId, 100);
-  const shopName = clean(body.shopName, 120);
-  const phone = clean(body.phone, 40);
-  const location = clean(body.location, 300);
-  const mapsLink = clean(body.mapsLink, 300);
-  const notes = clean(body.notes, 500);
   const requestedItems = Array.isArray(body.items) ? body.items : [];
 
   if (!catalogId) {
     return Response.json({ error: "Missing catalog." }, { status: 400 });
-  }
-  if (!shopName || !phone || !location) {
-    return Response.json(
-      { error: "Shop name, phone number, and location are required." },
-      { status: 400 }
-    );
   }
 
   const supabase = getServiceClient();
@@ -55,6 +45,28 @@ export async function POST(request: Request) {
   const catalog = catalogData as CatalogRow | null;
   if (catalogError || !catalog) {
     return Response.json({ error: "This catalog is not available." }, { status: 404 });
+  }
+
+  const checkout = parseCheckoutFields(catalog.checkout_fields);
+  const shopName = clean(body.shopName, 120);
+  const phone = applyPhonePrefix(clean(body.phone, 40), checkout.phonePrefix);
+  const location = clean(body.location, 300);
+  const mapsLink = clean(body.mapsLink, 300);
+  const notes = clean(body.notes, 500);
+
+  const missing = missingRequiredLabels(checkout, {
+    shopName,
+    phone,
+    address: location,
+    maps: mapsLink,
+    notes,
+  });
+  if (missing.length > 0) {
+    const list =
+      missing.length === 1
+        ? missing[0]
+        : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
+    return Response.json({ error: `${list.charAt(0).toUpperCase()}${list.slice(1)} ${missing.length === 1 ? "is" : "are"} required.` }, { status: 400 });
   }
 
   const { data: itemRows } = await supabase
@@ -86,7 +98,7 @@ export async function POST(request: Request) {
   }
 
   const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const reference = generateOrderReference(catalog.slug);
+  const reference = generateOrderReference(catalog.slug, checkout.orderPrefix);
 
   const { data: orderRow, error: orderError } = await supabase
     .from("orders")
@@ -217,7 +229,7 @@ Total: ${formatMoney(total, catalog.currency)}
   try {
     const sent = await sendMail({
       to: toEmail,
-      subject: `New order ${reference} from ${shopName} (${phone})`,
+      subject: `New order ${reference} from ${shopName || "a customer"}${phone ? ` (${phone})` : ""}`,
       text: textBody,
       html: htmlBody,
     });

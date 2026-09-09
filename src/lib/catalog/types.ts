@@ -4,6 +4,8 @@
 // whether the data came from Supabase, the builder's in-memory draft, or the
 // static seed data.
 
+import type { CheckoutFields } from "@/lib/supabase/types";
+
 export type CatalogTemplateKey = "grid" | "lookbook" | "menu" | "pricelist";
 
 export interface StorefrontItem {
@@ -26,5 +28,6 @@ export interface StorefrontCatalog {
   template: CatalogTemplateKey;
   accent: string;
   currency: string;
+  checkoutFields: CheckoutFields;
   items: StorefrontItem[];
 }

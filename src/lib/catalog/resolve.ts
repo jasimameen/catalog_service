@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { subdomainSlugFor } from "@/lib/tenant";
 import type { CatalogTemplateKey, StorefrontCatalog } from "./types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
+import { parseCheckoutFields } from "./checkout-fields";
 
 const TEMPLATE_KEYS = new Set<CatalogTemplateKey>(["grid", "lookbook", "menu", "pricelist"]);
 const UUID_RE =
@@ -60,6 +61,7 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
     template: asTemplate(catalogRow.template),
     accent: catalogRow.accent,
     currency: catalogRow.currency,
+    checkoutFields: parseCheckoutFields(catalogRow.checkout_fields),
     items: (items ?? []).map((row) => ({
       id: row.id,
       code: row.code,

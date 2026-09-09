@@ -13,6 +13,17 @@ export type CatalogStatus = "draft" | "live";
 export type DomainKind = "subdomain" | "custom";
 export type DomainStatus = "pending" | "verified" | "error";
 export type OrderStatus = "new" | "confirmed" | "cancelled";
+export type CheckoutFieldMode = "required" | "optional" | "hidden";
+
+export type CheckoutFields = {
+  shopName: CheckoutFieldMode;
+  phone: CheckoutFieldMode;
+  address: CheckoutFieldMode;
+  maps: CheckoutFieldMode;
+  notes: CheckoutFieldMode;
+  phonePrefix: string;
+  orderPrefix: string;
+};
 
 export type AccountRow = {
   id: string;
@@ -41,6 +52,7 @@ export type CatalogRow = {
   accent: string;
   currency: string;
   order_email: string | null;
+  checkout_fields: CheckoutFields;
   created_at: string;
   updated_at: string;
 };

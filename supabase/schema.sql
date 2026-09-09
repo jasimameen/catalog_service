@@ -246,3 +246,18 @@ grant usage on all sequences in schema public to authenticated;
 alter default privileges in schema public grant all on tables to service_role;
 alter default privileges in schema public grant all on sequences to service_role;
 alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Additive: merchant-configurable storefront checkout fields + prefixes.
+-- Existing projects can run supabase/checkout-fields.sql once instead.
+-- ---------------------------------------------------------------------------
+alter table catalogs
+  add column if not exists checkout_fields jsonb not null default '{
+    "shopName": "required",
+    "phone": "required",
+    "address": "required",
+    "maps": "optional",
+    "notes": "optional",
+    "phonePrefix": "",
+    "orderPrefix": ""
+  }'::jsonb;

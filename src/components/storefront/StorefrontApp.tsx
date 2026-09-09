@@ -24,7 +24,9 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
             Order placed
           </h1>
           <p className="mt-2 text-sm text-[var(--cat-muted)]">
-            We&apos;ll call {order.phone} to confirm stock and delivery for {order.shopName}.
+            {order.phone
+              ? `We'll call ${order.phone} to confirm stock and delivery${order.shopName ? ` for ${order.shopName}` : ""}.`
+              : `We'll confirm stock and delivery${order.shopName ? ` for ${order.shopName}` : ""}.`}
           </p>
           <div className="mt-6 w-full rounded-[14px] border border-[var(--cat-border)] bg-white p-4 text-left">
             <Row label="Reference" value={order.reference} bold />
@@ -48,6 +50,7 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
           <CartPanel
             catalogId={catalog.id}
             currency={catalog.currency}
+            checkoutFields={catalog.checkoutFields}
             open={cartOpen}
             onClose={() => setCartOpen(false)}
             onPlaced={(result) => {

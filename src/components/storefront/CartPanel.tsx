@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
+import { missingRequiredLabels } from "@/lib/catalog/checkout-fields";
+import type { CheckoutFields } from "@/lib/supabase/types";
 import type { OrderResult } from "@/lib/catalog/order-types";
 
 type Step = "review" | "delivery";
@@ -11,12 +13,14 @@ type Status = "idle" | "submitting" | "error";
 export function CartPanel({
   catalogId,
   currency,
+  checkoutFields,
   open,
   onClose,
   onPlaced,
 }: {
   catalogId: string;
   currency: string;
+  checkoutFields: CheckoutFields;
   open: boolean;
   onClose: () => void;
   onPlaced: (result: OrderResult) => void;
@@ -39,17 +43,21 @@ export function CartPanel({
     })
     .filter((entry): entry is { item: (typeof items)[number]; qty: number } => entry !== null);
 
-  const missing: string[] = [];
-  if (!shopName.trim()) missing.push("shop");
-  if (!phone.trim()) missing.push("phone");
-  if (!location.trim()) missing.push("address");
+  const missing = missingRequiredLabels(checkoutFields, {
+    shopName,
+    phone,
+    address: location,
+    maps: mapsLink,
+    notes,
+  });
   const canSubmit = missing.length === 0;
 
   function submitLabel() {
     if (status === "submitting") return "Sending order…";
     if (missing.length === 0) return "Place order";
-    if (missing.length === 3) return "Fill shop, phone and address";
-    return `Fill ${missing.join(" and ")}`;
+    if (missing.length === 1) return `Fill ${missing[0]}`;
+    if (missing.length === 2) return `Fill ${missing[0]} and ${missing[1]}`;
+    return `Fill ${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -194,70 +202,91 @@ export function CartPanel({
               <p className="text-sm text-[var(--cat-muted)]">
                 No payment now — we confirm stock and price by phone.
               </p>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
-                  Shop name *
-                </label>
-                <input
-                  required
-                  value={shopName}
-                  onChange={(e) => setShopName(e.target.value)}
-                  placeholder="Al Nasr Trading"
-                  className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
-                  Phone number *
-                </label>
-                <input
-                  required
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+974 3300 0000"
-                  className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
-                  Delivery address *
-                </label>
-                <textarea
-                  required
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  rows={2}
-                  placeholder="Street, zone, city"
-                  className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
-                  Maps link (optional)
-                </label>
-                <input
-                  value={mapsLink}
-                  onChange={(e) => setMapsLink(e.target.value)}
-                  placeholder="https://maps.app.goo.gl/…"
-                  className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
-                />
-                <p className="mt-1 text-xs text-[var(--cat-muted)]">
-                  Paste a pin from Google Maps and the driver finds you first time.
-                </p>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
-                  Notes (optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Delivery window, invoice details"
-                  className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
-                />
-              </div>
+              {checkoutFields.shopName !== "hidden" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
+                    Shop name{checkoutFields.shopName === "required" ? " *" : " (optional)"}
+                  </label>
+                  <input
+                    required={checkoutFields.shopName === "required"}
+                    value={shopName}
+                    onChange={(e) => setShopName(e.target.value)}
+                    placeholder="Al Nasr Trading"
+                    className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
+                  />
+                </div>
+              ) : null}
+              {checkoutFields.phone !== "hidden" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
+                    Phone number{checkoutFields.phone === "required" ? " *" : " (optional)"}
+                  </label>
+                  <div className="flex">
+                    {checkoutFields.phonePrefix ? (
+                      <span className="inline-flex items-center rounded-l-[9px] border border-r-0 border-[var(--cat-border)] bg-[var(--cat-photo-bg)] px-3 text-sm text-[var(--cat-ink)]">
+                        {checkoutFields.phonePrefix}
+                      </span>
+                    ) : null}
+                    <input
+                      required={checkoutFields.phone === "required"}
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder={checkoutFields.phonePrefix ? "3300 0000" : "+974 3300 0000"}
+                      className={`w-full border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none ${
+                        checkoutFields.phonePrefix ? "rounded-r-[9px]" : "rounded-[9px]"
+                      }`}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              {checkoutFields.address !== "hidden" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
+                    Delivery address{checkoutFields.address === "required" ? " *" : " (optional)"}
+                  </label>
+                  <textarea
+                    required={checkoutFields.address === "required"}
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    rows={2}
+                    placeholder="Street, zone, city"
+                    className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
+                  />
+                </div>
+              ) : null}
+              {checkoutFields.maps !== "hidden" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
+                    Maps link{checkoutFields.maps === "required" ? " *" : " (optional)"}
+                  </label>
+                  <input
+                    required={checkoutFields.maps === "required"}
+                    value={mapsLink}
+                    onChange={(e) => setMapsLink(e.target.value)}
+                    placeholder="https://maps.app.goo.gl/…"
+                    className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
+                  />
+                  <p className="mt-1 text-xs text-[var(--cat-muted)]">
+                    Paste a pin from Google Maps and the driver finds you first time.
+                  </p>
+                </div>
+              ) : null}
+              {checkoutFields.notes !== "hidden" ? (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">
+                    Notes{checkoutFields.notes === "required" ? " *" : " (optional)"}
+                  </label>
+                  <textarea
+                    required={checkoutFields.notes === "required"}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Delivery window, invoice details"
+                    className="w-full rounded-[9px] border border-[var(--cat-border)] px-3 py-2 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
+                  />
+                </div>
+              ) : null}
               {status === "error" && <p className="text-sm text-red-600">{errorMessage}</p>}
             </form>
           )}
