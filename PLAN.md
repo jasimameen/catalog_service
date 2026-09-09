@@ -6,39 +6,34 @@ Update the checklist below as work lands. Each phase is committed to git separat
 
 ## ⏸ Resume point (session paused here — approaching usage limit)
 
-Everything through "Phase 1 — Foundation" plus the domains/Cloudflare layer and all docs is
-**done and committed** (see `git log` on `saas-platform`). Two background builds were kicked off
-in parallel and were **still running, mid-write, when this session had to stop** — their output
-is on disk but **uncommitted and not reviewed or type-checked yet**:
+**All 10 phases are now done and committed** on `saas-platform` (`git log` shows every commit).
+`npx tsc --noEmit -p tsconfig.json` and `npx eslint .` both pass clean across the whole project
+as of the last commit. The Admin app and Catalog Builder wizard (built by two parallel
+subagents) finished successfully and were reviewed + verified together before committing.
 
-- **Admin app** (Phase 4) — files seen so far: `src/app/admin/layout.tsx`,
-  `src/app/admin/page.tsx`, `src/app/admin/[catalogId]/layout.tsx`,
-  `src/app/admin/_lib/{data,urls}.ts`, `src/components/admin/{AdminNav,CopyLinkButton,
-  PageHeader,QrCodeButton}.tsx`. Missing/unknown: whether `[catalogId]/page.tsx` (dashboard),
-  `[catalogId]/orders`, `[catalogId]/items`, `[catalogId]/domains`, and `settings/page.tsx` got
-  written before the stop — check `find src/app/admin -type f`.
-- **Catalog Builder wizard** (Phase 6) — files seen so far: `src/app/new/page.tsx`,
-  `src/app/new/actions.ts`, `src/app/new/api/check-slug/route.ts`,
-  `src/components/builder/{TemplatePreview,types}.tsx`. Unknown whether the full 3-step flow +
-  publish + success screen is complete — read `src/app/new/page.tsx` first to see how far it got.
+### The one known gap: Domains "Check now" isn't wired up
 
-**First thing to do when resuming:** run `npx tsc --noEmit -p tsconfig.json` and `npx eslint .`
-to see the real state of these two in-flight pieces, then read through them against their
-original specs below (Admin.dc.html / Catalog Builder.dc.html sections of
-`design/DESIGN_NOTES.md`) and finish/fix whatever's incomplete. Do NOT assume either is done or
-correct — they were cut off mid-task, not reported as finished.
+`src/lib/domains/verify.ts` and `POST /api/admin/domains/verify` (the DNS-check endpoint) were
+built in this session, but the Admin agent building `src/app/admin/[catalogId]/domains/page.tsx`
+started before that endpoint existed, so its Domains page can add/remove/rename domains but has
+no "Check now" button calling it. **To finish:** open
+`src/app/admin/[catalogId]/domains/{page.tsx,DomainsClient.tsx}`, add a "Check now" button per
+custom domain that `POST`s to `/api/admin/domains/verify` with `{ domainId }`, and shows the
+returned `{ status, message }`. Small, self-contained — should take one focused pass.
 
-Also done in this same session but not yet wired into anything above: `src/lib/domains/*`
-(DNS-check + Vercel + Cloudflare provider modules, see `verify.ts`) and
-`src/app/api/admin/domains/verify/route.ts` (the "Check now" endpoint) — the Admin agent was
-told these might not exist yet when it started, so its Domains page may not call this endpoint.
-Check `src/app/admin/[catalogId]/domains/page.tsx` (if it exists) and wire it to
-`POST /api/admin/domains/verify` with `{domainId}` if it isn't already.
+### What's genuinely untested
 
-Remaining phases not started at all: **Phase 8** (seed script exists and runs —
-`supabase/seed.sql` — but hasn't been run against a real Supabase project since none is
-configured in this environment), **Phase 10** (final build/lint pass once Admin + Builder are
-confirmed complete).
+Nothing here has run against a **real Supabase project** — this environment has no
+`.env.local`. Every "not configured" fallback path was verified (graceful errors, no crashes),
+but the actual sign-up → build a catalog → publish → place an order → see it in Admin flow has
+only been verified by reading the code and type-checking it, not by clicking through it. Do
+`SETUP.md` first (5 minutes: create a Supabase project, run `schema.sql` then `seed.sql`, fill
+`.env.local`), then click through that full flow once for real before calling this done.
+
+### Known gaps (by design, see the section below for full detail)
+
+No billing/payment integration (UI is static), no team-invite UI, and in `manual` domain-provider
+mode DNS verification doesn't by itself provision TLS for a custom domain (see `CLOUDFLARE.md`).
 
 ## What this is
 
@@ -133,20 +128,23 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
 - [x] Phase 3 — Storefront generalization: 4 template components (Grid/Lookbook/Menu/PriceList),
       `/s/[host]`, cart keyed per catalog, order API generalized + writes to Supabase. Committed,
       type-checked, smoke-tested (tenant routing + graceful fallbacks confirmed in-browser).
-- [ ] **Phase 4 — Admin app** — IN FLIGHT, uncommitted, not reviewed. See "Resume point" above.
+- [x] Phase 4 — Admin app: shell + catalogs list + per-catalog dashboard/orders/items/domains +
+      account settings. Committed, type-checked, lint-clean.
 - [x] Phase 5 — Domains: `domains` table wiring (in schema.sql), manual DNS-check verifier
       (`src/lib/domains/dns.ts`), Vercel + Cloudflare provider modules, `/api/admin/domains/
-      verify` route. Type-checked. NOT yet wired to an Admin UI page (depends on Phase 4).
-- [ ] **Phase 6 — Catalog Builder** — IN FLIGHT, uncommitted, not reviewed. See "Resume point".
+      verify` route. Type-checked. **Not yet called from the Admin Domains page** — see
+      "Resume point" above, this is the one remaining loose end.
+- [x] Phase 6 — Catalog Builder: 3-step wizard, responsive (edit/preview tabs on mobile instead
+      of separate phone-chrome), publish flow writing to Supabase. Committed, type-checked.
 - [x] Phase 7 — Marketing site: Landing page (`src/app/page.tsx`), Templates gallery
       (`src/app/templates/page.tsx`). Committed, smoke-tested in-browser.
 - [x] Phase 8 — Seed data: `scripts/generate-seed.mjs` generates `supabase/seed.sql` from
       `src/data/catalog-products.ts` (112 items). Committed. NOT yet run against a real Supabase
       project — do that as part of SETUP.md step 5 once a project exists.
-- [x] Phase 9 — Docs: `.env.example`, `SETUP.md`, `CLOUDFLARE.md`, `DEPLOY.md`. All written this
-      session; `CLOUDFLARE.md`/`DEPLOY.md` not yet committed (see Resume point) but content-complete.
-- [ ] Phase 10 — Build/lint pass once Admin + Builder are finished, fix errors, final review,
-      commit everything, then a full manual click-through against a real Supabase project.
+- [x] Phase 9 — Docs: `.env.example`, `SETUP.md`, `CLOUDFLARE.md`, `DEPLOY.md`. Committed.
+- [x] Phase 10 — Build/lint pass: `npx tsc --noEmit` and `npx eslint .` both clean across the
+      whole project. **Not done yet:** wire Domains "Check now" (above), and a real manual
+      click-through against a live Supabase project — do that next.
 
 ## Known gaps (deliberately not built — flagging rather than silently skipping)
 
