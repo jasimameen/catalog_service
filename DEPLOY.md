@@ -8,7 +8,7 @@ Import this Git repo into your existing or new Vercel project. Vercel auto-detec
 2. In Vercel: **Add New Project** → **Import Git Repository** → this repo → Framework Preset **Next.js**.
 3. Paste the env vars below (Production + Preview). Then deploy.
 4. In the Vercel project **Domains** tab, add `catalog.hevyf.com` and `*.catalog.hevyf.com`. Point DNS at `cname.vercel-dns.com`.
-5. Optional custom domains for merchants: after you paste `VERCEL_API_TOKEN` + `VERCEL_PROJECT_ID`, Admin **Check now** adds the hostname via [`src/lib/domains/vercel.ts`](src/lib/domains/vercel.ts) and Vercel issues TLS. Details: [`CLOUDFLARE.md`](CLOUDFLARE.md).
+5. Optional custom domains: default is DNS-only (`DOMAIN_PROVIDER=manual`). Add Vercel tokens later if merchants want auto-cert. Details: [`CLOUDFLARE.md`](CLOUDFLARE.md).
 
 Do not commit `.env.local`. Tokens stay in the Vercel dashboard.
 
@@ -26,7 +26,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
 
 NEXT_PUBLIC_ROOT_DOMAIN=catalog.hevyf.com
-DOMAIN_PROVIDER=vercel
+DOMAIN_PROVIDER=manual
 ```
 
 Use the same Project URL / Publishable key / Secret key as in `.env.example`. Set both the new names and the `NEXT_PUBLIC_` aliases.
