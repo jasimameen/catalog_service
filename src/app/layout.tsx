@@ -19,6 +19,10 @@ const title = "Kleaner Catalogue — Order Cleaning Supplies";
 const description =
   "Browse the full Kleaner cleaning products catalogue — mops, brooms, brushes, scourers, cloths and more. Add items to your order and we'll call to confirm stock and delivery.";
 
+const ogImage = "/catalog/brand/og-cover.jpg";
+const ogImageAlt =
+  "Flat-lay of Kleaner cleaning supplies — microfiber flat mop, folded microfiber cloths, scrub brush, sponges and squeegee.";
+
 export const metadata: Metadata = {
   title,
   description,
@@ -38,11 +42,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_QA",
     siteName: "Kleaner Catalogue",
+    images: [{ url: ogImage, width: 1200, height: 630, alt: ogImageAlt }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title,
     description,
+    images: [{ url: ogImage, alt: ogImageAlt }],
   },
 };
 
