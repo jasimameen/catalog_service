@@ -18,7 +18,7 @@ const HERO_ITEMS = [
 
 const PLAN_INCLUDES = [
   "Unlimited catalogs and items",
-  "All four templates",
+  "All catalog templates",
   "Free subdomain, custom domain included",
   "Orders by email, inbox and CSV",
   "Views and order analytics per catalog",
@@ -130,7 +130,7 @@ export default function LandingPage() {
             list and every row becomes an item. Item codes and barcodes are optional.
           </StepCard>
           <StepCard step="Step two" title="Pick a template">
-            Four layouts, each built for a different kind of selling. Choose one, set your
+            A few layouts, each built for a different kind of selling. Choose one, set your
             colour, and the catalog is designed.
           </StepCard>
           <StepCard step="Step three" title="Share the link">
@@ -142,7 +142,7 @@ export default function LandingPage() {
 
       <section id="templates" className="mx-auto max-w-[1120px] px-6 pt-28">
         <h2 className="text-center text-[clamp(30px,3.6vw,44px)] font-semibold tracking-tight">
-          Four templates.
+          Templates.
         </h2>
         <p className="mx-auto mt-3.5 max-w-[560px] text-center text-[17px] leading-relaxed text-[#6e6e73]">
           Pick one while you create. Switch any time without touching your items.
@@ -310,6 +310,9 @@ const PREVIEW_SHAPES: Record<string, { cols: string; count: number }> = {
   lookbook: { cols: "grid-cols-2", count: 4 },
   menu: { cols: "grid-cols-1", count: 5 },
   pricelist: { cols: "grid-cols-1", count: 7 },
+  cards: { cols: "grid-cols-2", count: 4 },
+  compact: { cols: "grid-cols-1", count: 7 },
+  spotlight: { cols: "grid-cols-2", count: 5 },
 };
 
 function TemplatePreviewBlocks({ templateKey }: { templateKey: string }) {

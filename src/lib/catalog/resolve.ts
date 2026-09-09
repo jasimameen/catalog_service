@@ -7,8 +7,8 @@ import type { CatalogTemplateKey, StorefrontCatalog } from "./types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 import { parseCheckoutFields } from "./checkout-fields";
 import { STOREFRONT_CATALOG_CACHE_TAG } from "./storefront-cache";
+import { isTemplateKey } from "./templates";
 
-const TEMPLATE_KEYS = new Set<CatalogTemplateKey>(["grid", "lookbook", "menu", "pricelist"]);
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -27,7 +27,7 @@ function localhostDevSlug(hostNoPort: string): string | null {
 }
 
 function asTemplate(value: string): CatalogTemplateKey {
-  return TEMPLATE_KEYS.has(value as CatalogTemplateKey) ? (value as CatalogTemplateKey) : "grid";
+  return isTemplateKey(value) ? value : "grid";
 }
 
 async function fetchLiveBySlug(
@@ -65,6 +65,9 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
     accent: catalogRow.accent,
     currency: catalogRow.currency,
     checkoutFields: parseCheckoutFields(catalogRow.checkout_fields),
+    logo: catalogRow.logo ?? "",
+    tagline: catalogRow.tagline ?? "",
+    about: catalogRow.about ?? "",
     items: (items ?? []).map((row) => ({
       id: row.id,
       code: row.code,
@@ -130,7 +133,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host"],
+  ["storefront-catalog-by-host-v2"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

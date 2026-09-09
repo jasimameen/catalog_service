@@ -8,7 +8,14 @@
 // site). Verified against @supabase/supabase-js 2.116.0 + postgrest-js
 // 2.116.0. `type` aliases don't have this problem.
 
-export type CatalogTemplate = "grid" | "lookbook" | "menu" | "pricelist";
+export type CatalogTemplate =
+  | "grid"
+  | "lookbook"
+  | "menu"
+  | "pricelist"
+  | "cards"
+  | "compact"
+  | "spotlight";
 export type CatalogStatus = "draft" | "live";
 export type DomainKind = "subdomain" | "custom";
 export type DomainStatus = "pending" | "verified" | "error";
@@ -53,6 +60,9 @@ export type CatalogRow = {
   currency: string;
   order_email: string | null;
   checkout_fields: CheckoutFields;
+  logo: string | null;
+  tagline: string | null;
+  about: string | null;
   created_at: string;
   updated_at: string;
 };

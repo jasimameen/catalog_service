@@ -6,7 +6,14 @@
 
 import type { CheckoutFields } from "@/lib/supabase/types";
 
-export type CatalogTemplateKey = "grid" | "lookbook" | "menu" | "pricelist";
+export type CatalogTemplateKey =
+  | "grid"
+  | "lookbook"
+  | "menu"
+  | "pricelist"
+  | "cards"
+  | "compact"
+  | "spotlight";
 
 export interface StorefrontItem {
   /** Stable key for React lists — the DB row id, or a draft-local id in the builder. */
@@ -29,5 +36,9 @@ export interface StorefrontCatalog {
   accent: string;
   currency: string;
   checkoutFields: CheckoutFields;
+  /** Public image URL, or "" when the merchant has not set a logo. */
+  logo: string;
+  tagline: string;
+  about: string;
   items: StorefrontItem[];
 }

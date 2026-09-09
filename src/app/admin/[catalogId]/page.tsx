@@ -155,6 +155,9 @@ export default async function CatalogDashboardPage({
           template={catalog.template}
           accent={catalog.accent}
           checkoutFields={parseCheckoutFields(catalog.checkout_fields)}
+          logo={catalog.logo ?? ""}
+          tagline={catalog.tagline ?? ""}
+          about={catalog.about ?? ""}
         />
 
         <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">

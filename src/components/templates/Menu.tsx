@@ -5,6 +5,7 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { formatMoney } from "@/lib/catalog/currency";
+import { BrandHeader } from "./BrandHeader";
 
 /** Sectioned list, no photos required — kitchens, services, weekly supply lists. */
 export function MenuTemplate({
@@ -32,10 +33,11 @@ export function MenuTemplate({
 
   return (
     <div style={{ background: "#fffdf8" }}>
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e6e0d3] bg-[#fffdf8]/95 px-6 py-3 backdrop-blur">
-        <span className="font-catalog-display text-lg font-bold text-[var(--cat-ink)]">
-          {catalog.name}
-        </span>
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#e6e0d3] bg-[#fffdf8]/95 px-6 py-3 backdrop-blur">
+        <BrandHeader
+          catalog={catalog}
+          nameClassName="font-catalog-display text-lg font-bold leading-tight text-[var(--cat-ink)]"
+        />
         <CartButton onClick={onOpenCart} />
       </div>
 

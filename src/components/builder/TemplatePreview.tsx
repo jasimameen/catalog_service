@@ -162,4 +162,22 @@ const SHAPES: Record<
     count: 6,
     wrapperClass: "flex flex-col gap-2.5 pt-3.5",
   },
+  cards: {
+    layout: "block",
+    showPhoto: true,
+    count: 2,
+    wrapperClass: "grid grid-cols-1 gap-2.5 pt-3.5",
+  },
+  compact: {
+    layout: "row",
+    showPhoto: true,
+    count: 6,
+    wrapperClass: "flex flex-col gap-2.5 pt-3.5",
+  },
+  spotlight: {
+    layout: "block",
+    showPhoto: true,
+    count: 4,
+    wrapperClass: "grid grid-cols-2 gap-2.5 pt-3.5",
+  },
 };

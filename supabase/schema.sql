@@ -37,7 +37,7 @@ create table if not exists catalogs (
   name text not null default 'Untitled catalog',
   slug text not null unique check (slug ~ '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'),
   status text not null default 'draft' check (status in ('draft', 'live')),
-  template text not null default 'grid' check (template in ('grid', 'lookbook', 'menu', 'pricelist')),
+  template text not null default 'grid' check (template in ('grid', 'lookbook', 'menu', 'pricelist', 'cards', 'compact', 'spotlight')),
   accent text not null default '#0b5fce',
   currency text not null default 'QAR',
   order_email text,
@@ -261,6 +261,19 @@ alter table catalogs
     "phonePrefix": "",
     "orderPrefix": ""
   }'::jsonb;
+
+-- ---------------------------------------------------------------------------
+-- Additive: catalog branding (logo + tagline + about) and extra templates.
+-- Existing projects can run supabase/catalog-branding.sql once instead.
+-- ---------------------------------------------------------------------------
+alter table catalogs
+  add column if not exists logo text,
+  add column if not exists tagline text,
+  add column if not exists about text;
+
+alter table catalogs drop constraint if exists catalogs_template_check;
+alter table catalogs add constraint catalogs_template_check
+  check (template in ('grid', 'lookbook', 'menu', 'pricelist', 'cards', 'compact', 'spotlight'));
 
 -- ---------------------------------------------------------------------------
 -- Storage: public catalog-images bucket (item photo uploads).

@@ -5,6 +5,7 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { BrandHeader } from "./BrandHeader";
 
 const QUICK_MULTIPLES = [6, 12, 24];
 
@@ -60,11 +61,7 @@ export function GridTemplate({
     <div>
       <div className="sticky top-0 z-10 border-b border-[var(--cat-border)] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-baseline gap-2">
-            <span className="font-catalog-display text-xl font-bold text-[var(--cat-accent)]">
-              {catalog.name}
-            </span>
-          </div>
+          <BrandHeader catalog={catalog} />
           <CartButton onClick={onOpenCart} />
         </div>
         <div className="mx-auto max-w-6xl space-y-3 px-4 pb-3">

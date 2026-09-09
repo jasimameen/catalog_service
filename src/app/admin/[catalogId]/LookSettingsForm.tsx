@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { TEMPLATES, ACCENT_COLORS } from "@/lib/catalog/templates";
 import { CHECKOUT_FIELD_KEYS, CHECKOUT_FIELD_LABELS } from "@/lib/catalog/checkout-fields";
 import type { CatalogTemplate, CheckoutFields } from "@/lib/supabase/types";
 import { updateCatalogLook, type LookState } from "./actions";
+
+const PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+const MAX_LOGO_BYTES = 4 * 1024 * 1024;
 
 const MODES = [
   { value: "required", label: "Required" },
@@ -25,26 +29,111 @@ export function LookSettingsForm({
   template,
   accent,
   checkoutFields,
+  logo,
+  tagline,
+  about,
 }: {
   catalogId: string;
   template: CatalogTemplate;
   accent: string;
   checkoutFields: CheckoutFields;
+  logo: string;
+  tagline: string;
+  about: string;
 }) {
   const [state, formAction, pending] = useActionState<LookState, FormData>(
     updateCatalogLook.bind(null, catalogId),
     null,
   );
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const accents = ACCENT_COLORS.includes(accent) ? ACCENT_COLORS : [...ACCENT_COLORS, accent];
+  const shownLogo = logoPreview ?? logo;
 
   return (
     <div id="look" className="rounded-2xl border border-[var(--cat-border)] p-5">
       <h3 className="m-0 text-[15px] font-semibold text-[var(--cat-ink)]">Look</h3>
       <p className="m-0 mt-1 text-[13px] text-[var(--cat-muted)]">
-        Template, accent, and what the storefront order form collects.
+        Brand, template, accent, and what the storefront order form collects.
       </p>
 
       <form action={formAction} className="mt-4 flex flex-col gap-5">
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
+            Brand
+          </p>
+          <input type="hidden" name="logo" defaultValue={logo} />
+          <div className="flex items-center gap-3">
+            <input
+              name="logoFile"
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                setLogoPreview((prev) => {
+                  if (prev) URL.revokeObjectURL(prev);
+                  return null;
+                });
+                if (!file) {
+                  setLogoError(null);
+                  return;
+                }
+                if (file.size > MAX_LOGO_BYTES) {
+                  setLogoError("Logo must be 4MB or smaller.");
+                  e.target.value = "";
+                  return;
+                }
+                if (file.type && !PHOTO_TYPES.has(file.type)) {
+                  setLogoError("Use a JPEG, PNG, WebP, or GIF logo.");
+                  e.target.value = "";
+                  return;
+                }
+                setLogoError(null);
+                setLogoPreview(URL.createObjectURL(file));
+              }}
+              className="min-w-0 flex-1 text-[13px] text-[var(--cat-ink)] file:mr-2 file:rounded-lg file:border-0 file:bg-[#f5f5f7] file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-[var(--cat-ink)]"
+            />
+            {shownLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local object URL or merchant logo
+              <img
+                src={shownLogo}
+                alt=""
+                className="h-10 w-10 shrink-0 rounded-lg bg-[var(--cat-photo-bg)] object-contain"
+              />
+            ) : null}
+          </div>
+          {logo && !logoPreview ? (
+            <label className="mt-2 flex items-center gap-2 text-xs text-[var(--cat-muted)]">
+              <input type="checkbox" name="clearLogo" value="1" />
+              Remove logo
+            </label>
+          ) : null}
+          {logoError ? <p className="m-0 mt-1 text-xs text-[#b2432b]">{logoError}</p> : null}
+          <label htmlFor="tagline" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
+            Tagline
+          </label>
+          <input
+            id="tagline"
+            name="tagline"
+            defaultValue={tagline}
+            maxLength={160}
+            placeholder="Trade catalogue · Doha"
+            className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          <label htmlFor="about" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
+            About
+          </label>
+          <textarea
+            id="about"
+            name="about"
+            defaultValue={about}
+            maxLength={400}
+            rows={2}
+            placeholder="A short line about your shop"
+            className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+        </div>
+
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
             Template

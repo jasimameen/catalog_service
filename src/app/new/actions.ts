@@ -4,6 +4,7 @@ import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
+import { isTemplateKey } from "@/lib/catalog/templates";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 
 export interface PublishDraftItem {
@@ -27,7 +28,6 @@ export type PublishResult =
   | { ok: true; catalogId: string; slug: string }
   | { ok: false; error: string; field?: "slug" | "items" };
 
-const TEMPLATES: CatalogTemplate[] = ["grid", "lookbook", "menu", "pricelist"];
 
 /**
  * Publishes the draft built in the wizard: inserts the `catalogs` row, then
@@ -70,7 +70,7 @@ export async function publishCatalog(input: PublishInput): Promise<PublishResult
 
   const accent = /^#[0-9a-fA-F]{6}$/.test(input.accent) ? input.accent : "#0b5fce";
   const orderEmail = input.orderEmail.trim() || null;
-  const template: CatalogTemplate = TEMPLATES.includes(input.template) ? input.template : "grid";
+  const template: CatalogTemplate = isTemplateKey(input.template) ? input.template : "grid";
 
   const supabase = await getServerSupabase();
 

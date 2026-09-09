@@ -28,7 +28,7 @@ export default function TemplatesGalleryPage() {
           <div>
             <h1 className="text-[34px] font-semibold tracking-tight">Catalog templates</h1>
             <p className="mt-2 text-[15px] text-[#6e6e73]">
-              The same items, four layouts. Pick one while creating and switch any time.
+              The same items, several layouts. Pick one while creating and switch any time.
             </p>
           </div>
           <Link href="/new" className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-sm font-medium text-white">
@@ -70,6 +70,9 @@ export default function TemplatesGalleryPage() {
           {active === "lookbook" && <LookbookPreview />}
           {active === "menu" && <MenuPreview />}
           {active === "pricelist" && <PriceListPreview />}
+          {active === "cards" && <CardsPreview />}
+          {active === "compact" && <CompactPreview />}
+          {active === "spotlight" && <SpotlightPreview />}
         </div>
       </div>
     </div>
@@ -169,6 +172,95 @@ function MenuPreview() {
         ))}
       </div>
       <p className="mt-9 text-center text-[13px] text-[#8a8171]">Tap any line to add it to your order</p>
+    </div>
+  );
+}
+
+function CardsPreview() {
+  return (
+    <div className="bg-white px-5 py-8 sm:px-8">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {SAMPLE_ITEMS.slice(0, 4).map((p) => (
+          <div key={p.code} className="overflow-hidden rounded-[18px] border border-[#e8e8ed]">
+            <div className="relative aspect-[16/10] bg-[#f5f5f7]">
+              <Image src={p.image} alt={p.name} fill sizes="360px" className="object-contain" />
+            </div>
+            <div className="px-4 pb-4 pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#86868b]">{p.code}</p>
+              <h3 className="mt-1 text-[18px] font-semibold tracking-tight">{p.name}</h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-[#6e6e73]">{p.description}</p>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-[15px] font-semibold">QAR {p.price.toFixed(2)}</span>
+                <span className="rounded-full bg-[var(--cat-accent)] px-3.5 py-1.5 text-[12px] font-semibold text-white">
+                  Add to order
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompactPreview() {
+  return (
+    <div className="bg-white px-5 py-6 sm:px-8">
+      <div className="overflow-hidden rounded-[12px] border border-[#e8e8ed]">
+        {SAMPLE_ITEMS.map((p) => (
+          <div key={p.code} className="flex items-center gap-2.5 border-b border-[#f0f0f4] px-2.5 py-2 last:border-b-0">
+            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-md bg-[#eef1f5]">
+              <Image src={p.image} alt="" fill sizes="44px" className="object-contain" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold">{p.name}</p>
+              <p className="text-[11px] text-[#86868b]">{p.code} · {p.pack}</p>
+            </div>
+            <span className="shrink-0 text-sm font-bold">{p.price.toFixed(2)}</span>
+            <span className="shrink-0 rounded-[8px] border border-[var(--cat-accent)] px-2.5 py-1 text-xs font-semibold text-[var(--cat-accent)]">
+              Add
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SpotlightPreview() {
+  const [hero, ...rest] = SAMPLE_ITEMS;
+  return (
+    <div className="bg-white px-5 py-6 sm:px-8">
+      <div className="overflow-hidden rounded-[18px] border border-[#e8e8ed] sm:grid sm:grid-cols-2">
+        <div className="relative aspect-[4/3] bg-[#f5f5f7] sm:aspect-auto sm:min-h-[220px]">
+          <Image src={hero.image} alt={hero.name} fill sizes="400px" className="object-contain" />
+        </div>
+        <div className="px-5 py-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#86868b]">Featured</p>
+          <h3 className="mt-2 text-[24px] font-semibold tracking-tight">{hero.name}</h3>
+          <p className="mt-2 text-[14px] leading-relaxed text-[#6e6e73]">{hero.description}</p>
+          <div className="mt-4 flex items-center gap-3">
+            <span className="text-[17px] font-semibold">QAR {hero.price.toFixed(2)}</span>
+            <span className="rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[12px] font-semibold text-white">
+              Add to order
+            </span>
+          </div>
+        </div>
+      </div>
+      <p className="mb-2 mt-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#86868b]">More items</p>
+      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+        {rest.slice(0, 4).map((p) => (
+          <div key={p.code} className="overflow-hidden rounded-[12px] border border-[#e8e8ed]">
+            <div className="relative aspect-[584/480] bg-[#eef1f5]">
+              <Image src={p.image} alt={p.name} fill sizes="140px" className="object-contain" />
+            </div>
+            <div className="p-2">
+              <p className="truncate text-[12px] font-semibold">{p.name}</p>
+              <p className="mt-1 text-[12px] font-bold">{p.price.toFixed(2)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

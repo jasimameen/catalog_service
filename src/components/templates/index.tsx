@@ -4,6 +4,9 @@ import { GridTemplate } from "./Grid";
 import { LookbookTemplate } from "./Lookbook";
 import { MenuTemplate } from "./Menu";
 import { PriceListTemplate } from "./PriceList";
+import { CardsTemplate } from "./Cards";
+import { CompactTemplate } from "./Compact";
+import { SpotlightTemplate } from "./Spotlight";
 
 export interface TemplateProps {
   catalog: StorefrontCatalog;
@@ -15,4 +18,7 @@ export const TEMPLATE_COMPONENTS: Record<StorefrontCatalog["template"], Componen
   lookbook: LookbookTemplate,
   menu: MenuTemplate,
   pricelist: PriceListTemplate,
+  cards: CardsTemplate,
+  compact: CompactTemplate,
+  spotlight: SpotlightTemplate,
 };

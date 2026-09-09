@@ -5,6 +5,7 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { BrandHeader } from "./BrandHeader";
 
 /** Table layout that prints and exports cleanly — trade pricing by email or on paper. */
 export function PriceListTemplate({
@@ -21,10 +22,11 @@ export function PriceListTemplate({
 
   return (
     <div className="bg-white">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--cat-border)] bg-white/95 px-6 py-3 backdrop-blur print:hidden">
-        <span className="font-catalog-display text-lg font-bold text-[var(--cat-ink)]">
-          {catalog.name}
-        </span>
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--cat-border)] bg-white/95 px-6 py-3 backdrop-blur print:hidden">
+        <BrandHeader
+          catalog={catalog}
+          nameClassName="font-catalog-display text-lg font-bold leading-tight text-[var(--cat-ink)]"
+        />
         <CartButton onClick={onOpenCart} />
       </div>
 

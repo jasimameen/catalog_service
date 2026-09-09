@@ -6,6 +6,7 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
+import { BrandHeader } from "./BrandHeader";
 
 /** Large imagery, generous spacing, for a short, considered list. */
 export function LookbookTemplate({
@@ -20,10 +21,8 @@ export function LookbookTemplate({
 
   return (
     <div>
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--cat-border)] bg-white/95 px-6 py-3 backdrop-blur">
-        <span className="font-catalog-display text-xl font-bold text-[var(--cat-accent)]">
-          {catalog.name}
-        </span>
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--cat-border)] bg-white/95 px-6 py-3 backdrop-blur">
+        <BrandHeader catalog={catalog} />
         <CartButton onClick={onOpenCart} />
       </div>
 
