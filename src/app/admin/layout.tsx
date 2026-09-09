@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAccount } from "@/lib/auth/current-account";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { SignOutButton } from "@/components/admin/SignOutButton";
 
 function trialDaysLeft(trialEndsAt: string): number {
   const ms = new Date(trialEndsAt).getTime() - Date.now();
@@ -36,19 +37,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         <AdminNav />
 
-        <div className="mt-auto hidden rounded-xl border border-[var(--cat-border)] bg-white p-3.5 md:block">
-          <p className="m-0 text-xs font-semibold text-[var(--cat-ink)]">
-            Trial · {daysLeft} {daysLeft === 1 ? "day" : "days"} left
-          </p>
-          <p className="m-0 mb-2.5 mt-1.5 text-xs leading-relaxed text-[var(--cat-muted)]">
-            Then $19 a month. Your catalogs stay live.
-          </p>
-          <Link
-            href="/admin/settings"
-            className="block w-full rounded-lg border border-[#d2d2d7] bg-white py-1.5 text-center text-xs font-medium text-[var(--cat-ink)]"
-          >
-            Add payment
-          </Link>
+        <div className="mt-auto flex flex-col gap-2">
+          <div className="hidden rounded-xl border border-[var(--cat-border)] bg-white p-3.5 md:block">
+            <p className="m-0 text-xs font-semibold text-[var(--cat-ink)]">
+              Trial · {daysLeft} {daysLeft === 1 ? "day" : "days"} left
+            </p>
+            <p className="m-0 mb-2.5 mt-1.5 text-xs leading-relaxed text-[var(--cat-muted)]">
+              Then $19 a month. Your catalogs stay live.
+            </p>
+            <Link
+              href="/admin/settings"
+              className="block w-full rounded-lg border border-[#d2d2d7] bg-white py-1.5 text-center text-xs font-medium text-[var(--cat-ink)]"
+            >
+              Add payment
+            </Link>
+          </div>
+          <SignOutButton variant="nav" />
         </div>
       </aside>
 
