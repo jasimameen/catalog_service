@@ -23,7 +23,7 @@ The Publishable key is the same kind of public key as the old `anon` key (the JW
 3. Add a **subscription variant** at **$19.99 / month**.
 4. Copy the **Store ID** (Settings → Stores) into `LEMONSQUEEZY_STORE_ID`.
 5. **Settings → API** → create an API key → `LEMONSQUEEZY_API_KEY`.
-6. Open the Instant Catalog variant and copy its **Variant ID** → `LEMONSQUEEZY_VARIANT_ID`.
+6. Open Instant Catalog → the **$19.99 / month** variant → **Copy ID**. That is the **Variant ID** (not the product ID in the URL) → `LEMONSQUEEZY_VARIANT_ID`. Use a Test API key only with Test-mode variants (or Live with Live).
 7. **Settings → Webhooks → +** with URL `https://catalog.hevyf.com/api/billing/webhook` (or `LEMONSQUEEZY_WEBHOOK_URL`). Signing secret → `LEMONSQUEEZY_WEBHOOK_SECRET`.
 8. Subscribe the webhook to: `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_payment_success`.
 9. Paste the four env vars in `.env.local` locally and in Vercel (see [`DEPLOY.md`](DEPLOY.md)).
