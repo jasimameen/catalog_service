@@ -11,6 +11,7 @@ Copy `.env.example` to `.env.local`. Then do this once:
    - Secret key → `SUPABASE_SECRET_KEY` (server-only; replace the `your-secret-key` placeholder with the real secret from the dashboard)
 5. Set `NEXT_PUBLIC_ROOT_DOMAIN` to `localhost:3000` locally, or `catalog.hevyf.com` in production.
 6. Optional — order email on checkout: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `ORDER_FROM_EMAIL`.
+7. Optional — item photo uploads: **SQL Editor** → run [`supabase/catalog-images.sql`](supabase/catalog-images.sql) (creates the public `catalog-images` bucket).
 
 The Publishable key is the same kind of public key as the old `anon` key (the JWT still has `"role":"anon"`). The Secret key replaces `service_role`. Old env names still work if you already have them.
 

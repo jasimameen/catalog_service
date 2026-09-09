@@ -43,13 +43,24 @@ function VisibleToggle({
   );
 }
 
+const PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+
 function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () => void }) {
   const boundAction = useMemo(() => addItem.bind(null, catalogId), [catalogId]);
   const [state, formAction, pending] = useActionState<AddItemState, FormData>(boundAction, null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   useEffect(() => {
     if (state?.saved) onClose();
   }, [state, onClose]);
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
@@ -82,6 +93,49 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
               rows={3}
               className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Photo</label>
+            <div className="flex items-center gap-3">
+              <input
+                name="photo"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setPreview((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+                    return null;
+                  });
+                  if (!file) {
+                    setPhotoError(null);
+                    return;
+                  }
+                  if (file.size > MAX_PHOTO_BYTES) {
+                    setPhotoError("Photo must be 4MB or smaller.");
+                    e.target.value = "";
+                    return;
+                  }
+                  if (file.type && !PHOTO_TYPES.has(file.type)) {
+                    setPhotoError("Use a JPEG, PNG, WebP, or GIF photo.");
+                    e.target.value = "";
+                    return;
+                  }
+                  setPhotoError(null);
+                  setPreview(URL.createObjectURL(file));
+                }}
+                className="min-w-0 flex-1 text-[13px] text-[var(--cat-ink)] file:mr-2 file:rounded-lg file:border-0 file:bg-[#f5f5f7] file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-[var(--cat-ink)]"
+              />
+              {preview ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+                <img
+                  src={preview}
+                  alt=""
+                  className="h-10 w-10 shrink-0 rounded-lg object-cover bg-[var(--cat-photo-bg)]"
+                />
+              ) : null}
+            </div>
+            {photoError ? <p className="m-0 mt-1 text-xs text-[#b2432b]">{photoError}</p> : null}
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Photo URL</label>

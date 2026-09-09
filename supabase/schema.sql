@@ -261,3 +261,9 @@ alter table catalogs
     "phonePrefix": "",
     "orderPrefix": ""
   }'::jsonb;
+
+-- ---------------------------------------------------------------------------
+-- Storage: public catalog-images bucket (item photo uploads).
+-- Existing projects: run supabase/catalog-images.sql once.
+-- Fresh projects can run that file after this schema (bucket + policies).
+-- ---------------------------------------------------------------------------

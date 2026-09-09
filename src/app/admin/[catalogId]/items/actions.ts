@@ -4,8 +4,52 @@ import { revalidatePath } from "next/cache";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { generateItemCode } from "@/app/admin/_lib/urls";
 import type { CatalogRow } from "@/lib/supabase/types";
+
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+const PHOTO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+function photoExt(file: File): string | null {
+  if (file.type && PHOTO_EXT[file.type]) return PHOTO_EXT[file.type]!;
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".jpeg") || name.endsWith(".jpg")) return "jpg";
+  if (name.endsWith(".png")) return "png";
+  if (name.endsWith(".webp")) return "webp";
+  if (name.endsWith(".gif")) return "gif";
+  return null;
+}
+
+async function uploadItemPhoto(
+  catalogId: string,
+  file: File,
+): Promise<{ url?: string; error?: string }> {
+  if (file.size > MAX_PHOTO_BYTES) return { error: "Photo must be 4MB or smaller." };
+  const ext = photoExt(file);
+  if (!ext) return { error: "Use a JPEG, PNG, WebP, or GIF photo." };
+
+  const path = `${catalogId}/${crypto.randomUUID()}.${ext}`;
+  const service = getServiceClient();
+  const { error } = await service.storage.from("catalog-images").upload(path, file, {
+    contentType: file.type || `image/${ext === "jpg" ? "jpeg" : ext}`,
+    upsert: false,
+  });
+
+  if (error) {
+    console.error("uploadItemPhoto: upload failed", error);
+    return { error: "Could not upload the photo. Try again." };
+  }
+
+  const { data } = service.storage.from("catalog-images").getPublicUrl(path);
+  return { url: data.publicUrl };
+}
 
 export type AddItemState = { error?: string; saved?: boolean } | null;
 
@@ -64,7 +108,13 @@ export async function addItem(
 
   const name = String(formData.get("name") ?? "").trim().slice(0, 200);
   const priceRaw = String(formData.get("price") ?? "").trim();
-  const image = String(formData.get("image") ?? "").trim();
+  const photo = formData.get("photo");
+  let image = String(formData.get("image") ?? "").trim();
+  if (photo instanceof File && photo.size > 0) {
+    const uploaded = await uploadItemPhoto(catalogId, photo);
+    if (uploaded.error || !uploaded.url) return { error: uploaded.error ?? "Could not upload the photo." };
+    image = uploaded.url;
+  }
   const category = String(formData.get("category") ?? "").trim().slice(0, 80);
   const pack = String(formData.get("pack") ?? "").trim().slice(0, 80);
   const description = String(formData.get("description") ?? "").trim().slice(0, 2000);
