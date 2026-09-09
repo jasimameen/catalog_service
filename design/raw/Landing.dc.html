@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #0b5fce; text-decoration: none; }
+  a:hover { color: #0a52b3; }
+</style>
+</helmet>
+<div style="width: 100%; overflow-x: hidden;">
+  <header style="position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,0.82); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(0,0,0,0.06);">
+    <nav style="max-width: 1120px; margin: 0 auto; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: inline-flex; height: 22px; width: 22px; align-items: center; justify-content: center; border-radius: 6px; background: #1d1d1f; color: #fff; font-size: 12px; font-weight: 600; letter-spacing: -0.02em;">C</span>
+        <span style="font-size: 15px; font-weight: 600; letter-spacing: -0.02em;">Catalog</span>
+        <span style="font-size: 12px; color: #86868b;">catalog.hevyf.com</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 24px;">
+        <a href="#templates" style="font-size: 12px; color: #1d1d1f;">Templates</a>
+        <a href="#how" style="font-size: 12px; color: #1d1d1f;">How it works</a>
+        <a href="#pricing" style="font-size: 12px; color: #1d1d1f;">Pricing</a>
+        <a href="Admin.dc.html" style="font-size: 12px; color: #1d1d1f;">Sign in</a>
+        <a href="Admin.dc.html" style="font-size: 12px; font-weight: 500; color: #fff; background: #0b5fce; border-radius: 999px; padding: 6px 14px;">Start free</a>
+      </div>
+    </nav>
+  </header>
+
+  <section style="max-width: 1120px; margin: 0 auto; padding: 96px 24px 0; text-align: center;">
+    <p style="margin: 0 0 18px; font-size: 15px; color: #6e6e73; letter-spacing: -0.01em;">For suppliers, shops, kitchens and distributors</p>
+    <h1 style="margin: 0; font-size: clamp(40px, 6.4vw, 76px); line-height: 1.04; font-weight: 600; letter-spacing: -0.035em; text-wrap: balance;">Your catalog, live in<br />five minutes.</h1>
+    <p style="margin: 22px auto 0; max-width: 620px; font-size: clamp(17px, 2vw, 21px); line-height: 1.45; color: #6e6e73; letter-spacing: -0.01em; text-wrap: pretty;">Add your items, pick a template, share the link. Customers browse, add quantities and send an order — straight to your inbox and dashboard. No storefront to build, no payment setup, no developer.</p>
+    <div style="margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center;">
+      <a href="Catalog Builder.dc.html" style="background: #0b5fce; color: #fff; font-size: 15px; font-weight: 500; border-radius: 999px; padding: 12px 26px;">Create your catalog</a>
+      <a href="#templates" style="border: 1px solid rgba(0,0,0,0.14); color: #1d1d1f; font-size: 15px; font-weight: 500; border-radius: 999px; padding: 12px 26px;">See templates</a>
+    </div>
+    <p style="margin: 16px 0 0; font-size: 13px; color: #86868b;">{{ trialLine }}</p>
+  </section>
+
+  <section style="max-width: 1120px; margin: 0 auto; padding: 56px 24px 0;">
+    <div style="border-radius: 24px; background: #f5f5f7; padding: clamp(16px, 3vw, 40px);">
+      <div style="border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 30px 60px -30px rgba(0,0,0,0.35);">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #e8e8ed; background: #fbfbfd;">
+          <span style="display: flex; gap: 6px;">
+            <span style="height: 10px; width: 10px; border-radius: 999px; background: #ff5f57;"></span>
+            <span style="height: 10px; width: 10px; border-radius: 999px; background: #febc2e;"></span>
+            <span style="height: 10px; width: 10px; border-radius: 999px; background: #28c840;"></span>
+          </span>
+          <span style="flex: 1; text-align: center; font-size: 12px; color: #6e6e73; background: #f0f0f4; border-radius: 6px; padding: 4px 10px;">kleaner.catalog.hevyf.com</span>
+        </div>
+        <div style="padding: 18px 20px 24px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #e8e8ed;">
+            <div style="display: flex; align-items: baseline; gap: 8px;">
+              <span style="font-size: 17px; font-weight: 700; color: #0b5fce; letter-spacing: -0.01em;">KLEANER</span>
+              <span style="font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: #6e6e73;">Trade Catalogue</span>
+            </div>
+            <span style="font-size: 12px; font-weight: 600; color: #fff; background: #0b5fce; border-radius: 8px; padding: 6px 14px;">Cart 12</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding-top: 16px;">
+            <sc-for list="{{ heroItems }}" as="item" hint-placeholder-count="4">
+              <div style="border: 1px solid #e8e8ed; border-radius: 12px; overflow: hidden; background: #fff;">
+                <div style="aspect-ratio: 584/480; background: #eef1f5;">
+                  <img src="{{ item.image }}" alt="{{ item.name }}" style="width: 100%; height: 100%; object-fit: contain;" />
+                </div>
+                <div style="padding: 10px;">
+                  <p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -0.01em;">{{ item.name }}</p>
+                  <p style="margin: 2px 0 0; font-size: 11px; color: #86868b;">{{ item.code }}</p>
+                  <p style="margin: 8px 0 0; font-size: 14px; font-weight: 600;">{{ item.price }}</p>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="max-width: 1120px; margin: 0 auto; padding: 104px 24px 0;">
+    <h2 style="margin: 0; font-size: clamp(30px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.03em; text-align: center;">Three steps. That is the whole product.</h2>
+    <div style="margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+      <div style="border-radius: 20px; background: #f5f5f7; padding: 28px;">
+        <p style="margin: 0; font-size: 13px; font-weight: 600; color: #0b5fce;">Step one</p>
+        <h3 style="margin: 10px 0 8px; font-size: 21px; font-weight: 600; letter-spacing: -0.02em;">Add your items</h3>
+        <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #6e6e73;">Type a name and a price, attach a photo from your camera or your files. Or paste a list and every row becomes an item. Item codes and barcodes are optional.</p>
+        <p style="margin: 12px 0 0; font-size: 14px; line-height: 1.5; color: #1d1d1f;">The whole thing works from a phone — <a href="Catalog Builder (mobile).dc.html">see the phone flow</a>.</p>
+      </div>
+      <div style="border-radius: 20px; background: #f5f5f7; padding: 28px;">
+        <p style="margin: 0; font-size: 13px; font-weight: 600; color: #0b5fce;">Step two</p>
+        <h3 style="margin: 10px 0 8px; font-size: 21px; font-weight: 600; letter-spacing: -0.02em;">Pick a template</h3>
+        <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #6e6e73;">Four layouts, each built for a different kind of selling. Choose one, set your colour, and the catalog is designed.</p>
+      </div>
+      <div style="border-radius: 20px; background: #f5f5f7; padding: 28px;">
+        <p style="margin: 0; font-size: 13px; font-weight: 600; color: #0b5fce;">Step three</p>
+        <h3 style="margin: 10px 0 8px; font-size: 21px; font-weight: 600; letter-spacing: -0.02em;">Share the link</h3>
+        <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #6e6e73;">You get a link on your own subdomain the moment you publish. Send it on WhatsApp, email or print it as a QR code.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="templates" style="max-width: 1120px; margin: 0 auto; padding: 104px 24px 0;">
+    <h2 style="margin: 0; font-size: clamp(30px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.03em; text-align: center;">Four templates.</h2>
+    <p style="margin: 14px auto 0; max-width: 560px; text-align: center; font-size: 17px; line-height: 1.5; color: #6e6e73;">Pick one while you create. Switch any time without touching your items.</p>
+    <div style="margin-top: 44px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+      <sc-for list="{{ templates }}" as="tpl" hint-placeholder-count="4">
+        <div style="border: 1px solid #e8e8ed; border-radius: 20px; overflow: hidden; background: #fff;">
+          <div style="aspect-ratio: 4/3; background: #f5f5f7; padding: 18px; display: flex; align-items: stretch;">
+            <div style="flex: 1; border-radius: 10px; background: #fff; box-shadow: 0 8px 20px -12px rgba(0,0,0,0.3); padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden;">
+              <div style="height: 6px; width: 40%; border-radius: 3px; background: #1d1d1f;"></div>
+              <div style="flex: 1; display: grid; gap: 6px; grid-template-columns: {{ tpl.cols }};">
+                <sc-for list="{{ tpl.blocks }}" as="block" hint-placeholder-count="4">
+                  <div style="border-radius: 6px; background: {{ block.fill }}; min-height: 14px;"></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 18px 20px 22px;">
+            <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em;">{{ tpl.name }}</h3>
+            <p style="margin: 6px 0 0; font-size: 14px; line-height: 1.5; color: #6e6e73;">{{ tpl.blurb }}</p>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <p style="margin: 22px 0 0; text-align: center; font-size: 14px;"><a href="Catalog Templates.dc.html">Open the full template previews</a></p>
+  </section>
+
+  <section style="margin-top: 104px; background: #f5f5f7; padding: 96px 0;">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 48px; align-items: center;">
+      <div>
+        <h2 style="margin: 0; font-size: clamp(28px, 3.4vw, 42px); font-weight: 600; letter-spacing: -0.03em;">Orders arrive three ways.</h2>
+        <p style="margin: 16px 0 0; font-size: 17px; line-height: 1.55; color: #6e6e73;">Every order lands in your email with the full line list, sits in the dashboard inbox for the team, and exports to CSV for your accounts. Prices are recalculated on the server, so a customer can never send you a discounted total.</p>
+        <div style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px;">
+          <span style="font-size: 13px; font-weight: 500; background: #fff; border-radius: 999px; padding: 7px 14px;">Email</span>
+          <span style="font-size: 13px; font-weight: 500; background: #fff; border-radius: 999px; padding: 7px 14px;">Dashboard inbox</span>
+          <span style="font-size: 13px; font-weight: 500; background: #fff; border-radius: 999px; padding: 7px 14px;">CSV export</span>
+        </div>
+      </div>
+      <div style="border-radius: 18px; background: #fff; padding: 24px; box-shadow: 0 24px 48px -28px rgba(0,0,0,0.35);">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em;">New order KL-4821</p>
+          <span style="font-size: 12px; color: #86868b;">2 minutes ago</span>
+        </div>
+        <p style="margin: 4px 0 18px; font-size: 13px; color: #6e6e73;">Al Nasr Trading · +974 3300 0000 · Zone 55, Doha</p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 10px; border-bottom: 1px solid #e8e8ed;"><span style="color: #6e6e73;">GSA011 · Professional Cotton Mop × 12</span><span style="font-weight: 600;">339.00</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 10px; border-bottom: 1px solid #e8e8ed;"><span style="color: #6e6e73;">GSH001 · Sponge Scourer 6pcs × 24</span><span style="font-weight: 600;">96.00</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;"><span style="color: #6e6e73;">KT2412 · Bucket with Wringer × 6</span><span style="font-weight: 600;">132.00</span></div>
+        </div>
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #1d1d1f; display: flex; justify-content: space-between; font-size: 15px; font-weight: 600;"><span>Total</span><span>QAR 567.00</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width: 1120px; margin: 0 auto; padding: 96px 24px 0; text-align: center;">
+    <h2 style="margin: 0; font-size: clamp(30px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.03em;">On your own domain.</h2>
+    <p style="margin: 16px auto 0; max-width: 600px; font-size: 17px; line-height: 1.55; color: #6e6e73;">Every catalog gets a free subdomain the second it publishes. Point your own domain at it whenever you are ready — two records, verified automatically, certificate included.</p>
+    <div style="margin-top: 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; text-align: left;">
+      <div style="border: 1px solid #e8e8ed; border-radius: 20px; padding: 26px;">
+        <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Included</p>
+        <p style="margin: 12px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em;">kleaner.catalog.hevyf.com</p>
+        <p style="margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: #6e6e73;">Live instantly, HTTPS by default, nothing to configure.</p>
+      </div>
+      <div style="border: 1px solid #e8e8ed; border-radius: 20px; padding: 26px;">
+        <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Optional</p>
+        <p style="margin: 12px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em;">catalog.yourcompany.com</p>
+        <p style="margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: #6e6e73;">Add a CNAME, we verify and issue the certificate for you.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" style="max-width: 1120px; margin: 0 auto; padding: 104px 24px 0;">
+    <h2 style="margin: 0; font-size: clamp(30px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.03em; text-align: center;">One price.</h2>
+    <div style="margin: 44px auto 0; max-width: 460px; border-radius: 24px; background: #1d1d1f; color: #fff; padding: 40px; text-align: center;">
+      <p style="margin: 0; font-size: 14px; color: #a1a1a6;">{{ trialHeading }}</p>
+      <p style="margin: 12px 0 0; font-size: 64px; font-weight: 600; letter-spacing: -0.04em; line-height: 1;">{{ priceDisplay }}</p>
+      <p style="margin: 8px 0 0; font-size: 15px; color: #a1a1a6;">per month, per company</p>
+      <div style="margin-top: 28px; display: flex; flex-direction: column; gap: 12px; text-align: left;">
+        <sc-for list="{{ planIncludes }}" as="line" hint-placeholder-count="6">
+          <p style="margin: 0; font-size: 15px; color: #f5f5f7;">{{ line.text }}</p>
+        </sc-for>
+      </div>
+      <a href="Catalog Builder.dc.html" style="margin-top: 30px; display: block; background: #fff; color: #1d1d1f; font-size: 15px; font-weight: 500; border-radius: 999px; padding: 13px 0;">Start your free trial</a>
+      <p style="margin: 14px 0 0; font-size: 12px; color: #86868b;">No card to start. Cancel in one click.</p>
+    </div>
+  </section>
+
+  <footer style="margin-top: 104px; border-top: 1px solid #e8e8ed; padding: 40px 24px 64px;">
+    <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center;">
+      <p style="margin: 0; font-size: 12px; color: #86868b;">catalog.hevyf.com · Made for people who sell from a list.</p>
+      <div style="display: flex; gap: 20px; font-size: 12px;">
+        <a href="#templates">Templates</a>
+        <a href="#pricing">Pricing</a>
+        <a href="Admin.dc.html">Dashboard</a>
+      </div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;monthlyPrice&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:19,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:5,&quot;max&quot;:99,&quot;unit&quot;:&quot;$/mo&quot;},&quot;trialDays&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:14,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;days&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const price = this.props.monthlyPrice ?? 19;
+    const trial = this.props.trialDays ?? 14;
+    return {
+      priceDisplay: "$" + price,
+      trialHeading: trial + " days free",
+      trialLine: trial + " days free, then $" + price + " a month. Unlimited catalogs.",
+      planIncludes: [
+        { text: "Unlimited catalogs and items" },
+        { text: "All four templates" },
+        { text: "Free subdomain, custom domain included" },
+        { text: "Orders by email, inbox and CSV" },
+        { text: "Views and order analytics per catalog" },
+        { text: "Unlimited team members" }
+      ],
+      heroItems: [
+        { name: "Professional Cotton Mop", code: "GSA011", price: "QAR 28.25", image: "public/catalog/images/GSA011.jpg" },
+        { name: "Bucket with Wringer", code: "KT2412", price: "QAR 22.00", image: "public/catalog/images/KT2412.jpg" },
+        { name: "Microfiber Duster", code: "GSE002", price: "QAR 15.00", image: "public/catalog/images/GSE002.jpg" },
+        { name: "Window Cleaner 10\"", code: "KB2202", price: "QAR 20.75", image: "public/catalog/images/KB2202.jpg" },
+        { name: "Floor Squeegee", code: "K19002", price: "QAR 13.00", image: "public/catalog/images/K19002.jpg" },
+        { name: "Dustpan & Broom", code: "GSC001", price: "QAR 11.25", image: "public/catalog/images/GSC001.jpg" }
+      ],
+      templates: [
+        { name: "Trade Grid", blurb: "Dense grid, item codes, quantity steppers. Built for wholesale lists.", cols: "repeat(3, 1fr)", blocks: Array.from({ length: 9 }, () => ({ fill: "#e3e8ef" })) },
+        { name: "Lookbook", blurb: "Large imagery, few items, editorial spacing. For considered products.", cols: "repeat(2, 1fr)", blocks: Array.from({ length: 4 }, () => ({ fill: "#dfe4ec" })) },
+        { name: "Menu", blurb: "Sectioned list, no photos required. Kitchens and services.", cols: "1fr", blocks: Array.from({ length: 5 }, () => ({ fill: "#eaedf2" })) },
+        { name: "Price List", blurb: "Table layout that prints and exports as a clean PDF.", cols: "1fr", blocks: Array.from({ length: 7 }, () => ({ fill: "#edf0f4" })) }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

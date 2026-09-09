@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin: 0; padding: 0; background: #ffffff; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #0b5fce; text-decoration: none; }
+  a:hover { color: #0a52b3; }
+  input, button, select, textarea { font-family: inherit; }
+</style>
+</helmet>
+<div style="display: flex; min-height: 100vh; background: #fff; flex-direction: {{ shellDir }};">
+  <aside style="flex-shrink: 0; background: #fbfbfd; padding: 14px; display: flex; gap: 16px; width: {{ asideWidth }}; flex-direction: {{ asideDir }}; border-right: {{ asideBorderRight }}; border-bottom: {{ asideBorderBottom }}; align-items: {{ asideAlign }};">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px;">
+      <span style="display: inline-flex; height: 22px; width: 22px; align-items: center; justify-content: center; border-radius: 6px; background: #1d1d1f; color: #fff; font-size: 12px; font-weight: 600;">C</span>
+      <span style="font-size: 14px; font-weight: 600; letter-spacing: -0.02em;">Catalog</span>
+    </div>
+    <a href="Catalog Builder.dc.html" style="display: block; text-align: center; background: #0b5fce; color: #fff; font-size: 13px; font-weight: 500; border-radius: 10px; padding: 9px 0;">New catalog</a>
+    <nav style="display: flex; gap: 2px; flex-direction: {{ navDir }}; overflow-x: auto; flex: {{ navFlex }};">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="5">
+        <button type="button" onClick="{{ item.go }}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; border: none; border-radius: 8px; padding: 8px 10px; font-size: 13px; text-align: left; cursor: pointer; background: {{ item.bg }}; color: {{ item.color }}; font-weight: {{ item.weight }};">
+          <span>{{ item.label }}</span>
+          <span style="font-size: 11px; color: #86868b;">{{ item.hint }}</span>
+        </button>
+      </sc-for>
+    </nav>
+    <div style="border-radius: 12px; background: #fff; border: 1px solid #e8e8ed; padding: 14px; margin-top: {{ trialMarginTop }}; display: {{ trialDisplay }};">
+      <p style="margin: 0; font-size: 12px; font-weight: 600;">Trial · 9 days left</p>
+      <p style="margin: 6px 0 10px; font-size: 12px; line-height: 1.45; color: #6e6e73;">Then $19 a month. Your catalogs stay live.</p>
+      <button type="button" onClick="{{ goBilling }}" style="width: 100%; border: 1px solid #d2d2d7; background: #fff; border-radius: 8px; padding: 7px 0; font-size: 12px; font-weight: 500; cursor: pointer;">Add payment</button>
+    </div>
+  </aside>
+
+  <main style="flex: 1; min-width: 0;">
+    <header style="position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid #e8e8ed; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+      <div>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em;">{{ title }}</h1>
+        <p style="margin: 3px 0 0; font-size: 12px; color: #86868b;">{{ subtitle }}</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 12px; color: #6e6e73;">Hevyf Trading</span>
+        <span style="display: inline-flex; height: 26px; width: 26px; align-items: center; justify-content: center; border-radius: 999px; background: #f0f0f4; font-size: 11px; font-weight: 600;">HT</span>
+      </div>
+    </header>
+
+    <div style="padding: {{ pagePad }};">
+      <sc-if value="{{ isCatalogs }}" hint-placeholder-val="{{ true }}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px;">
+          <sc-for list="{{ catalogs }}" as="cat" hint-placeholder-count="3">
+            <div style="border: 1px solid #e8e8ed; border-radius: 18px; overflow: hidden; background: #fff;">
+              <div style="aspect-ratio: 16/10; background: #f5f5f7; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 14px;">
+                <sc-for list="{{ cat.thumbs }}" as="t" hint-placeholder-count="6">
+                  <div style="border-radius: 8px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    <img src="{{ t.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding: 16px 18px 18px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="height: 7px; width: 7px; border-radius: 999px; background: {{ cat.dot }};"></span>
+                  <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #86868b;">{{ cat.status }}</span>
+                </div>
+                <h3 style="margin: 8px 0 2px; font-size: 16px; font-weight: 600; letter-spacing: -0.01em;">{{ cat.name }}</h3>
+                <p style="margin: 0; font-size: 12px; color: #6e6e73;">{{ cat.url }}</p>
+                <p style="margin: 12px 0 0; font-size: 12px; color: #6e6e73;">{{ cat.meta }}</p>
+                <div style="margin-top: 14px; display: flex; gap: 8px;">
+                  <button type="button" onClick="{{ cat.open }}" style="flex: 1; border: none; background: #1d1d1f; color: #fff; border-radius: 8px; padding: 8px 0; font-size: 12px; font-weight: 500; cursor: pointer;">Dashboard</button>
+                  <button type="button" style="flex: 1; border: 1px solid #d2d2d7; background: #fff; border-radius: 8px; padding: 8px 0; font-size: 12px; font-weight: 500; cursor: pointer;">Copy link</button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+          <a href="Catalog Builder.dc.html" style="border: 1px dashed #d2d2d7; border-radius: 18px; min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #6e6e73;">
+            <span style="font-size: 28px; font-weight: 300; color: #1d1d1f;">+</span>
+            <span style="font-size: 13px; font-weight: 500; color: #1d1d1f;">New catalog</span>
+            <span style="font-size: 12px;">Three steps, about five minutes</span>
+          </a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; justify-content: space-between;">
+            <div>
+              <p style="margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Live at</p>
+              <p style="margin: 6px 0 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em;">kleaner.catalog.hevyf.com</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer;">Copy link</button>
+              <button type="button" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer;">QR code</button>
+              <a href="Kleaner Catalogue (current).dc.html" style="background: #0b5fce; color: #fff; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 500;">View catalog</a>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
+            <sc-for list="{{ stats }}" as="stat" hint-placeholder-count="4">
+              <div style="border-radius: 16px; background: #f5f5f7; padding: 20px;">
+                <p style="margin: 0; font-size: 12px; color: #6e6e73;">{{ stat.label }}</p>
+                <p style="margin: 8px 0 0; font-size: 30px; font-weight: 600; letter-spacing: -0.03em;">{{ stat.value }}</p>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #86868b;">{{ stat.note }}</p>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px;">
+            <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 20px;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                <h3 style="margin: 0; font-size: 15px; font-weight: 600;">Recent orders</h3>
+                <button type="button" onClick="{{ goOrders }}" style="border: none; background: none; font-size: 12px; color: #0b5fce; cursor: pointer;">Open inbox</button>
+              </div>
+              <div style="margin-top: 14px; display: flex; flex-direction: column;">
+                <sc-for list="{{ orders }}" as="o" hint-placeholder-count="4">
+                  <button type="button" onClick="{{ o.open }}" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; border: none; border-top: 1px solid #f0f0f4; background: none; padding: 12px 0; text-align: left; cursor: pointer;">
+                    <span>
+                      <span style="display: block; font-size: 13px; font-weight: 500;">{{ o.shop }}</span>
+                      <span style="display: block; font-size: 12px; color: #86868b;">{{ o.reference }} · {{ o.summary }}</span>
+                    </span>
+                    <span style="font-size: 13px; font-weight: 600;">{{ o.total }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 20px;">
+              <h3 style="margin: 0; font-size: 15px; font-weight: 600;">Most ordered items</h3>
+              <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+                <sc-for list="{{ topItems }}" as="t" hint-placeholder-count="4">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="height: 40px; width: 40px; border-radius: 8px; background: #f5f5f7; overflow: hidden; flex-shrink: 0;">
+                      <img src="{{ t.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                      <p style="margin: 0; font-size: 13px; font-weight: 500;">{{ t.name }}</p>
+                      <div style="margin-top: 5px; height: 4px; border-radius: 999px; background: #f0f0f4;">
+                        <div style="height: 4px; border-radius: 999px; background: #0b5fce; width: {{ t.bar }};"></div>
+                      </div>
+                    </div>
+                    <span style="font-size: 12px; color: #6e6e73;">{{ t.units }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOrders }}" hint-placeholder-val="{{ false }}">
+        <div style="display: grid; gap: 18px; align-items: start; grid-template-columns: {{ ordersCols }};">
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; overflow: hidden;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #e8e8ed;">
+              <span style="font-size: 13px; font-weight: 600;">41 orders</span>
+              <button type="button" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">Export CSV</button>
+            </div>
+            <sc-for list="{{ orders }}" as="o" hint-placeholder-count="4">
+              <button type="button" onClick="{{ o.open }}" style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: none; border-bottom: 1px solid #f0f0f4; padding: 14px 18px; text-align: left; cursor: pointer; background: {{ o.rowBg }};">
+                <span>
+                  <span style="display: block; font-size: 13px; font-weight: 500;">{{ o.shop }}</span>
+                  <span style="display: block; font-size: 12px; color: #86868b;">{{ o.reference }} · {{ o.when }} · {{ o.summary }}</span>
+                </span>
+                <span style="font-size: 13px; font-weight: 600;">{{ o.total }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 22px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <h3 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em;">{{ openOrder.reference }}</h3>
+              <span style="font-size: 12px; color: #86868b;">{{ openOrder.when }}</span>
+            </div>
+            <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px;"><span style="color: #6e6e73;">Shop</span><span style="font-weight: 500;">{{ openOrder.shop }}</span></div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px;"><span style="color: #6e6e73;">Phone</span><span style="font-weight: 500;">{{ openOrder.phone }}</span></div>
+              <div style="display: flex; justify-content: space-between; gap: 24px; font-size: 13px;"><span style="color: #6e6e73;">Address</span><span style="font-weight: 500; text-align: right;">{{ openOrder.address }}</span></div>
+            </div>
+            <div style="margin-top: 20px; border-top: 1px solid #f0f0f4;">
+              <sc-for list="{{ openOrder.lines }}" as="line" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f0f0f4; padding: 12px 0;">
+                  <div style="height: 42px; width: 42px; border-radius: 8px; background: #f5f5f7; overflow: hidden; flex-shrink: 0;">
+                    <img src="{{ line.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                  </div>
+                  <div style="flex: 1; min-width: 0;">
+                    <p style="margin: 0; font-size: 13px; font-weight: 500;">{{ line.name }}</p>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #86868b;">{{ line.code }} · {{ line.unit }} × {{ line.qty }}</p>
+                  </div>
+                  <span style="font-size: 13px; font-weight: 600;">{{ line.total }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top: 16px; display: flex; justify-content: space-between; font-size: 16px; font-weight: 600;"><span>Total</span><span>{{ openOrder.total }}</span></div>
+            <div style="margin-top: 20px; display: flex; gap: 8px;">
+              <button type="button" style="flex: 1; border: none; background: #1d1d1f; color: #fff; border-radius: 10px; padding: 10px 0; font-size: 13px; font-weight: 500; cursor: pointer;">Mark confirmed</button>
+              <button type="button" style="flex: 1; border: 1px solid #d2d2d7; background: #fff; border-radius: 10px; padding: 10px 0; font-size: 13px; font-weight: 500; cursor: pointer;">Call shop</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isItems }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;">
+            <input placeholder="Search items" style="flex: 1; min-width: 200px; max-width: 320px; border: 1px solid #d2d2d7; border-radius: 10px; padding: 9px 12px; font-size: 13px; outline: none;" />
+            <div style="display: flex; gap: 8px;">
+              <button type="button" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 500; cursor: pointer;">Paste from spreadsheet</button>
+              <button type="button" style="border: none; background: #0b5fce; color: #fff; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 500; cursor: pointer;">Add item</button>
+            </div>
+          </div>
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; overflow: hidden;">
+            <div style="display: grid; grid-template-columns: {{ itemCols }}; gap: 12px; padding: 12px 18px; background: #fbfbfd; border-bottom: 1px solid #e8e8ed; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #86868b;">
+              <span></span><span>Item</span><span>Code</span><span>Price</span><span>Visible</span>
+            </div>
+            <sc-for list="{{ items }}" as="it" hint-placeholder-count="8">
+              <div style="display: grid; grid-template-columns: {{ itemCols }}; gap: 12px; align-items: center; padding: 10px 18px; border-bottom: 1px solid #f0f0f4;">
+                <div style="height: 40px; width: 40px; border-radius: 8px; background: #f5f5f7; overflow: hidden;">
+                  <img src="{{ it.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                </div>
+                <div style="min-width: 0;">
+                  <p style="margin: 0; font-size: 13px; font-weight: 500;">{{ it.name }}</p>
+                  <p style="margin: 2px 0 0; font-size: 12px; color: #86868b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ it.description }}</p>
+                </div>
+                <span style="font-size: 13px; color: #6e6e73;">{{ it.code }}</span>
+                <span style="font-size: 13px; font-weight: 500;">{{ it.price }}</span>
+                <span style="font-size: 12px; color: #1e9e4a;">On</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDomains }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 18px; max-width: 760px;">
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 22px;">
+            <p style="margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Included subdomain</p>
+            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+              <input value="{{ subdomain }}" onChange="{{ onSubdomain }}" style="width: 180px; border: 1px solid #d2d2d7; border-radius: 10px; padding: 10px 12px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; outline: none;" />
+              <span style="font-size: 15px; color: #6e6e73;">.catalog.hevyf.com</span>
+              <span style="margin-left: auto; font-size: 12px; color: #1e9e4a; background: #dff5e6; border-radius: 999px; padding: 5px 12px;">Live · HTTPS</span>
+            </div>
+            <p style="margin: 12px 0 0; font-size: 13px; color: #6e6e73;">Renaming keeps the old address working for 30 days so links you already sent do not break.</p>
+          </div>
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 22px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+              <p style="margin: 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Custom domain</p>
+              <span style="font-size: 12px; color: #b25000; background: #fdf0e3; border-radius: 999px; padding: 5px 12px;">Waiting for DNS</span>
+            </div>
+            <p style="margin: 12px 0 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em;">catalog.kleaner.qa</p>
+            <p style="margin: 8px 0 18px; font-size: 13px; line-height: 1.5; color: #6e6e73;">Add these two records at your registrar. We check every 30 seconds and issue the certificate as soon as they resolve.</p>
+            <div style="border: 1px solid #e8e8ed; border-radius: 12px; overflow: hidden;">
+              <div style="display: grid; grid-template-columns: 70px 1fr 1.4fr; gap: 12px; padding: 10px 14px; background: #fbfbfd; border-bottom: 1px solid #e8e8ed; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #86868b;">
+                <span>Type</span><span>Name</span><span>Value</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 70px 1fr 1.4fr; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #f0f0f4; font-size: 13px;">
+                <span>CNAME</span><span>catalog</span><span style="color: #6e6e73;">edge.catalog.hevyf.com</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 70px 1fr 1.4fr; gap: 12px; padding: 12px 14px; font-size: 13px;">
+                <span>TXT</span><span>_catalog</span><span style="color: #6e6e73;">verify=9f2c41b8e7</span>
+              </div>
+            </div>
+            <div style="margin-top: 18px; display: flex; gap: 8px;">
+              <button type="button" style="border: none; background: #1d1d1f; color: #fff; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer;">Check now</button>
+              <button type="button" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer;">Remove domain</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isBilling }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 18px; max-width: 680px;">
+          <div style="border-radius: 16px; background: #1d1d1f; color: #fff; padding: 26px;">
+            <p style="margin: 0; font-size: 13px; color: #a1a1a6;">Trial ends 18 September</p>
+            <p style="margin: 8px 0 0; font-size: 34px; font-weight: 600; letter-spacing: -0.03em;">$19 / month</p>
+            <p style="margin: 8px 0 20px; font-size: 13px; color: #a1a1a6;">Unlimited catalogs, items and team members.</p>
+            <button type="button" style="border: none; background: #fff; color: #1d1d1f; border-radius: 999px; padding: 11px 22px; font-size: 13px; font-weight: 500; cursor: pointer;">Add payment method</button>
+          </div>
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 22px;">
+            <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Order notifications</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;"><span style="color: #6e6e73;">Email orders to</span><span style="font-weight: 500;">orders@kleaner.qa</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;"><span style="color: #6e6e73;">Copy to</span><span style="font-weight: 500;">sales@kleaner.qa</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;"><span style="color: #6e6e73;">Daily CSV digest</span><span style="font-weight: 500; color: #1e9e4a;">On</span></div>
+            </div>
+          </div>
+          <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 22px;">
+            <h3 style="margin: 0 0 16px; font-size: 15px; font-weight: 600;">Company</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+              <div>
+                <label style="display: block; font-size: 12px; color: #86868b; margin-bottom: 6px;">Company name</label>
+                <input value="Hevyf Trading" style="width: 100%; border: 1px solid #d2d2d7; border-radius: 10px; padding: 9px 12px; font-size: 13px; outline: none;" />
+              </div>
+              <div>
+                <label style="display: block; font-size: 12px; color: #86868b; margin-bottom: 6px;">Currency</label>
+                <input value="QAR" style="width: 100%; border: 1px solid #d2d2d7; border-radius: 10px; padding: 9px 12px; font-size: 13px; outline: none;" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:960}}">
+const IMG = (c) => "public/catalog/images/" + c + ".jpg";
+
+const ORDERS = [
+  { reference: "KL-4821", shop: "Al Nasr Trading", phone: "+974 3300 0000", address: "Street 12, Zone 55, Doha", when: "2 minutes ago", summary: "42 units · 3 lines", total: "QAR 567.00",
+    lines: [
+      { code: "GSA011", name: "Professional Cotton Mop", qty: 12, unit: "28.25", total: "339.00", image: IMG("GSA011") },
+      { code: "GSH001", name: "Sponge Scourer 6pcs", qty: 24, unit: "4.00", total: "96.00", image: IMG("GSH001") },
+      { code: "KT2412", name: "Bucket with Wringer", qty: 6, unit: "22.00", total: "132.00", image: IMG("KT2412") }
+    ] },
+  { reference: "KL-4820", shop: "Gulf Facility Services", phone: "+974 5544 1122", address: "Barwa Village, Al Wakrah", when: "Today, 09:14", summary: "96 units · 5 lines", total: "QAR 1,284.50",
+    lines: [
+      { code: "K19002", name: "Floor Squeegee", qty: 24, unit: "13.00", total: "312.00", image: IMG("K19002") },
+      { code: "GSK006", name: "Broom", qty: 36, unit: "10.75", total: "387.00", image: IMG("GSK006") },
+      { code: "GSG003", name: "Microfiber Cloths 2pcs", qty: 36, unit: "5.00", total: "180.00", image: IMG("GSG003") }
+    ] },
+  { reference: "KL-4819", shop: "Doha Clean Mart", phone: "+974 7788 3311", address: "Bin Mahmoud, Doha", when: "Yesterday", summary: "18 units · 2 lines", total: "QAR 291.00",
+    lines: [
+      { code: "KB2202", name: "Window Cleaner 10\"", qty: 6, unit: "20.75", total: "124.50", image: IMG("KB2202") },
+      { code: "GSE002", name: "Microfiber Duster", qty: 12, unit: "15.00", total: "180.00", image: IMG("GSE002") }
+    ] },
+  { reference: "KL-4818", shop: "Lusail Hospitality", phone: "+974 3311 9900", address: "Marina District, Lusail", when: "2 days ago", summary: "60 units · 4 lines", total: "QAR 742.00",
+    lines: [
+      { code: "GSA004", name: "PVA Magic Mop", qty: 12, unit: "18.75", total: "225.00", image: IMG("GSA004") },
+      { code: "KD2104", name: "Dish Brush", qty: 24, unit: "4.25", total: "102.00", image: IMG("KD2104") }
+    ] }
+];
+
+const ITEMS = [
+  { code: "KA2210", name: "Flat Mop", price: "QAR 15.25", description: "40x10cm flat mop, chenille mop refill 43x13cm." },
+  { code: "K19008", name: "Microfiber Flat Mop", price: "QAR 21.75", description: "Flat mop set size 41x10.5cm, telescopic metal handle." },
+  { code: "GSA011", name: "Professional Cotton Mop", price: "QAR 28.25", description: "60cm flat mop, mixed cotton refill, 135cm handle." },
+  { code: "KT2412", name: "Bucket with Wringer", price: "QAR 22.00", description: "15L bucket with wringer, metal grip, 770g." },
+  { code: "GSK006", name: "Broom", price: "QAR 10.75", description: "27cm broom head, Italy screw, 130cm metal handle." },
+  { code: "GSC001", name: "Dustpan & Broom", price: "QAR 11.25", description: "25.5cm dustpan, 80mm bristle, 70cm metal handle." },
+  { code: "GSH001", name: "Sponge Scourer 6pcs", price: "QAR 4.00", description: "Scouring pad, size 13x9cm, 6pcs per pack." },
+  { code: "GSG003", name: "Microfiber Cloths 2pcs", price: "QAR 5.00", description: "38x40cm, 80% polyester, 20% polyamide." }
+].map((i) => ({ ...i, image: IMG(i.code) }));
+
+class Component extends DCLogic {
+  state = { screen: "catalogs", order: 0, subdomain: "kleaner", narrow: false };
+
+  componentDidMount() {
+    this.onResize = () => this.setState({ narrow: window.innerWidth < 900 });
+    this.onResize();
+    window.addEventListener("resize", this.onResize);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.onResize);
+  }
+
+  go = (screen) => this.setState({ screen });
+
+  renderVals() {
+    const { screen, order } = this.state;
+    const meta = {
+      catalogs: ["Catalogs", "3 catalogs · 2 live"],
+      dashboard: ["Kleaner Trade Catalogue", "Live · 112 items · Trade Grid template"],
+      orders: ["Orders", "Kleaner Trade Catalogue · 41 orders"],
+      items: ["Items", "Kleaner Trade Catalogue · 112 items"],
+      domains: ["Domains", "One subdomain live, one custom domain pending"],
+      billing: ["Settings", "Plan, notifications and company details"]
+    }[screen];
+
+    const nav = [
+      { key: "catalogs", label: "Catalogs", hint: "3" },
+      { key: "dashboard", label: "Dashboard", hint: "" },
+      { key: "orders", label: "Orders", hint: "41" },
+      { key: "items", label: "Items", hint: "112" },
+      { key: "domains", label: "Domains", hint: "" },
+      { key: "billing", label: "Settings", hint: "" }
+    ].map((n) => ({
+      label: n.label,
+      hint: n.hint,
+      bg: screen === n.key ? "#ffffff" : "transparent",
+      color: screen === n.key ? "#1d1d1f" : "#424245",
+      weight: screen === n.key ? "600" : "400",
+      go: () => this.go(n.key)
+    }));
+
+    const narrow = this.state.narrow;
+    return {
+      nav,
+      shellDir: narrow ? "column" : "row",
+      asideWidth: narrow ? "100%" : "236px",
+      asideDir: narrow ? "row" : "column",
+      asideAlign: narrow ? "center" : "stretch",
+      asideBorderRight: narrow ? "none" : "1px solid #e8e8ed",
+      asideBorderBottom: narrow ? "1px solid #e8e8ed" : "none",
+      navDir: narrow ? "row" : "column",
+      navFlex: narrow ? "1" : "none",
+      trialMarginTop: narrow ? "0" : "auto",
+      trialDisplay: narrow ? "none" : "block",
+      pagePad: narrow ? "18px 16px 56px" : "28px 32px 64px",
+      ordersCols: narrow ? "minmax(0, 1fr)" : "minmax(0, 1.1fr) minmax(0, 1fr)",
+      itemCols: narrow ? "44px minmax(0, 1.6fr) 0.9fr 0.9fr 44px" : "56px minmax(0, 2fr) 1fr 1fr 90px",
+      title: meta[0],
+      subtitle: meta[1],
+      isCatalogs: screen === "catalogs",
+      isDashboard: screen === "dashboard",
+      isOrders: screen === "orders",
+      isItems: screen === "items",
+      isDomains: screen === "domains",
+      isBilling: screen === "billing",
+      goOrders: () => this.go("orders"),
+      goBilling: () => this.go("billing"),
+      subdomain: this.state.subdomain,
+      onSubdomain: (e) => this.setState({ subdomain: e.target.value }),
+      catalogs: [
+        { name: "Kleaner Trade Catalogue", url: "kleaner.catalog.hevyf.com", status: "Live", dot: "#1e9e4a", meta: "112 items · 41 orders · 1,284 views", open: () => this.go("dashboard"),
+          thumbs: ["GSA011", "KT2412", "GSE002", "KB2202", "K19002", "GSC001"].map((c) => ({ image: IMG(c) })) },
+        { name: "Ramadan Offers 2026", url: "kleaner-offers.catalog.hevyf.com", status: "Draft", dot: "#c7c7cc", meta: "18 items · not published", open: () => this.go("dashboard"),
+          thumbs: ["GSH001", "GSG003", "KD2104", "GSA004", "GSK006", "KC2001"].map((c) => ({ image: IMG(c) })) },
+        { name: "Hotel Housekeeping List", url: "housekeeping.catalog.hevyf.com", status: "Live", dot: "#1e9e4a", meta: "46 items · 7 orders · 212 views", open: () => this.go("dashboard"),
+          thumbs: ["K19008", "GSA030", "GSA010", "GSD001", "KK2415", "GSA009"].map((c) => ({ image: IMG(c) })) }
+      ],
+      stats: [
+        { label: "Views this month", value: "1,284", note: "+18% vs last month" },
+        { label: "Orders", value: "41", note: "9 waiting for a call" },
+        { label: "Order value", value: "QAR 24,180", note: "Average QAR 589" },
+        { label: "Items", value: "112", note: "All visible" }
+      ],
+      orders: ORDERS.map((o, i) => ({ ...o, rowBg: i === order ? "#f5f5f7" : "#ffffff", open: () => this.setState({ screen: "orders", order: i }) })),
+      openOrder: ORDERS[order],
+      topItems: [
+        { name: "Professional Cotton Mop", units: "312 units", bar: "100%", image: IMG("GSA011") },
+        { name: "Sponge Scourer 6pcs", units: "264 units", bar: "84%", image: IMG("GSH001") },
+        { name: "Broom", units: "180 units", bar: "58%", image: IMG("GSK006") },
+        { name: "Bucket with Wringer", units: "96 units", bar: "31%", image: IMG("KT2412") }
+      ],
+      items: ITEMS
+    };
+  }
+}
+</script>
+</body>
+</html>

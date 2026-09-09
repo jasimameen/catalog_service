@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin: 0; padding: 0; background: #f5f5f7; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #0b5fce; text-decoration: none; }
+  input, button, textarea { font-family: inherit; }
+</style>
+</helmet>
+<div style="min-height: 100vh; padding: 36px 20px 64px;">
+  <div style="max-width: 1080px; margin: 0 auto;">
+    <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
+      <div>
+        <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.03em;">Build a catalog from a phone</h1>
+        <p style="margin: 8px 0 0; font-size: 15px; line-height: 1.5; color: #6e6e73; max-width: 560px;">The same three steps, thumb-sized. Photos come from the camera or the gallery, and the finished link goes out through the phone's own share sheet.</p>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <sc-for list="{{ screens }}" as="s" hint-placeholder-count="4">
+          <button type="button" onClick="{{ s.select }}" style="cursor: pointer; border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: 1px solid {{ s.border }}; background: {{ s.bg }}; color: {{ s.color }};">{{ s.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="margin-top: 28px; display: flex; justify-content: center;">
+      <div style="width: 390px; max-width: 100%; border-radius: 44px; background: #1d1d1f; padding: 10px; box-shadow: 0 40px 80px -40px rgba(0,0,0,0.55);">
+        <div style="border-radius: 36px; overflow: hidden; background: #fff; height: 780px; display: flex; flex-direction: column; position: relative;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 22px 6px; font-size: 12px; font-weight: 600;">
+            <span>9:41</span>
+            <span style="color: #6e6e73;">catalog.hevyf.com</span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 18px 12px; border-bottom: 1px solid #f0f0f4;">
+            <span style="font-size: 15px; font-weight: 600; letter-spacing: -0.02em;">{{ headerTitle }}</span>
+            <span style="font-size: 12px; color: #86868b;">{{ headerRight }}</span>
+          </div>
+
+          <div style="flex: 1; overflow-y: auto; padding: 18px;">
+            <sc-if value="{{ isItems }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <h2 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em;">Add your items</h2>
+                <p style="margin: 8px 0 18px; font-size: 14px; line-height: 1.45; color: #6e6e73;">Name, price, photo. Three taps per item.</p>
+                <div style="border: 1px solid #e8e8ed; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                  <input placeholder="Item name" style="border: none; border-bottom: 1px solid #f0f0f4; font-size: 16px; padding: 10px 2px; outline: none;" />
+                  <div style="display: flex; gap: 10px;">
+                    <input placeholder="Price" style="flex: 1; border: none; border-bottom: 1px solid #f0f0f4; font-size: 16px; padding: 10px 2px; outline: none;" />
+                    <button type="button" onClick="{{ openPhotoSheet }}" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 500; cursor: pointer;">Add photo</button>
+                  </div>
+                  <button type="button" style="border: none; background: #1d1d1f; color: #fff; border-radius: 12px; padding: 13px 0; font-size: 15px; font-weight: 500; cursor: pointer;">Add item</button>
+                </div>
+                <p style="margin: 12px 0 0; font-size: 12px; color: #86868b;">Or paste a list from WhatsApp and every line becomes an item.</p>
+                <div style="margin-top: 18px;">
+                  <sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+                    <div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #f0f0f4; padding: 11px 0;">
+                      <div style="height: 46px; width: 46px; border-radius: 10px; background: #f5f5f7; overflow: hidden; flex-shrink: 0;">
+                        <img src="{{ it.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                      </div>
+                      <div style="flex: 1; min-width: 0;">
+                        <p style="margin: 0; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ it.name }}</p>
+                        <p style="margin: 2px 0 0; font-size: 12px; color: #86868b;">{{ it.code }}</p>
+                      </div>
+                      <span style="font-size: 14px; font-weight: 500;">{{ it.priceText }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isLook }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <h2 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em;">Pick a look</h2>
+                <p style="margin: 8px 0 18px; font-size: 14px; line-height: 1.45; color: #6e6e73;">Swipe through, tap the one you want.</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <sc-for list="{{ templates }}" as="tpl" hint-placeholder-count="4">
+                    <button type="button" onClick="{{ tpl.select }}" style="display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer; border-radius: 16px; padding: 14px; background: #fff; border: 1.5px solid {{ tpl.border }};">
+                      <span style="height: 54px; width: 54px; border-radius: 10px; background: #f5f5f7; display: grid; grid-template-columns: {{ tpl.cols }}; gap: 3px; padding: 7px;">
+                        <sc-for list="{{ tpl.blocks }}" as="b" hint-placeholder-count="4">
+                          <span style="border-radius: 3px; background: #dfe4ec;"></span>
+                        </sc-for>
+                      </span>
+                      <span style="flex: 1;">
+                        <span style="display: block; font-size: 15px; font-weight: 600;">{{ tpl.name }}</span>
+                        <span style="display: block; margin-top: 3px; font-size: 12px; color: #6e6e73;">{{ tpl.blurb }}</span>
+                      </span>
+                      <span style="font-size: 15px; color: {{ tpl.tickColor }};">✓</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <p style="margin: 22px 0 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Accent colour</p>
+                <div style="display: flex; gap: 12px;">
+                  <sc-for list="{{ accents }}" as="a" hint-placeholder-count="4">
+                    <button type="button" onClick="{{ a.select }}" aria-label="Accent colour" style="height: 44px; width: 44px; border-radius: 999px; cursor: pointer; background: {{ a.value }}; border: 2px solid {{ a.ring }};"></button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAddress }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <h2 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em;">Your address</h2>
+                <p style="margin: 8px 0 18px; font-size: 14px; line-height: 1.45; color: #6e6e73;">This is the link you will send customers.</p>
+                <input value="kleaner" style="width: 100%; border: 1px solid #d2d2d7; border-radius: 14px; padding: 14px; font-size: 17px; font-weight: 600; outline: none;" />
+                <p style="margin: 8px 0 0; font-size: 14px; color: #6e6e73;">.catalog.hevyf.com</p>
+                <p style="margin: 8px 0 0; font-size: 13px; color: #1e9e4a;">Available</p>
+                <div style="margin-top: 24px; border-radius: 16px; background: #f5f5f7; padding: 16px;">
+                  <p style="margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Orders go to</p>
+                  <input value="orders@kleaner.qa" style="margin-top: 10px; width: 100%; border: 1px solid #d2d2d7; border-radius: 12px; padding: 12px; font-size: 15px; background: #fff; outline: none;" />
+                  <p style="margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: #6e6e73;">Also kept in your dashboard inbox, which works on this phone too.</p>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isShare }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align: center; padding-top: 24px;">
+                <div style="margin: 0 auto 18px; height: 52px; width: 52px; border-radius: 999px; background: #dff5e6; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #1e9e4a;">✓</div>
+                <h2 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em;">It is live</h2>
+                <p style="margin: 10px 0 20px; font-size: 14px; line-height: 1.45; color: #6e6e73;">Send it to your customers now.</p>
+                <div style="border: 1px solid #e8e8ed; border-radius: 14px; padding: 12px; font-size: 14px; font-weight: 600;">kleaner.catalog.hevyf.com</div>
+                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+                  <button type="button" onClick="{{ openShareSheet }}" style="border: none; background: #0b5fce; color: #fff; border-radius: 14px; padding: 14px 0; font-size: 15px; font-weight: 500; cursor: pointer;">Share link</button>
+                  <button type="button" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 14px; padding: 14px 0; font-size: 15px; font-weight: 500; cursor: pointer;">Show QR code</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="border-top: 1px solid #f0f0f4; padding: 12px 18px 20px; display: flex; align-items: center; gap: 10px;">
+            <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ back }}" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 14px; padding: 14px 22px; font-size: 15px; font-weight: 500; cursor: pointer;">Back</button>
+            </sc-if>
+            <button type="button" onClick="{{ next }}" style="flex: 1; border: none; background: #1d1d1f; color: #fff; border-radius: 14px; padding: 15px 0; font-size: 16px; font-weight: 500; cursor: pointer;">{{ nextLabel }}</button>
+          </div>
+
+          <sc-if value="{{ photoSheet }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closeSheets }}" style="position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: flex-end; padding: 10px;">
+              <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                <div style="background: rgba(255,255,255,0.94); backdrop-filter: blur(20px); border-radius: 14px; overflow: hidden;">
+                  <div style="padding: 12px; text-align: center; font-size: 12px; color: #6e6e73; border-bottom: 1px solid #e8e8ed;">Add a photo for this item</div>
+                  <div style="padding: 15px; text-align: center; font-size: 17px; color: #0b5fce; border-bottom: 1px solid #e8e8ed;">Take photo</div>
+                  <div style="padding: 15px; text-align: center; font-size: 17px; color: #0b5fce; border-bottom: 1px solid #e8e8ed;">Choose from gallery</div>
+                  <div style="padding: 15px; text-align: center; font-size: 17px; color: #0b5fce; border-bottom: 1px solid #e8e8ed;">Paste image or link</div>
+                  <div style="padding: 15px; text-align: center; font-size: 17px; color: #0b5fce;">Scan barcode to fill details</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.94); border-radius: 14px; padding: 15px; text-align: center; font-size: 17px; font-weight: 600;">Cancel</div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ shareSheet }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closeSheets }}" style="position: absolute; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: flex-end;">
+              <div style="width: 100%; background: rgba(255,255,255,0.96); backdrop-filter: blur(20px); border-radius: 20px 20px 0 0; padding: 18px 18px 26px;">
+                <p style="margin: 0 0 4px; font-size: 15px; font-weight: 600;">Kleaner Trade Catalogue</p>
+                <p style="margin: 0 0 18px; font-size: 12px; color: #6e6e73;">kleaner.catalog.hevyf.com</p>
+                <div style="display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px;">
+                  <sc-for list="{{ shareTargets }}" as="t" hint-placeholder-count="4">
+                    <div style="width: 64px; text-align: center;">
+                      <div style="height: 56px; width: 56px; border-radius: 16px; background: {{ t.color }}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">{{ t.short }}</div>
+                      <p style="margin: 6px 0 0; font-size: 11px; color: #1d1d1f;">{{ t.label }}</p>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="margin-top: 18px; border-top: 1px solid #e8e8ed; padding-top: 12px; font-size: 16px; color: #0b5fce;">Copy link</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:900}}">
+const IMG = (c) => "public/catalog/images/" + c + ".jpg";
+const ITEMS = [
+  { code: "GSA011", name: "Professional Cotton Mop", price: 28.25 },
+  { code: "KT2412", name: "Bucket with Wringer", price: 22 },
+  { code: "GSE002", name: "Microfiber Duster", price: 15 },
+  { code: "GSH001", name: "Sponge Scourer 6pcs", price: 4 }
+].map((i) => ({ ...i, image: IMG(i.code), priceText: "QAR " + i.price.toFixed(2) }));
+
+const TEMPLATES = [
+  { key: "grid", name: "Trade Grid", blurb: "Photo grid with codes", cols: "repeat(3, 1fr)", count: 9 },
+  { key: "lookbook", name: "Lookbook", blurb: "Big photos, few items", cols: "repeat(2, 1fr)", count: 4 },
+  { key: "menu", name: "Menu", blurb: "List, photos optional", cols: "1fr", count: 3 },
+  { key: "pricelist", name: "Price List", blurb: "Table for print", cols: "1fr", count: 4 }
+];
+const ACCENTS = ["#0b5fce", "#1d1d1f", "#0f7b53", "#b2432b"];
+const STEPS = ["items", "look", "address", "share"];
+
+class Component extends DCLogic {
+  state = { screen: "items", template: "grid", accent: "#0b5fce", photoSheet: false, shareSheet: false };
+
+  renderVals() {
+    const s = this.state;
+    const idx = STEPS.indexOf(s.screen);
+    const meta = {
+      items: ["Step 1 of 3", "Draft saved", "Continue"],
+      look: ["Step 2 of 3", "Draft saved", "Continue"],
+      address: ["Step 3 of 3", "Draft saved", "Publish"],
+      share: ["Published", "Live", "Done"]
+    }[s.screen];
+
+    return {
+      screens: STEPS.map((key, i) => ({
+        label: ["Items", "Look", "Address", "Share"][i],
+        bg: s.screen === key ? "#1d1d1f" : "#ffffff",
+        color: s.screen === key ? "#ffffff" : "#1d1d1f",
+        border: s.screen === key ? "#1d1d1f" : "#d2d2d7",
+        select: () => this.setState({ screen: key, photoSheet: false, shareSheet: false })
+      })),
+      headerTitle: meta[0],
+      headerRight: meta[1],
+      nextLabel: meta[2],
+      showBack: idx > 0 && s.screen !== "share",
+      back: () => this.setState({ screen: STEPS[Math.max(0, idx - 1)] }),
+      next: () => this.setState({ screen: STEPS[Math.min(STEPS.length - 1, idx + 1)] }),
+      isItems: s.screen === "items",
+      isLook: s.screen === "look",
+      isAddress: s.screen === "address",
+      isShare: s.screen === "share",
+      items: ITEMS,
+      templates: TEMPLATES.map((t) => ({
+        name: t.name,
+        blurb: t.blurb,
+        cols: t.cols,
+        blocks: Array.from({ length: t.count }, (_, i) => ({ i })),
+        border: s.template === t.key ? s.accent : "#e8e8ed",
+        tickColor: s.template === t.key ? s.accent : "transparent",
+        select: () => this.setState({ template: t.key })
+      })),
+      accents: ACCENTS.map((value) => ({ value, ring: s.accent === value ? "#1d1d1f" : "transparent", select: () => this.setState({ accent: value }) })),
+      photoSheet: s.photoSheet,
+      shareSheet: s.shareSheet,
+      openPhotoSheet: () => this.setState({ photoSheet: true }),
+      openShareSheet: () => this.setState({ shareSheet: true }),
+      closeSheets: () => this.setState({ photoSheet: false, shareSheet: false }),
+      shareTargets: [
+        { label: "WhatsApp", short: "WA", color: "#25d366" },
+        { label: "Messages", short: "SMS", color: "#34c759" },
+        { label: "Email", short: "@", color: "#0b5fce" },
+        { label: "Instagram", short: "IG", color: "#c13584" },
+        { label: "Print QR", short: "QR", color: "#1d1d1f" }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

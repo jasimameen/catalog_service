@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f1f4f8; }
+  body { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #101720; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #0b5fce; text-decoration: none; }
+  a:hover { color: #0a52b3; }
+  .kl-clamp2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  input, textarea, button { font-family: inherit; }
+</style>
+</helmet>
+<main style="min-height: 100vh; background: #f1f4f8;">
+  <div style="position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #dce2ea; background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);">
+    <div style="margin: 0 auto; max-width: 1152px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px;">
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <span style="font-family: Archivo, sans-serif; font-size: 20px; font-weight: 700; color: #0b5fce;">KLEANER</span>
+        <span style="font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: #46505e;">Trade Catalogue</span>
+      </div>
+      <button type="button" onClick="{{ openCart }}" style="display: flex; align-items: center; gap: 8px; border: none; border-radius: 9px; background: #0b5fce; padding: 8px 16px; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer;" style-hover="background: #0a52b3;">
+        Cart
+        <span style="display: flex; height: 20px; min-width: 20px; align-items: center; justify-content: center; border-radius: 999px; background: rgba(255,255,255,0.2); padding: 0 4px; font-size: 12px; font-weight: 700;">{{ itemCount }}</span>
+      </button>
+    </div>
+    <div style="margin: 0 auto; max-width: 1152px; padding: 0 16px 12px;">
+      <div style="position: relative;">
+        <span style="pointer-events: none; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #46505e;">⌕</span>
+        <input type="search" value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search by name or item code" style="width: 100%; border-radius: 9px; border: 1px solid #dce2ea; background: #fff; padding: 8px 12px 8px 36px; font-size: 14px; color: #101720; outline: none;" />
+      </div>
+      <div style="display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px;">
+        <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="6">
+          <button type="button" onClick="{{ chip.select }}" style="white-space: nowrap; border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid {{ chip.border }}; background: {{ chip.bg }}; color: {{ chip.color }};">{{ chip.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin: 0 auto; max-width: 1152px; padding: 20px 16px;">
+    <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+      <p style="padding: 64px 0; text-align: center; font-size: 14px; color: #46505e;">No products match your search.</p>
+    </sc-if>
+    <div style="display: flex; flex-direction: column; gap: 32px; padding-bottom: 112px;">
+      <sc-for list="{{ sections }}" as="section" hint-placeholder-count="3">
+        <section>
+          <div style="margin-bottom: 12px; display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid #dce2ea; padding-bottom: 8px;">
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-size: 18px; font-weight: 700; color: #101720;">{{ section.group }}</h2>
+            <span style="font-size: 14px; color: #46505e;">{{ section.count }} items</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px;">
+            <sc-for list="{{ section.items }}" as="p" hint-placeholder-count="4">
+              <div style="display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; border: 1px solid #dce2ea; background: #fff; box-shadow: 0 1px 2px rgba(16,23,32,0.05);">
+                <button type="button" onClick="{{ p.select }}" style="position: relative; aspect-ratio: 584/480; width: 100%; border: none; padding: 0; background: #eef1f5; cursor: pointer;">
+                  <img src="{{ p.image }}" alt="{{ p.category }}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;" />
+                </button>
+                <div style="display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 12px;">
+                  <button type="button" onClick="{{ p.select }}" style="text-align: left; border: none; background: none; padding: 0; cursor: pointer;">
+                    <p style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.2; color: #101720;">{{ p.category }}</p>
+                    <p style="margin: 0; font-size: 12px; color: #46505e;">{{ p.code }}</p>
+                  </button>
+                  <p class="kl-clamp2" style="margin: 0; font-size: 12px; color: #46505e;">{{ p.description }}</p>
+                  <div style="margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; padding-top: 4px;">
+                    <div>
+                      <p style="margin: 0; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: #46505e;">QAR</p>
+                      <p style="margin: 0; font-size: 18px; font-weight: 700; color: #101720;">{{ p.priceText }}</p>
+                    </div>
+                    <sc-if value="{{ p.hasQty }}" hint-placeholder-val="{{ false }}">
+                      <p style="margin: 0; font-size: 12px; color: #46505e;">× {{ p.qty }} = {{ p.lineText }}</p>
+                    </sc-if>
+                  </div>
+                  <sc-if value="{{ p.isZero }}" hint-placeholder-val="{{ true }}">
+                    <button type="button" onClick="{{ p.inc }}" style="width: 100%; border-radius: 9px; border: 1px solid #0b5fce; background: #fff; padding: 8px 0; font-size: 14px; font-weight: 600; color: #0b5fce; cursor: pointer;" style-hover="background: #eff6ff;">Add to order</button>
+                  </sc-if>
+                  <sc-if value="{{ p.hasQty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                      <div style="display: flex; align-items: stretch; overflow: hidden; border-radius: 9px; border: 1px solid #dce2ea;">
+                        <button type="button" onClick="{{ p.dec }}" style="flex: 1; border: none; border-right: 1px solid #dce2ea; background: #fff; padding: 8px 0; font-size: 16px; font-weight: 600; color: #101720; cursor: pointer;" style-hover="background: #f8fafc;">−</button>
+                        <span style="flex: 1; padding: 8px 0; text-align: center; font-size: 14px; font-weight: 600; color: #101720;">{{ p.qty }}</span>
+                        <button type="button" onClick="{{ p.inc }}" style="flex: 1; border: none; border-left: 1px solid #dce2ea; background: #fff; padding: 8px 0; font-size: 16px; font-weight: 600; color: #101720; cursor: pointer;" style-hover="background: #f8fafc;">+</button>
+                      </div>
+                      <div style="display: flex; gap: 6px;">
+                        <sc-for list="{{ p.multiples }}" as="m" hint-placeholder-count="3">
+                          <button type="button" onClick="{{ m.apply }}" style="flex: 1; border: none; border-radius: 999px; background: #f1f5f9; padding: 4px 0; font-size: 12px; font-weight: 500; color: #46505e; cursor: pointer;" style-hover="background: #e2e8f0;">×{{ m.n }}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ selected }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeDetail }}" style="position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); padding: 16px;">
+      <div onClick="{{ stop }}" style="display: flex; max-height: 90vh; width: 100%; max-width: 672px; overflow: hidden; border-radius: 16px; background: #fff; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+        <div style="position: relative; width: 50%; flex-shrink: 0; background: #eef1f5;">
+          <img src="{{ selectedImage }}" alt="{{ selectedTitle }}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;" />
+          <button type="button" onClick="{{ closeDetail }}" aria-label="Close" style="position: absolute; right: 12px; top: 12px; border: none; border-radius: 999px; background: rgba(255,255,255,0.9); padding: 6px 10px; font-size: 18px; line-height: 1; color: #46505e; box-shadow: 0 1px 3px rgba(0,0,0,0.15); cursor: pointer;">×</button>
+        </div>
+        <div style="display: flex; flex: 1; flex-direction: column; gap: 12px; overflow-y: auto; padding: 20px;">
+          <div>
+            <h2 style="margin: 0; font-family: Archivo, sans-serif; font-size: 20px; font-weight: 700; color: #101720;">{{ selectedTitle }}</h2>
+            <p style="margin: 0; font-size: 14px; color: #46505e;">{{ selectedCode }}</p>
+          </div>
+          <p style="margin: 0; font-size: 14px; line-height: 1.625; color: #46505e;">{{ selectedDescription }}</p>
+          <div style="border-radius: 9px; border: 1px solid #dce2ea; padding: 8px 12px; font-size: 12px; color: #46505e;">Barcode: {{ selectedBarcode }}</div>
+          <div style="margin-top: 4px;">
+            <p style="margin: 0; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: #46505e;">QAR</p>
+            <p style="margin: 0; font-size: 24px; font-weight: 700; color: #101720;">{{ selectedPriceText }}</p>
+          </div>
+          <div style="margin-top: auto; padding-top: 8px;">
+            <button type="button" onClick="{{ selectedInc }}" style="width: 100%; border-radius: 9px; border: 1px solid #0b5fce; background: #fff; padding: 10px 0; font-size: 14px; font-weight: 600; color: #0b5fce; cursor: pointer;" style-hover="background: #eff6ff;">Add to order</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ cartOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 40; display: flex; justify-content: flex-end; background: rgba(0,0,0,0.4);">
+      <div style="display: flex; height: 100%; width: 100%; max-width: 448px; flex-direction: column; background: #fff; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #dce2ea; padding: 14px 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: #101720;">Your order</h2>
+            <span style="font-size: 14px; color: #46505e;">{{ unitLabel }}</span>
+          </div>
+          <button type="button" onClick="{{ closeCart }}" aria-label="Close cart" style="border: none; border-radius: 999px; background: #f1f5f9; padding: 6px 10px; font-size: 18px; line-height: 1; color: #46505e; cursor: pointer;">×</button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 12px 16px;">
+          <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ true }}">
+            <p style="padding: 40px 0; text-align: center; font-size: 14px; color: #46505e;">Your cart is empty. Add some products to get started.</p>
+          </sc-if>
+          <sc-for list="{{ cartItems }}" as="line" hint-placeholder-count="0">
+            <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f1f5f9; padding: 12px 0;">
+              <div style="position: relative; height: 56px; width: 56px; flex-shrink: 0; overflow: hidden; border-radius: 6px; background: #eef1f5;">
+                <img src="{{ line.image }}" alt="{{ line.category }}" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;" />
+              </div>
+              <div style="min-width: 0; flex: 1;">
+                <p style="margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; color: #101720;">{{ line.category }}</p>
+                <p style="margin: 0; font-size: 12px; color: #46505e;">QAR {{ line.priceText }} each</p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" onClick="{{ line.dec }}" style="height: 28px; width: 28px; border-radius: 999px; border: 1px solid #dce2ea; background: #fff; font-size: 14px; font-weight: 600; color: #101720; cursor: pointer;">−</button>
+                <span style="min-width: 2ch; text-align: center; font-size: 14px; font-weight: 600;">{{ line.qty }}</span>
+                <button type="button" onClick="{{ line.inc }}" style="height: 28px; width: 28px; border-radius: 999px; border: 1px solid #dce2ea; background: #fff; font-size: 14px; font-weight: 600; color: #101720; cursor: pointer;">+</button>
+              </div>
+              <p style="margin: 0; width: 64px; flex-shrink: 0; text-align: right; font-size: 14px; font-weight: 600; color: #101720;">{{ line.lineText }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ cartHasItems }}" hint-placeholder-val="{{ false }}">
+          <div style="border-top: 1px solid #dce2ea; padding: 14px 16px;">
+            <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px;">
+              <span style="color: #46505e;">Subtotal</span>
+              <span style="font-size: 16px; font-weight: 700; color: #101720;">QAR {{ subtotalText }}</span>
+            </div>
+            <button type="button" style="width: 100%; border: none; border-radius: 9px; background: #0b5fce; padding: 10px 0; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer;" style-hover="background: #0a52b3;">Continue to delivery details</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+const PRODUCTS = [
+  {code:"KA2210",category:"Flat Mop",barcode:"6959125752759",price:15.25,description:"40x10cm flat mop, chenille mop refill 43x13cm. 70cm-120cm telescopic metal handle.",image:"public/catalog/images/KA2210.jpg"},
+  {code:"K19008",category:"Microfiber Flat Mop",barcode:"6959125751240",price:21.75,description:"Flat mop set size 41x10.5cm. Microfiber mop refill 75cm-130cm telescopic metal handle, dia 22/25mm.",image:"public/catalog/images/K19008.jpg"},
+  {code:"GSA009",category:"Microfiber Water Mop",barcode:"6959125750236",price:9.75,description:"Microfiber head 140g. Metal handle 120cm / dia 21.5mm.",image:"public/catalog/images/GSA009.jpg"},
+  {code:"GSA010",category:"Twist Mop",barcode:"6959125750250",price:14.25,description:"Microfiber mop head, 120cm metal handle, self-lock function.",image:"public/catalog/images/GSA010.jpg"},
+  {code:"GSA030",category:"Non-Woven Mop Set",barcode:"6959125753640",price:11.5,description:"Non-woven mop head 110g yellow. 120cm metal handle. 190gsm; 22 pcs strips (2x58cm). Italy screw. Kleaner logo.",image:"public/catalog/images/GSA030.jpg"},
+  {code:"GSA011",category:"Professional Cotton Mop",barcode:"6959125751066",price:28.25,description:"60cm flat mop. Mixed cotton mop refill. 135cm metal handle (includes clip and handle grip).",image:"public/catalog/images/GSA011.jpg"},
+  {code:"GSA004",category:"PVA Magic Mop",barcode:"6959125751440",price:18.75,description:"27cm PVA head, replaceable. 76cm-107cm telescopic stainless steel handle.",image:"public/catalog/images/GSA004.jpg"},
+  {code:"KT2412",category:"Bucket with Wringer",barcode:"6959125753442",price:22,description:"15L bucket with wringer, metal grip, 770g. Kleaner logo. Size 39x28.5x27cm.",image:"public/catalog/images/KT2412.jpg"},
+  {code:"KK2415",category:"Sponge Broom",barcode:"6959125753633",price:15.25,description:"Sponge broom 38x16x4cm. 72.5cm-125cm telescopic metal handle.",image:"public/catalog/images/KK2415.jpg"},
+  {code:"GSK006",category:"Broom",barcode:"6959125751493",price:10.75,description:"27cm broom head, Italy screw. 9cm bristle. 130cm metal handle.",image:"public/catalog/images/GSK006.jpg"},
+  {code:"GSC001",category:"Dustpan & Broom",barcode:"6959125750359",price:11.25,description:"25.5cm dustpan. 80mm bristle. 70cm metal handle.",image:"public/catalog/images/GSC001.jpg"},
+  {code:"K19003",category:"Dustpan & Brush",barcode:"6959125751158",price:8.25,description:"24.5cm dustpan. 50mm PET bristle. Kleaner brand.",image:"public/catalog/images/K19003.jpg"},
+  {code:"KC2001",category:"Dustpan & Brush",barcode:"6959125751943",price:5.75,description:"Dustpan size 315x210x80mm. 50mm bristle.",image:"public/catalog/images/KC2001.jpg"},
+  {code:"GSD001",category:"Toilet Brush & Caddy Set",barcode:"6959125750380",price:5,description:"Length 37cm. 25mm bristle. Product size 11.5x11.5x37cm.",image:"public/catalog/images/GSD001.jpg"},
+  {code:"KD2104",category:"Dish Brush",barcode:"6959125752421",price:4.25,description:"Material PP+TPR. Size 5.5x8x10.5cm. 3cm bristle.",image:"public/catalog/images/KD2104.jpg"},
+  {code:"GSH001",category:"Sponge Scourer 6pcs",barcode:"6959125750687",price:4,description:"Scouring pad, size 13x9cm. 6pcs/pack.",image:"public/catalog/images/GSH001.jpg"},
+  {code:"GSG003",category:"Microfiber Cloths 2pcs",barcode:"6959125750601",price:5,description:"Size 38x40cm. 80% polyester, 20% polyamide. 2pc / 3 color mix per carton.",image:"public/catalog/images/GSG003.jpg"},
+  {code:"GSE002",category:"Microfiber Duster",barcode:"6959125750571",price:15,description:"Microfiber head 35cm. Bendable cleaning head. 80cm-120cm telescopic aluminum handle.",image:"public/catalog/images/GSE002.jpg"},
+  {code:"KB2202",category:"Window Cleaner 10\"",barcode:"6959125752605",price:20.75,description:"10\" cleaning head, 360 degree rotatable. 78cm-130cm telescopic aluminium handle, dia 19-22mm. Paper card packing.",image:"public/catalog/images/KB2202.jpg"},
+  {code:"K19002",category:"Floor Squeegee",barcode:"6959125751110",price:13,description:"42cm plastic head, double-use scraper (EVA+rubber blade). Metal handle 130cm, dia 21.5mm.",image:"public/catalog/images/K19002.jpg"}
+];
+
+const GROUP_RULES = [
+  { group: "Mops & Buckets", keywords: ["mop", "bucket"] },
+  { group: "Brooms", keywords: ["broom"] },
+  { group: "Dustpans", keywords: ["dustpan"] },
+  { group: "Brushes", keywords: ["brush", "plunger", "scrubber"] },
+  { group: "Scourers & Sponges", keywords: ["scourer", "scouring", "sponge"] },
+  { group: "Cloths & Dusters", keywords: ["cloth", "duster", "towel", "glove"] },
+  { group: "Squeegees", keywords: ["squeegee"] }
+];
+const GROUP_ORDER = ["Mops & Buckets", "Brooms", "Dustpans", "Brushes", "Scourers & Sponges", "Cloths & Dusters", "Squeegees", "Other"];
+const QUICK_MULTIPLES = [6, 12, 24];
+
+function groupFor(category) {
+  const lower = category.toLowerCase();
+  for (const rule of GROUP_RULES) {
+    if (rule.keywords.some((k) => lower.includes(k))) return rule.group;
+  }
+  return "Other";
+}
+
+class Component extends DCLogic {
+  state = { query: "", activeGroup: "All", quantities: {}, cartOpen: false, selected: null };
+
+  setQty = (code, qty) => this.setState((s) => {
+    const next = { ...s.quantities };
+    if (qty <= 0) delete next[code]; else next[code] = qty;
+    return { quantities: next };
+  });
+  inc = (code) => this.setQty(code, (this.state.quantities[code] ?? 0) + 1);
+  dec = (code) => this.setQty(code, (this.state.quantities[code] ?? 0) - 1);
+
+  renderVals() {
+    const { query, activeGroup, quantities, selected } = this.state;
+    const q = query.trim().toLowerCase();
+    const matches = PRODUCTS.filter((p) => !q || p.category.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+
+    const map = new Map();
+    for (const product of matches) {
+      const group = groupFor(product.category);
+      if (activeGroup !== "All" && group !== activeGroup) continue;
+      if (!map.has(group)) map.set(group, []);
+      map.get(group).push(product);
+    }
+
+    const decorate = (p) => {
+      const qty = quantities[p.code] ?? 0;
+      return {
+        ...p,
+        qty,
+        hasQty: qty > 0,
+        isZero: qty === 0,
+        priceText: p.price.toFixed(2),
+        lineText: (p.price * qty).toFixed(2),
+        inc: () => this.inc(p.code),
+        dec: () => this.dec(p.code),
+        select: () => this.setState({ selected: p.code }),
+        multiples: QUICK_MULTIPLES.map((n) => ({ n, apply: () => this.setQty(p.code, n) }))
+      };
+    };
+
+    const sections = GROUP_ORDER.filter((g) => map.has(g)).map((g) => ({
+      group: g,
+      count: map.get(g).length,
+      items: map.get(g).map(decorate)
+    }));
+
+    const present = new Set(PRODUCTS.map((p) => groupFor(p.category)));
+    const chips = ["All", ...GROUP_ORDER.filter((g) => present.has(g))].map((label) => {
+      const active = activeGroup === label;
+      return {
+        label,
+        bg: active ? "#101720" : "#ffffff",
+        color: active ? "#ffffff" : "#46505e",
+        border: active ? "#101720" : "#dce2ea",
+        select: () => this.setState({ activeGroup: label })
+      };
+    });
+
+    const cartItems = Object.entries(quantities).map(([code, qty]) => {
+      const p = PRODUCTS.find((x) => x.code === code);
+      if (!p) return null;
+      return { ...p, qty, priceText: p.price.toFixed(2), lineText: (p.price * qty).toFixed(2), inc: () => this.inc(code), dec: () => this.dec(code) };
+    }).filter(Boolean);
+
+    const itemCount = cartItems.reduce((s, i) => s + i.qty, 0);
+    const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+    const sel = selected ? PRODUCTS.find((p) => p.code === selected) : null;
+
+    return {
+      query,
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      chips,
+      sections,
+      empty: sections.length === 0,
+      itemCount,
+      unitLabel: itemCount + (itemCount === 1 ? " unit" : " units"),
+      subtotalText: subtotal.toFixed(2),
+      cartItems,
+      cartEmpty: cartItems.length === 0,
+      cartHasItems: cartItems.length > 0,
+      cartOpen: this.state.cartOpen,
+      openCart: () => this.setState({ cartOpen: true }),
+      closeCart: () => this.setState({ cartOpen: false }),
+      selected: !!sel,
+      selectedTitle: sel ? sel.category : "",
+      selectedCode: sel ? sel.code : "",
+      selectedImage: sel ? sel.image : "",
+      selectedDescription: sel ? sel.description : "",
+      selectedBarcode: sel ? sel.barcode : "",
+      selectedPriceText: sel ? sel.price.toFixed(2) : "",
+      selectedInc: () => sel && this.inc(sel.code),
+      closeDetail: () => this.setState({ selected: null }),
+      stop: (e) => e.stopPropagation()
+    };
+  }
+}
+</script>
+</body>
+</html>

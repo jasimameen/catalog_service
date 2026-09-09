@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  html, body { margin: 0; padding: 0; background: #fbfbfd; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif; color: #1d1d1f; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  a { color: #0b5fce; text-decoration: none; }
+  a:hover { color: #0a52b3; }
+  input, button, textarea { font-family: inherit; }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column;">
+  <header style="border-bottom: 1px solid #e8e8ed; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+    <a href="Admin.dc.html" style="font-size: 13px; color: #6e6e73;">← Catalogs</a>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-flex; height: 22px; min-width: 22px; align-items: center; justify-content: center; border-radius: 999px; font-size: 11px; font-weight: 600; background: {{ s.bg }}; color: {{ s.fg }};">{{ s.n }}</span>
+          <span style="font-size: 13px; color: {{ s.labelColor }};">{{ s.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <span style="font-size: 13px; color: #86868b;">{{ savedLabel }}</span>
+  </header>
+
+  <sc-if value="{{ isPublished }}" hint-placeholder-val="{{ false }}">
+    <div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 64px 24px;">
+      <div style="max-width: 520px; text-align: center;">
+        <div style="margin: 0 auto 22px; height: 56px; width: 56px; border-radius: 999px; background: #dff5e6; display: flex; align-items: center; justify-content: center; font-size: 26px; color: #1e9e4a;">✓</div>
+        <h1 style="margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -0.03em;">Your catalog is live.</h1>
+        <p style="margin: 14px 0 26px; font-size: 17px; line-height: 1.5; color: #6e6e73;">Send this link to your customers. Every order comes back to your inbox and dashboard.</p>
+        <div style="border: 1px solid #e8e8ed; border-radius: 14px; background: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 12px;">
+          <span style="flex: 1; text-align: left; font-size: 15px; font-weight: 600; letter-spacing: -0.01em;">{{ liveUrl }}</span>
+          <button type="button" style="border: none; background: #1d1d1f; color: #fff; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 500; cursor: pointer;">Copy</button>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 10px; justify-content: center;">
+          <a href="Kleaner Catalogue (current).dc.html" style="border: 1px solid #d2d2d7; border-radius: 999px; padding: 10px 20px; font-size: 13px; font-weight: 500; color: #1d1d1f;">Open catalog</a>
+          <a href="Admin.dc.html" style="background: #0b5fce; color: #fff; border-radius: 999px; padding: 10px 20px; font-size: 13px; font-weight: 500;">Go to dashboard</a>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ true }}">
+    <div style="flex: 1; display: grid; align-items: stretch; grid-template-columns: {{ builderCols }};">
+      <div style="padding: 40px 24px 56px; max-width: {{ leftMax }};">
+        <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <h1 style="margin: 0; font-size: 38px; font-weight: 600; letter-spacing: -0.03em;">What are you selling?</h1>
+            <p style="margin: 12px 0 28px; font-size: 16px; line-height: 1.5; color: #6e6e73;">A name and a price is enough. Add a photo if you have one — you can do the rest later.</p>
+            <div style="border: 1px solid #e8e8ed; border-radius: 16px; background: #fff; padding: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+              <button type="button" onClick="{{ pickPhoto }}" aria-label="Attach a photo" style="height: 52px; width: 52px; flex-shrink: 0; border: 1px dashed #c7c7cc; border-radius: 12px; background: #fbfbfd; cursor: pointer; padding: 0; overflow: hidden; font-size: 11px; color: #6e6e73;">
+                <sc-if value="{{ hasDraftImage }}" hint-placeholder-val="{{ false }}">
+                  <img src="{{ draftImage }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                </sc-if>
+                <sc-if value="{{ noDraftImage }}" hint-placeholder-val="{{ true }}">
+                  <span>Photo</span>
+                </sc-if>
+              </button>
+              <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onPhotoFile }}" style="display: none;" />
+              <input value="{{ draftName }}" onChange="{{ onDraftName }}" placeholder="Item name" style="flex: 2; min-width: 160px; border: none; font-size: 16px; padding: 10px 4px; outline: none;" />
+              <input value="{{ draftPrice }}" onChange="{{ onDraftPrice }}" placeholder="Price" style="flex: 1; min-width: 90px; border: none; border-left: 1px solid #e8e8ed; font-size: 16px; padding: 10px 12px; outline: none;" />
+              <button type="button" onClick="{{ addItem }}" style="border: none; background: #1d1d1f; color: #fff; border-radius: 10px; padding: 13px 20px; font-size: 14px; font-weight: 500; cursor: pointer;">Add</button>
+            </div>
+            <p style="margin: 10px 0 0; font-size: 13px; color: #86868b;">Tap the square to attach a photo — camera on a phone, file or drag-and-drop on a computer. Or <a href="#paste">paste a spreadsheet</a> and every row becomes an item. <a href="Catalog Builder (mobile).dc.html">See the phone version</a>.</p>
+            <div style="margin-top: 26px; display: flex; flex-direction: column;">
+              <sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; gap: 12px; border-top: 1px solid #f0f0f4; padding: 12px 0;">
+                  <button type="button" onClick="{{ it.attach }}" aria-label="Attach a photo" style="height: 44px; width: 44px; border-radius: 10px; background: #f5f5f7; overflow: hidden; flex-shrink: 0; border: 1px solid {{ it.thumbBorder }}; padding: 0; cursor: pointer; font-size: 10px; color: #86868b;">
+                    <sc-if value="{{ it.hasImage }}" hint-placeholder-val="{{ true }}">
+                      <img src="{{ it.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                    </sc-if>
+                    <sc-if value="{{ it.needsImage }}" hint-placeholder-val="{{ false }}">
+                      <span>+ Photo</span>
+                    </sc-if>
+                  </button>
+                  <div style="flex: 1; min-width: 0;">
+                    <p style="margin: 0; font-size: 14px; font-weight: 500;">{{ it.name }}</p>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #86868b;">{{ it.code }}</p>
+                  </div>
+                  <span style="font-size: 14px; font-weight: 500;">{{ it.priceLabel }}</span>
+                  <button type="button" onClick="{{ it.remove }}" aria-label="Remove item" style="border: none; background: none; color: #86868b; font-size: 16px; cursor: pointer;">×</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <h1 style="margin: 0; font-size: 38px; font-weight: 600; letter-spacing: -0.03em;">Pick a look.</h1>
+            <p style="margin: 12px 0 28px; font-size: 16px; line-height: 1.5; color: #6e6e73;">The preview on the right updates as you choose. Nothing here is permanent.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+              <sc-for list="{{ templateOptions }}" as="tpl" hint-placeholder-count="4">
+                <button type="button" onClick="{{ tpl.select }}" style="text-align: left; cursor: pointer; border-radius: 14px; padding: 16px; background: #fff; border: 1.5px solid {{ tpl.border }}; box-shadow: {{ tpl.shadow }};">
+                  <p style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em;">{{ tpl.name }}</p>
+                  <p style="margin: 6px 0 0; font-size: 13px; line-height: 1.45; color: #6e6e73;">{{ tpl.blurb }}</p>
+                </button>
+              </sc-for>
+            </div>
+            <p style="margin: 32px 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Accent colour</p>
+            <div style="display: flex; gap: 10px;">
+              <sc-for list="{{ accents }}" as="a" hint-placeholder-count="4">
+                <button type="button" onClick="{{ a.select }}" aria-label="Accent colour" style="height: 34px; width: 34px; border-radius: 999px; cursor: pointer; background: {{ a.value }}; border: 2px solid {{ a.ring }}; box-shadow: 0 0 0 2px #fff inset;"></button>
+              </sc-for>
+            </div>
+            <p style="margin: 32px 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Catalog name</p>
+            <input value="{{ catalogName }}" onChange="{{ onCatalogName }}" style="width: 100%; max-width: 420px; border: 1px solid #d2d2d7; border-radius: 12px; padding: 12px 14px; font-size: 16px; outline: none;" />
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <h1 style="margin: 0; font-size: 38px; font-weight: 600; letter-spacing: -0.03em;">Where should it live?</h1>
+            <p style="margin: 12px 0 28px; font-size: 16px; line-height: 1.5; color: #6e6e73;">Your address is ready now. A custom domain can be added later from the Domains screen.</p>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <input value="{{ subdomain }}" onChange="{{ onSubdomain }}" style="width: 200px; border: 1px solid #d2d2d7; border-radius: 12px; padding: 12px 14px; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; outline: none;" />
+              <span style="font-size: 17px; color: #6e6e73;">.catalog.hevyf.com</span>
+            </div>
+            <p style="margin: 10px 0 0; font-size: 13px; color: #1e9e4a;">Available</p>
+            <div style="margin-top: 32px; border-radius: 16px; background: #f5f5f7; padding: 22px;">
+              <p style="margin: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #86868b;">Orders go to</p>
+              <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
+                <input value="orders@kleaner.qa" style="width: 100%; border: 1px solid #d2d2d7; border-radius: 12px; padding: 11px 14px; font-size: 15px; background: #fff; outline: none;" />
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #6e6e73;">Every order is also kept in your dashboard inbox and can be exported as CSV.</p>
+              </div>
+            </div>
+            <div style="margin-top: 26px; display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ summary }}" as="row" hint-placeholder-count="3">
+                <div style="display: flex; justify-content: space-between; font-size: 14px; border-bottom: 1px solid #f0f0f4; padding-bottom: 8px;">
+                  <span style="color: #6e6e73;">{{ row.label }}</span>
+                  <span style="font-weight: 500;">{{ row.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="margin-top: 40px; display: flex; align-items: center; gap: 12px;">
+          <sc-if value="{{ canGoBack }}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{ back }}" style="border: 1px solid #d2d2d7; background: #fff; border-radius: 999px; padding: 12px 24px; font-size: 15px; font-weight: 500; cursor: pointer;">Back</button>
+          </sc-if>
+          <button type="button" onClick="{{ next }}" style="border: none; background: #0b5fce; color: #fff; border-radius: 999px; padding: 12px 28px; font-size: 15px; font-weight: 500; cursor: pointer;">{{ nextLabel }}</button>
+          <span style="font-size: 13px; color: #86868b;">{{ helper }}</span>
+        </div>
+      </div>
+
+      <div style="background: #f5f5f7; border-top: 1px solid #e8e8ed; border-left: {{ previewBorder }}; padding: 28px 20px 40px; display: flex; align-items: flex-start; justify-content: center;">
+        <div style="width: 100%; max-width: 460px; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 24px 48px -28px rgba(0,0,0,0.4);">
+          <div style="padding: 8px 12px; border-bottom: 1px solid #e8e8ed; background: #fbfbfd; font-size: 11px; color: #6e6e73; text-align: center;">{{ liveUrl }}</div>
+          <div style="padding: 18px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #e8e8ed; padding-bottom: 12px;">
+              <span style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: {{ accent }};">{{ catalogName }}</span>
+              <span style="font-size: 11px; font-weight: 600; color: #fff; border-radius: 6px; padding: 5px 10px; background: {{ accent }};">Cart 0</span>
+            </div>
+            <div style="padding-top: 14px; display: grid; gap: 10px; grid-template-columns: {{ previewCols }};">
+              <sc-for list="{{ previewItems }}" as="p" hint-placeholder-count="4">
+                <div style="border: 1px solid #e8e8ed; border-radius: 10px; overflow: hidden; display: {{ p.display }}; align-items: center; gap: 10px; padding: {{ p.pad }};">
+                  <sc-if value="{{ p.showPhoto }}" hint-placeholder-val="{{ true }}">
+                    <div style="aspect-ratio: 584/480; width: {{ p.photoWidth }}; flex-shrink: 0; background: #eef1f5;">
+                      <img src="{{ p.image }}" alt="" style="width: 100%; height: 100%; object-fit: contain;" />
+                    </div>
+                  </sc-if>
+                  <div style="flex: 1; min-width: 0; padding: {{ p.textPad }};">
+                    <p style="margin: 0; font-size: 12px; font-weight: 600;">{{ p.name }}</p>
+                    <p style="margin: 3px 0 0; font-size: 11px; color: #86868b;">{{ p.code }}</p>
+                  </div>
+                  <p style="margin: 0; padding: {{ p.pricePad }}; font-size: 13px; font-weight: 600;">{{ p.priceLabel }}</p>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:940}}">
+const IMG = (c) => "public/catalog/images/" + c + ".jpg";
+const START_ITEMS = [
+  { code: "GSA011", name: "Professional Cotton Mop", price: 28.25 },
+  { code: "KT2412", name: "Bucket with Wringer", price: 22 },
+  { code: "GSE002", name: "Microfiber Duster", price: 15 },
+  { code: "KB2202", name: "Window Cleaner 10\"", price: 20.75 },
+  { code: "GSC001", name: "Dustpan & Broom", price: 11.25 },
+  { code: "GSH001", name: "Sponge Scourer 6pcs", price: 4 }
+].map((i) => ({ ...i, image: IMG(i.code) }));
+
+const TEMPLATES = [
+  { key: "grid", name: "Trade Grid", blurb: "Dense grid with item codes and quantity steppers." },
+  { key: "lookbook", name: "Lookbook", blurb: "Large photos, generous spacing, few items." },
+  { key: "menu", name: "Menu", blurb: "Sectioned list, photos optional." },
+  { key: "pricelist", name: "Price List", blurb: "Table that prints and exports cleanly." }
+];
+
+const ACCENTS = ["#0b5fce", "#1d1d1f", "#0f7b53", "#b2432b"];
+
+class Component extends DCLogic {
+  state = {
+    step: 1,
+    items: START_ITEMS,
+    draftName: "",
+    draftPrice: "",
+    draftImage: "",
+    narrow: false,
+    template: "grid",
+    accent: "#0b5fce",
+    catalogName: "Kleaner Trade Catalogue",
+    subdomain: "kleaner",
+    published: false
+  };
+
+  fileRef = React.createRef();
+  attachIndex = null;
+
+  componentDidMount() {
+    this.onResize = () => this.setState({ narrow: window.innerWidth < 900 });
+    this.onResize();
+    window.addEventListener("resize", this.onResize);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("resize", this.onResize);
+  }
+
+  pickPhoto = (index) => {
+    this.attachIndex = typeof index === "number" ? index : null;
+    if (this.fileRef.current) this.fileRef.current.click();
+  };
+
+  onPhotoFile = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = reader.result;
+      const index = this.attachIndex;
+      if (index === null) {
+        this.setState({ draftImage: url });
+      } else {
+        this.setState((s) => ({ items: s.items.map((it, i) => (i === index ? { ...it, image: url } : it)) }));
+      }
+      this.attachIndex = null;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  addItem = () => {
+    const name = this.state.draftName.trim();
+    if (!name) return;
+    const price = parseFloat(this.state.draftPrice) || 0;
+    this.setState((s) => ({
+      items: [...s.items, { code: "NEW-" + (s.items.length + 1), name, price, image: s.draftImage || "" }],
+      draftName: "",
+      draftPrice: "",
+      draftImage: ""
+    }));
+  };
+
+  renderVals() {
+    const s = this.state;
+    const tpl = s.template;
+    const items = s.items.map((it, i) => ({
+      ...it,
+      priceLabel: "QAR " + it.price.toFixed(2),
+      hasImage: !!it.image,
+      needsImage: !it.image,
+      thumbBorder: it.image ? "transparent" : "#d2d2d7",
+      attach: () => this.pickPhoto(i),
+      remove: () => this.setState((st) => ({ items: st.items.filter((_, j) => j !== i) }))
+    }));
+
+    const previewShape = {
+      grid: { cols: "repeat(2, 1fr)", display: "block", photo: true, photoWidth: "100%", pad: "0", textPad: "10px 10px 0", pricePad: "0 10px 10px" },
+      lookbook: { cols: "1fr", display: "block", photo: true, photoWidth: "100%", pad: "0", textPad: "12px 12px 0", pricePad: "0 12px 12px" },
+      menu: { cols: "1fr", display: "flex", photo: true, photoWidth: "48px", pad: "8px", textPad: "0", pricePad: "0" },
+      pricelist: { cols: "1fr", display: "flex", photo: false, photoWidth: "0", pad: "10px 12px", textPad: "0", pricePad: "0" }
+    }[tpl];
+
+    const previewCount = { grid: 6, lookbook: 2, menu: 5, pricelist: 6 }[tpl];
+
+    const stepMeta = {
+      1: { next: "Continue", helper: items.length + " items added" },
+      2: { next: "Continue", helper: "You can change this later" },
+      3: { next: "Publish catalog", helper: "Live in a few seconds" }
+    }[s.step];
+
+    return {
+      steps: [1, 2, 3].map((n) => ({
+        n,
+        label: ["Items", "Look", "Address"][n - 1],
+        bg: s.step === n ? "#1d1d1f" : "#e8e8ed",
+        fg: s.step === n ? "#ffffff" : "#86868b",
+        labelColor: s.step === n ? "#1d1d1f" : "#86868b"
+      })),
+      savedLabel: "Draft saved",
+      isEditing: !s.published,
+      isPublished: s.published,
+      isStep1: s.step === 1,
+      isStep2: s.step === 2,
+      isStep3: s.step === 3,
+      canGoBack: s.step > 1,
+      back: () => this.setState({ step: s.step - 1 }),
+      next: () => (s.step === 3 ? this.setState({ published: true }) : this.setState({ step: s.step + 1 })),
+      nextLabel: stepMeta.next,
+      helper: stepMeta.helper,
+      items,
+      builderCols: s.narrow ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)",
+      leftMax: s.narrow ? "100%" : "640px",
+      previewBorder: s.narrow ? "none" : "1px solid #e8e8ed",
+      fileRef: this.fileRef,
+      pickPhoto: () => this.pickPhoto(null),
+      onPhotoFile: this.onPhotoFile,
+      draftImage: s.draftImage,
+      hasDraftImage: !!s.draftImage,
+      noDraftImage: !s.draftImage,
+      draftName: s.draftName,
+      draftPrice: s.draftPrice,
+      onDraftName: (e) => this.setState({ draftName: e.target.value }),
+      onDraftPrice: (e) => this.setState({ draftPrice: e.target.value }),
+      addItem: this.addItem,
+      templateOptions: TEMPLATES.map((t) => ({
+        ...t,
+        select: () => this.setState({ template: t.key }),
+        border: tpl === t.key ? s.accent : "#e8e8ed",
+        shadow: tpl === t.key ? "0 8px 24px -16px rgba(0,0,0,0.4)" : "none"
+      })),
+      accents: ACCENTS.map((value) => ({ value, ring: s.accent === value ? "#1d1d1f" : "transparent", select: () => this.setState({ accent: value }) })),
+      accent: s.accent,
+      catalogName: s.catalogName,
+      onCatalogName: (e) => this.setState({ catalogName: e.target.value }),
+      subdomain: s.subdomain,
+      onSubdomain: (e) => this.setState({ subdomain: e.target.value }),
+      liveUrl: s.subdomain + ".catalog.hevyf.com",
+      summary: [
+        { label: "Items", value: String(items.length) },
+        { label: "Template", value: (TEMPLATES.find((t) => t.key === tpl) || {}).name },
+        { label: "Plan", value: "Trial · 9 days left" }
+      ],
+      previewCols: previewShape.cols,
+      previewItems: items.slice(0, previewCount).map((it) => ({
+        ...it,
+        display: previewShape.display,
+        showPhoto: previewShape.photo && !!it.image,
+        photoWidth: previewShape.photoWidth,
+        pad: previewShape.pad,
+        textPad: previewShape.textPad,
+        pricePad: previewShape.pricePad
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>
