@@ -151,7 +151,7 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
 
 - `SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` +
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` — from your Supabase API Keys
-  settings. Optional `SUPABASE_JWKS_URL`. Old `ANON` / `SERVICE_ROLE` names still work.
+  settings. Old `ANON` / `SERVICE_ROLE` names still work.
 - `NEXT_PUBLIC_ROOT_DOMAIN` — e.g. `catalog.hevyf.com` (defaults to `localhost:3000` in dev).
 - `SMTP_*`, `ORDER_FROM_EMAIL` — already existed, unchanged.
 - Optional: `DOMAIN_PROVIDER`, `VERCEL_API_TOKEN`/`VERCEL_PROJECT_ID`, or

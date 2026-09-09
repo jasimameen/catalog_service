@@ -9,7 +9,6 @@ Copy `.env.example` to `.env.local`. Then do this once:
    - Project URL → `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` (same value)
    - Publishable key → `SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (same value)
    - Secret key → `SUPABASE_SECRET_KEY` (server-only; replace the `your-secret-key` placeholder with the real secret from the dashboard)
-   - Optional: JWKS URL → `SUPABASE_JWKS_URL` (this app does not verify JWTs itself)
 5. Set `NEXT_PUBLIC_ROOT_DOMAIN` to `localhost:3000` locally, or `catalog.hevyf.com` in production.
 6. Optional — order email on checkout: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `ORDER_FROM_EMAIL`.
 
