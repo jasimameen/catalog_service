@@ -14,7 +14,7 @@ type NavItem = {
  * Sidebar (becomes a horizontal top bar under md, via the parent's flex
  * classes) navigation. Reads the current path client-side to (a) know which
  * item is active and (b) know whether we're inside a catalog — the
- * Dashboard/Orders/Items/Domains group only makes sense there, matching the
+ * Dashboard/Orders/Items/Share/Domains group only makes sense there, matching the
  * design's single-page "screen" nav collapsed into real routes.
  */
 export function AdminNav() {
@@ -31,6 +31,7 @@ export function AdminNav() {
       { label: "Dashboard", href: `/admin/${catalogId}`, exact: true },
       { label: "Orders", href: `/admin/${catalogId}/orders` },
       { label: "Items", href: `/admin/${catalogId}/items` },
+      { label: "Share", href: `/admin/${catalogId}/share` },
       { label: "Domains", href: `/admin/${catalogId}/domains` },
     );
   }

@@ -7,7 +7,6 @@ import { formatMoney } from "@/lib/catalog/currency";
 import { templateMeta } from "@/lib/catalog/templates";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
-import { QrCodeButton } from "@/components/admin/QrCodeButton";
 import { LookSettingsForm } from "./LookSettingsForm";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import type { OrderRow } from "@/lib/supabase/types";
@@ -134,7 +133,12 @@ export default async function CatalogDashboardPage({
           </div>
           <div className="flex flex-wrap gap-2">
             <CopyLinkButton url={url} />
-            <QrCodeButton url={url} />
+            <Link
+              href={`/admin/${catalogId}/share`}
+              className="rounded-full border border-[#d2d2d7] bg-white px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)]"
+            >
+              Print QR
+            </Link>
             <a
               href={url}
               target="_blank"
