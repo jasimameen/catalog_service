@@ -51,3 +51,14 @@ VERCEL_TEAM_ID=
 ```
 
 `VERCEL_TEAM_ID` only if the project lives on a team.
+
+Optional — Lemon Squeezy subscriptions ($19.99/month). Create the store, product, monthly variant, and webhook first (see [`SETUP.md`](SETUP.md)):
+
+```
+LEMONSQUEEZY_API_KEY=
+LEMONSQUEEZY_STORE_ID=
+LEMONSQUEEZY_VARIANT_ID=
+LEMONSQUEEZY_WEBHOOK_SECRET=
+```
+
+In Lemon Squeezy **Settings → Webhooks**, set the callback to `https://catalog.hevyf.com/api/billing/webhook` and select `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_payment_success`.

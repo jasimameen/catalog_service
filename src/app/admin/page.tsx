@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAccount } from "@/lib/auth/current-account";
+import { canPublishNewCatalog } from "@/lib/billing/status";
 import { getServerSupabase } from "@/lib/supabase/server";
 import type { CatalogRow } from "@/lib/supabase/types";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -54,6 +55,7 @@ export default async function CatalogsPage() {
 
   const cards = catalogsError ? [] : await loadCatalogCards((catalogs ?? []) as CatalogRow[]);
   const liveCount = cards.filter((c) => c.catalog.status === "live").length;
+  const canPublish = canPublishNewCatalog(account);
 
   return (
     <>
@@ -137,12 +139,14 @@ export default async function CatalogsPage() {
           })}
 
           <Link
-            href="/new"
+            href={canPublish ? "/new" : "/admin/settings"}
             className="flex min-h-[260px] flex-col items-center justify-center gap-1.5 rounded-[18px] border border-dashed border-[#d2d2d7] text-[var(--cat-muted)]"
           >
             <span className="text-[28px] font-light text-[var(--cat-ink)]">+</span>
             <span className="text-[13px] font-medium text-[var(--cat-ink)]">New catalog</span>
-            <span className="text-xs">Three steps, about five minutes</span>
+            <span className="text-xs">
+              {canPublish ? "Three steps, about five minutes" : "Subscribe to publish a new catalog"}
+            </span>
           </Link>
         </div>
       </div>

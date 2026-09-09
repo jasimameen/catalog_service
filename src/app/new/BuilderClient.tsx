@@ -24,6 +24,7 @@ interface BuilderAccount {
 interface BuilderClientProps {
   account: BuilderAccount;
   trialDaysLeft: number;
+  planLabel?: string;
   ownerEmail: string;
   rootDomain: string;
 }
@@ -37,7 +38,7 @@ let nextTempId = 0;
  * component's React state until the user hits "Publish catalog" on Step 3,
  * which calls the publishCatalog Server Action (src/app/new/actions.ts).
  */
-export function BuilderClient({ account, trialDaysLeft, ownerEmail, rootDomain }: BuilderClientProps) {
+export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, rootDomain }: BuilderClientProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [template, setTemplate] = useState<CatalogTemplateKey>("grid");
@@ -192,6 +193,7 @@ export function BuilderClient({ account, trialDaysLeft, ownerEmail, rootDomain }
               itemCount={items.length}
               templateName={templateMeta(template).name}
               trialDaysLeft={trialDaysLeft}
+              planLabel={planLabel}
               errorMessage={publishError}
             />
           )}

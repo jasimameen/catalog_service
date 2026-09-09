@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { MONTHLY_PRICE_USD } from "@/lib/billing/plan";
 import { TEMPLATES } from "@/lib/catalog/templates";
 
 // Display-only — the product's intended home once its domain is pointed at
 // this app (see PLAN.md / CLOUDFLARE.md). Routing itself follows
 // NEXT_PUBLIC_ROOT_DOMAIN, which defaults to localhost in dev.
 const PRODUCT_DOMAIN = "catalog.hevyf.com";
-const MONTHLY_PRICE = 19;
+const MONTHLY_PRICE = MONTHLY_PRICE_USD;
 const TRIAL_DAYS = 14;
 
 const HERO_ITEMS = [

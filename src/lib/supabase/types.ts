@@ -20,6 +20,7 @@ export type CatalogStatus = "draft" | "live";
 export type DomainKind = "subdomain" | "custom";
 export type DomainStatus = "pending" | "verified" | "error";
 export type OrderStatus = "new" | "confirmed" | "cancelled";
+export type LsStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type CheckoutFieldMode = "required" | "optional" | "hidden";
 
 export type CheckoutFields = {
@@ -39,6 +40,10 @@ export type AccountRow = {
   order_email: string | null;
   order_email_cc: string | null;
   trial_ends_at: string;
+  ls_customer_id: string | null;
+  ls_subscription_id: string | null;
+  ls_status: LsStatus | null;
+  ls_renews_at: string | null;
   created_at: string;
 };
 

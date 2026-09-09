@@ -12,6 +12,7 @@ interface StepAddressProps {
   itemCount: number;
   templateName: string;
   trialDaysLeft: number;
+  planLabel?: string;
   errorMessage: string | null;
 }
 
@@ -26,6 +27,7 @@ export function StepAddress({
   itemCount,
   templateName,
   trialDaysLeft,
+  planLabel,
   errorMessage,
 }: StepAddressProps) {
   return (
@@ -69,7 +71,7 @@ export function StepAddress({
         {[
           { label: "Items", value: String(itemCount) },
           { label: "Template", value: templateName },
-          { label: "Plan", value: `Trial · ${trialDaysLeft} days left` },
+          { label: "Plan", value: planLabel ?? `Trial · ${trialDaysLeft} days left` },
         ].map((row) => (
           <div
             key={row.label}

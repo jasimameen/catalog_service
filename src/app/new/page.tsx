@@ -1,4 +1,9 @@
+import Link from "next/link";
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { isBillingConfigured } from "@/lib/billing/config";
+import { canPublishNewCatalog, isPaid, trialDaysLeft } from "@/lib/billing/status";
+import { MONTHLY_PRICE_LABEL } from "@/lib/billing/plan";
+import { SubscribeButton } from "@/components/admin/SubscribeButton";
 import { getRootDomain } from "@/lib/tenant";
 import { BuilderClient } from "./BuilderClient";
 
@@ -6,11 +11,6 @@ import { BuilderClient } from "./BuilderClient";
 // persisted server-side — see BuilderClient's top comment), so this page
 // should never serve a cached/static render.
 export const dynamic = "force-dynamic";
-
-function daysLeftOnTrial(trialEndsAt: string): number {
-  const ms = new Date(trialEndsAt).getTime() - Date.now();
-  return Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 86_400_000)) : 0;
-}
 
 /**
  * Thin server wrapper: resolves the signed-in account (redirects to
@@ -24,7 +24,30 @@ export default async function NewCatalogPage() {
   const account = await requireAccount({ next: "/new" });
   const user = await getSessionUser();
 
-  const trialDaysLeft = daysLeftOnTrial(account.trial_ends_at);
+  if (!canPublishNewCatalog(account)) {
+    return (
+      <div className="mx-auto flex min-h-screen max-w-[480px] flex-col justify-center px-6">
+        <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
+          Subscribe to publish
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-[#6e6e73]">
+          Your trial or subscription isn’t active, so new catalogs can’t be published.
+          Existing catalogs stay live.
+        </p>
+        <div className="mt-6">
+          <SubscribeButton configured={isBillingConfigured()} variant="solid" />
+        </div>
+        <Link href="/admin" className="mt-5 text-[13px] text-[#6e6e73] underline">
+          Back to catalogs
+        </Link>
+      </div>
+    );
+  }
+
+  const daysLeft = trialDaysLeft(account.trial_ends_at);
+  const planLabel = isPaid(account)
+    ? `Pro · ${MONTHLY_PRICE_LABEL}`
+    : `Trial · ${daysLeft} days left`;
 
   return (
     <BuilderClient
@@ -33,7 +56,8 @@ export default async function NewCatalogPage() {
         name: account.name,
         currency: account.currency,
       }}
-      trialDaysLeft={trialDaysLeft}
+      trialDaysLeft={daysLeft}
+      planLabel={planLabel}
       ownerEmail={user?.email ?? ""}
       rootDomain={getRootDomain()}
     />

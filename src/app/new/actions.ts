@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAccount } from "@/lib/auth/current-account";
+import { canPublishNewCatalog } from "@/lib/billing/status";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
@@ -45,6 +46,13 @@ export type PublishResult =
 
 export async function publishCatalog(input: PublishInput): Promise<PublishResult> {
   const account = await requireAccount({ next: "/new" });
+
+  if (!canPublishNewCatalog(account)) {
+    return {
+      ok: false,
+      error: "Subscribe to publish a new catalog. Existing catalogs stay live.",
+    };
+  }
 
   const name = input.name.trim().slice(0, 120) || `${account.name}'s catalog`;
   const slug = normalizeSlug(input.slug);

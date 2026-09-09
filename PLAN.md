@@ -136,8 +136,8 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
 
 ## Known gaps (deliberately not built — flagging rather than silently skipping)
 
-- **Billing**: no Stripe/payment integration. Trial countdown and "Add payment method" are
-  static UI. Wire this up once you pick a processor and can give me test keys.
+- **Billing**: Lemon Squeezy at $19.99/mo. Checkout + webhook update `accounts.ls_*`.
+  Cancel/expired shows a banner and blocks publishing a new catalog; storefronts stay live.
 - **Team invites**: schema supports multiple `account_members` but there's no invite-by-email
   UI yet — only the signed-up owner exists on an account.
 - **TLS for custom domains in `manual` mode**: DNS verification works with zero config, but

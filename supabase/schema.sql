@@ -15,6 +15,10 @@ create table if not exists accounts (
   order_email text,
   order_email_cc text,
   trial_ends_at timestamptz not null default (now() + interval '14 days'),
+  ls_customer_id text,
+  ls_subscription_id text,
+  ls_status text check (ls_status is null or ls_status in ('trialing', 'active', 'past_due', 'cancelled')),
+  ls_renews_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -274,6 +278,20 @@ alter table catalogs
 alter table catalogs drop constraint if exists catalogs_template_check;
 alter table catalogs add constraint catalogs_template_check
   check (template in ('grid', 'lookbook', 'menu', 'pricelist', 'cards', 'compact', 'spotlight'));
+
+-- ---------------------------------------------------------------------------
+-- Additive: Lemon Squeezy subscription fields on accounts.
+-- Existing projects can run supabase/billing.sql once instead.
+-- ---------------------------------------------------------------------------
+alter table accounts
+  add column if not exists ls_customer_id text,
+  add column if not exists ls_subscription_id text,
+  add column if not exists ls_status text,
+  add column if not exists ls_renews_at timestamptz;
+
+alter table accounts drop constraint if exists accounts_ls_status_check;
+alter table accounts add constraint accounts_ls_status_check
+  check (ls_status is null or ls_status in ('trialing', 'active', 'past_due', 'cancelled'));
 
 -- ---------------------------------------------------------------------------
 -- Storage: public catalog-images bucket (item photo uploads).
