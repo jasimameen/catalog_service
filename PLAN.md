@@ -49,10 +49,10 @@ not a separate thing — its current UI is the "Trade Grid" template.
   - `{slug}.catalog.hevyf.com` or any hostname found in the `domains` table → rewritten to
     `/s/[catalogId]` storefront render, resolved server-side against Supabase.
 - **Two Supabase clients**:
-  - `getServiceClient()` — service-role key, server-only. Used for all public storefront reads
-    (so RLS can stay locked to account members only) and for writing orders.
-  - `getServerSupabase()` / `getBrowserSupabase()` — anon key + user session, used everywhere in
-    `/admin` so Postgres RLS enforces "only this account's data" automatically.
+  - `getServiceClient()` — secret key (legacy: service_role), server-only. Used for all public
+    storefront reads (so RLS can stay locked to account members only) and for writing orders.
+  - `getServerSupabase()` / `getBrowserSupabase()` — publishable (legacy: anon) key + user session,
+    used everywhere in `/admin` so Postgres RLS enforces "only this account's data" automatically.
 - **Domain verification is provider-pluggable** (`DOMAIN_PROVIDER` env var), because we don't
   know your hosting target yet and shouldn't assume Cloudflare Workers just because your DNS is
   on Cloudflare:
@@ -149,8 +149,9 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
 
 ## Env vars you'll need to set (see `.env.example` for the full list)
 
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — from
-  your Supabase project settings.
+- `SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` +
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` — from your Supabase API Keys
+  settings. Optional `SUPABASE_JWKS_URL`. Old `ANON` / `SERVICE_ROLE` names still work.
 - `NEXT_PUBLIC_ROOT_DOMAIN` — e.g. `catalog.hevyf.com` (defaults to `localhost:3000` in dev).
 - `SMTP_*`, `ORDER_FROM_EMAIL` — already existed, unchanged.
 - Optional: `DOMAIN_PROVIDER`, `VERCEL_API_TOKEN`/`VERCEL_PROJECT_ID`, or

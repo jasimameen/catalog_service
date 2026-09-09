@@ -1,9 +1,9 @@
 import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { companyNameFromUser, provisionAccount, safeNextPath } from "@/lib/auth/provision";
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
     return Response.json({ error: "Supabase isn't configured yet. See SETUP.md." }, { status: 500 });
   }
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error:
-          "Signed in, but couldn't set up your account. Add SUPABASE_SERVICE_ROLE_KEY to .env.local (see SETUP.md).",
+          "Signed in, but couldn't set up your account. Add SUPABASE_SECRET_KEY to .env.local (see SETUP.md).",
       },
       { status: 500 }
     );

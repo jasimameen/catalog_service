@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveCatalogByHost, recordCatalogView } from "@/lib/catalog/resolve";
 import { darken } from "@/lib/catalog/color";
 import { StorefrontApp } from "@/components/storefront/StorefrontApp";
@@ -16,7 +16,7 @@ function decodeHost(hostParam: string): string {
 }
 
 function storefrontReady(): boolean {
-  return isSupabaseConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return isSupabaseConfigured() && hasSupabaseSecretKey();
 }
 
 async function loadCatalog(hostParam: string) {
@@ -58,7 +58,7 @@ export default async function StorefrontPage({
     return (
       <NoticeScreen
         title="Supabase isn't configured yet"
-        body="This storefront can't load its catalog until NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are set. See SETUP.md."
+        body="This storefront can't load its catalog until SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, and SUPABASE_SECRET_KEY are set. See SETUP.md."
       />
     );
   }

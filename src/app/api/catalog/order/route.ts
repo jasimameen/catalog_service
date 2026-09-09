@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import { getServiceClient } from "@/lib/supabase/service";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { generateOrderReference, formatMoney } from "@/lib/catalog/currency";
 import type { OrderPayload } from "@/lib/catalog/order-types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
@@ -11,7 +11,7 @@ function clean(value: unknown, max = 300): string {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
     return Response.json(
       { error: "Ordering is not configured yet. See SETUP.md." },
       { status: 500 }

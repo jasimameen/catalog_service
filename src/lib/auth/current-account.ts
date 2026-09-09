@@ -51,7 +51,7 @@ export async function requireAccount(options?: { next?: string }): Promise<Accou
   }
 
   throw new Error(
-    "Your login worked, but the account could not be created. Add SUPABASE_SERVICE_ROLE_KEY to .env.local (see SETUP.md) and try again."
+    "Your login worked, but the account could not be created. Add SUPABASE_SECRET_KEY to .env.local (see SETUP.md) and try again."
   );
 }
 
