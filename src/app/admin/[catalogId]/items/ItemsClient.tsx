@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import type { CatalogItemRow } from "@/lib/supabase/types";
 import { addItem, pasteImportItems, toggleItemVisible, type AddItemState, type PasteImportState } from "./actions";
+import { UploadImportModal } from "./UploadImportModal";
 
 function VisibleToggle({
   catalogId,
@@ -47,7 +48,7 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6">
         <h3 className="m-0 text-[16px] font-semibold text-[var(--cat-ink)]">Add item</h3>
         <form action={formAction} className="mt-4 flex flex-col gap-3">
           <div>
@@ -67,6 +68,14 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
               min="0"
               required
               className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Description</label>
+            <textarea
+              name="description"
+              rows={3}
+              className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
             />
           </div>
           <div>
@@ -93,6 +102,13 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
                 className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
               />
             </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Barcode</label>
+            <input
+              name="barcode"
+              className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+            />
           </div>
           {state?.error ? <p className="m-0 text-xs text-[#b2432b]">{state.error}</p> : null}
           <div className="mt-2 flex gap-2">
@@ -173,30 +189,63 @@ export function ItemsClient({
   currency: string;
 }) {
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+
+  const categories = useMemo(() => {
+    const unique = new Set(items.map((item) => item.category.trim()).filter(Boolean));
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [items]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (item) =>
+    return items.filter((item) => {
+      if (category && item.category.trim() !== category) return false;
+      if (!q) return true;
+      return (
         item.name.toLowerCase().includes(q) ||
         item.code.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q),
-    );
-  }, [items, query]);
+        item.category.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q)
+      );
+    });
+  }, [items, query, category]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search items"
-          className="min-w-[200px] max-w-[320px] flex-1 rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
-        />
-        <div className="flex gap-2">
+        <div className="flex min-w-[200px] flex-1 flex-wrap gap-2">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search items"
+            className="min-w-[180px] max-w-[320px] flex-1 rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          {categories.length > 0 ? (
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-[10px] border border-[#d2d2d7] bg-white px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+            >
+              <option value="">All categories</option>
+              {categories.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setShowUpload(true)}
+            className="rounded-[10px] border border-[#d2d2d7] bg-white px-3.5 py-2 text-[13px] font-medium text-[var(--cat-ink)]"
+          >
+            Upload catalog
+          </button>
           <button
             type="button"
             onClick={() => setShowPaste(true)}
@@ -225,7 +274,7 @@ export function ItemsClient({
         {filtered.length === 0 ? (
           <p className="p-[18px] text-[13px] text-[var(--cat-muted)]">
             {items.length === 0
-              ? "No items yet. Add one, or paste a list from a spreadsheet."
+              ? "No items yet. Add one, or upload a CSV / Excel file."
               : "No items match your search."}
           </p>
         ) : (
@@ -242,7 +291,10 @@ export function ItemsClient({
               </div>
               <div className="min-w-0">
                 <p className="m-0 truncate text-[13px] font-medium text-[var(--cat-ink)]">{item.name}</p>
-                <p className="m-0 mt-0.5 truncate text-xs text-[#86868b]">{item.description}</p>
+                <p className="m-0 mt-0.5 truncate text-xs text-[#86868b]">
+                  {item.category ? `${item.category}${item.description ? " · " : ""}` : ""}
+                  {item.description}
+                </p>
               </div>
               <span className="truncate text-[13px] text-[var(--cat-muted)]">{item.code}</span>
               <span className="text-[13px] font-medium text-[var(--cat-ink)]">
@@ -256,6 +308,7 @@ export function ItemsClient({
 
       {showAdd ? <AddItemModal catalogId={catalogId} onClose={() => setShowAdd(false)} /> : null}
       {showPaste ? <PasteImportModal catalogId={catalogId} onClose={() => setShowPaste(false)} /> : null}
+      {showUpload ? <UploadImportModal catalogId={catalogId} onClose={() => setShowUpload(false)} /> : null}
     </div>
   );
 }

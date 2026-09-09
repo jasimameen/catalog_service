@@ -65,6 +65,9 @@ export async function addItem(
   const image = String(formData.get("image") ?? "").trim();
   const category = String(formData.get("category") ?? "").trim().slice(0, 80);
   const pack = String(formData.get("pack") ?? "").trim().slice(0, 80);
+  const description = String(formData.get("description") ?? "").trim().slice(0, 2000);
+  const barcodeRaw = String(formData.get("barcode") ?? "").trim().slice(0, 64);
+  const barcode = barcodeRaw || null;
 
   const price = Number(priceRaw);
   if (!name) return { error: "Name is required." };
@@ -82,7 +85,8 @@ export async function addItem(
     image,
     category,
     pack,
-    description: "",
+    description,
+    barcode,
     visible: true,
     position,
   });
@@ -98,7 +102,8 @@ export async function addItem(
         image,
         category,
         pack,
-        description: "",
+        description,
+        barcode,
         visible: true,
         position,
       });
@@ -204,4 +209,145 @@ export async function pasteImportItems(
 
   revalidateItems(catalogId);
   return { imported: rows.length };
+}
+
+export type MappedImportInput = {
+  name: string;
+  price: number;
+  description: string;
+  category: string;
+  pack: string;
+  image: string;
+  code: string;
+  barcode: string;
+};
+
+export type FileImportResult = {
+  error?: string;
+  imported?: number;
+  updated?: number;
+  skipped?: number;
+  skipReasons?: string[];
+};
+
+const FILE_IMPORT_LIMIT = 1000;
+
+export async function fileImportItems(
+  catalogId: string,
+  rows: MappedImportInput[],
+): Promise<FileImportResult> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { error: "No valid rows to import." };
+  }
+  if (rows.length > FILE_IMPORT_LIMIT) {
+    return { error: `Import at most ${FILE_IMPORT_LIMIT} rows at a time.` };
+  }
+
+  const skipReasons: string[] = [];
+  const valid: MappedImportInput[] = [];
+  const seenCodes = new Set<string>();
+
+  rows.forEach((raw, index) => {
+    const name = String(raw?.name ?? "").trim().slice(0, 200);
+    const price = Number(raw?.price);
+    const code = String(raw?.code ?? "").trim().slice(0, 64);
+    if (!name) {
+      skipReasons.push(`Row ${index + 2}: missing name`);
+      return;
+    }
+    if (Number.isNaN(price) || price < 0) {
+      skipReasons.push(`Row ${index + 2}: invalid price`);
+      return;
+    }
+    if (code && seenCodes.has(code.toLowerCase())) {
+      skipReasons.push(`Row ${index + 2}: duplicate code ${code}`);
+      return;
+    }
+    if (code) seenCodes.add(code.toLowerCase());
+    valid.push({
+      name,
+      price: Math.round(price * 100) / 100,
+      description: String(raw?.description ?? "").trim().slice(0, 2000),
+      category: String(raw?.category ?? "").trim().slice(0, 80),
+      pack: String(raw?.pack ?? "").trim().slice(0, 80),
+      image: String(raw?.image ?? "").trim().slice(0, 2000),
+      code,
+      barcode: String(raw?.barcode ?? "").trim().slice(0, 64),
+    });
+  });
+
+  if (valid.length === 0) {
+    return { error: "No valid rows found.", skipped: skipReasons.length, skipReasons: skipReasons.slice(0, 12) };
+  }
+
+  const supabase = await getServerSupabase();
+  const { data: existing } = await supabase
+    .from("catalog_items")
+    .select("code")
+    .eq("catalog_id", catalogId);
+  const existingByCode = new Map(
+    (existing ?? []).map((row) => [String(row.code).toLowerCase(), String(row.code)]),
+  );
+
+  const updates = valid.filter((row) => row.code && existingByCode.has(row.code.toLowerCase()));
+  const inserts = valid.filter((row) => !row.code || !existingByCode.has(row.code.toLowerCase()));
+
+  for (const row of updates) {
+    const storedCode = existingByCode.get(row.code.toLowerCase());
+    const { error } = await supabase
+      .from("catalog_items")
+      .update({
+        name: row.name,
+        price: row.price,
+        description: row.description,
+        category: row.category,
+        pack: row.pack,
+        image: row.image,
+        barcode: row.barcode || null,
+      })
+      .eq("catalog_id", catalogId)
+      .eq("code", storedCode ?? row.code);
+    if (error) {
+      console.error("fileImportItems: update failed", error);
+      return { error: "Could not update existing items. Try again." };
+    }
+  }
+
+  if (inserts.length > 0) {
+    const start = await nextPosition(supabase, catalogId);
+    const generated = uniqueCodes(inserts.filter((row) => !row.code).length);
+    let generatedIndex = 0;
+    const payload = inserts.map((row, index) => {
+      const code = row.code || generated[generatedIndex++] || generateItemCode();
+      return {
+        catalog_id: catalogId,
+        code,
+        name: row.name,
+        price: row.price,
+        description: row.description,
+        category: row.category,
+        pack: row.pack,
+        image: row.image,
+        barcode: row.barcode || null,
+        visible: true,
+        position: start + index,
+      };
+    });
+
+    const { error } = await supabase.from("catalog_items").insert(payload);
+    if (error) {
+      console.error("fileImportItems: insert failed", error);
+      return { error: "Could not import items. Try again." };
+    }
+  }
+
+  revalidateItems(catalogId);
+  return {
+    imported: inserts.length,
+    updated: updates.length,
+    skipped: skipReasons.length,
+    skipReasons: skipReasons.slice(0, 12),
+  };
 }
