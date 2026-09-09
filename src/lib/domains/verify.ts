@@ -40,7 +40,7 @@ export async function verifyCustomDomain(domainId: string): Promise<VerifyResult
   }
 
   const provider = getDomainProvider();
-  let providerRef: string | null = null;
+  const providerRef: string | null = null;
   let providerError: string | null = null;
 
   if (provider === "vercel") {
