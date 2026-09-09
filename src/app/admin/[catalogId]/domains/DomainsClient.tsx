@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useTransition } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type { DomainRow } from "@/lib/supabase/types";
 import { addCustomDomain, removeDomain, updateSlug, type CustomDomainState, type SlugState } from "./actions";
 
@@ -52,9 +53,62 @@ function SubdomainCard({ catalogId, slug, rootHost }: { catalogId: string; slug:
   );
 }
 
-function CustomDomainRow({ catalogId, domain }: { catalogId: string; domain: DomainRow }) {
-  const [pending, startTransition] = useTransition();
-  const colors = STATUS_COLORS[domain.status];
+function isDomainStatus(value: unknown): value is DomainRow["status"] {
+  return value === "pending" || value === "verified" || value === "error";
+}
+
+function CustomDomainRow({
+  catalogId,
+  domain,
+  cnameTarget,
+}: {
+  catalogId: string;
+  domain: DomainRow;
+  cnameTarget: string;
+}) {
+  const router = useRouter();
+  const [removing, startRemove] = useTransition();
+  const [checking, setChecking] = useState(false);
+  const [status, setStatus] = useState<DomainRow["status"]>(domain.status);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const colors = STATUS_COLORS[status];
+
+  async function handleCheck() {
+    setChecking(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/domains/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domainId: domain.id }),
+      });
+      const data = (await res.json()) as {
+        status?: unknown;
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok || data.error) {
+        setError(data.error ?? "Could not check this domain. Try again.");
+        return;
+      }
+      if (isDomainStatus(data.status)) setStatus(data.status);
+      setMessage(data.message ?? "Check complete.");
+      router.refresh();
+    } catch {
+      setError("Could not reach the server. Try again.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  const feedbackColor =
+    error || status === "error"
+      ? "#b2432b"
+      : status === "verified"
+        ? "var(--cat-success-ink)"
+        : "var(--cat-muted)";
 
   return (
     <div className="rounded-2xl border border-[var(--cat-border)] p-[22px]">
@@ -66,23 +120,37 @@ function CustomDomainRow({ catalogId, domain }: { catalogId: string; domain: Dom
           className="rounded-full px-3 py-1.5 text-xs"
           style={{ color: colors.fg, background: colors.bg }}
         >
-          {STATUS_LABEL[domain.status]}
+          {STATUS_LABEL[status]}
         </span>
       </div>
       <p className="m-0 mt-2 text-[13px] leading-relaxed text-[var(--cat-muted)]">
-        Point this domain at your storefront with a CNAME record, then check back here — DNS
-        verification isn&rsquo;t automated yet in this build.
+        Point <span className="font-medium text-[var(--cat-ink)]">{domain.hostname}</span> at{" "}
+        <span className="font-medium text-[var(--cat-ink)]">{cnameTarget}</span> with a CNAME
+        record, then tap Check now.
       </p>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={pending}
-          onClick={() => startTransition(() => removeDomain(catalogId, domain.id))}
+          disabled={checking}
+          onClick={() => void handleCheck()}
           className="rounded-[10px] border border-[#d2d2d7] bg-white px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] disabled:opacity-50"
         >
-          {pending ? "Removing…" : "Remove domain"}
+          {checking ? "Checking…" : "Check now"}
+        </button>
+        <button
+          type="button"
+          disabled={removing}
+          onClick={() => startRemove(() => removeDomain(catalogId, domain.id))}
+          className="rounded-[10px] border border-[#d2d2d7] bg-white px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] disabled:opacity-50"
+        >
+          {removing ? "Removing…" : "Remove domain"}
         </button>
       </div>
+      {error || message ? (
+        <p className="m-0 mt-3 text-[13px] leading-relaxed" style={{ color: feedbackColor }}>
+          {error ?? message}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -119,18 +187,25 @@ export function DomainsClient({
   catalogId,
   slug,
   rootHost,
+  cnameTarget,
   customDomains,
 }: {
   catalogId: string;
   slug: string;
   rootHost: string;
+  cnameTarget: string;
   customDomains: DomainRow[];
 }) {
   return (
     <div className="flex max-w-[760px] flex-col gap-[18px]">
       <SubdomainCard catalogId={catalogId} slug={slug} rootHost={rootHost} />
       {customDomains.map((domain) => (
-        <CustomDomainRow key={domain.id} catalogId={catalogId} domain={domain} />
+        <CustomDomainRow
+          key={domain.id}
+          catalogId={catalogId}
+          domain={domain}
+          cnameTarget={cnameTarget}
+        />
       ))}
       <AddDomainCard catalogId={catalogId} />
     </div>

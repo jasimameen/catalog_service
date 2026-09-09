@@ -3,6 +3,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { getRootDomain } from "@/lib/tenant";
+import { getExpectedCnameTarget } from "@/lib/domains/provider";
 import type { DomainRow } from "@/lib/supabase/types";
 import { DomainsClient } from "./DomainsClient";
 
@@ -36,6 +37,7 @@ export default async function DomainsPage({ params }: { params: Promise<{ catalo
           catalogId={catalogId}
           slug={catalog.slug}
           rootHost={getRootDomain()}
+          cnameTarget={getExpectedCnameTarget()}
           customDomains={customDomains}
         />
       </div>

@@ -4,22 +4,10 @@
 Update the checklist below as work lands. Each phase is committed to git separately on the
 `saas-platform` branch so you can see exactly how far it got from `git log`.
 
-## ⏸ Resume point (session paused here — approaching usage limit)
+## ⏸ Resume point
 
-**All 10 phases are now done and committed** on `saas-platform` (`git log` shows every commit).
-`npx tsc --noEmit -p tsconfig.json` and `npx eslint .` both pass clean across the whole project
-as of the last commit. The Admin app and Catalog Builder wizard (built by two parallel
-subagents) finished successfully and were reviewed + verified together before committing.
-
-### The one known gap: Domains "Check now" isn't wired up
-
-`src/lib/domains/verify.ts` and `POST /api/admin/domains/verify` (the DNS-check endpoint) were
-built in this session, but the Admin agent building `src/app/admin/[catalogId]/domains/page.tsx`
-started before that endpoint existed, so its Domains page can add/remove/rename domains but has
-no "Check now" button calling it. **To finish:** open
-`src/app/admin/[catalogId]/domains/{page.tsx,DomainsClient.tsx}`, add a "Check now" button per
-custom domain that `POST`s to `/api/admin/domains/verify` with `{ domainId }`, and shows the
-returned `{ status, message }`. Small, self-contained — should take one focused pass.
+**All 10 phases are committed** on `saas-platform`, and the leftover Domains **"Check now"**
+button is wired to `POST /api/admin/domains/verify` (badge + inline `{ status, message }`).
 
 ### What's genuinely untested
 
@@ -132,8 +120,7 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
       account settings. Committed, type-checked, lint-clean.
 - [x] Phase 5 — Domains: `domains` table wiring (in schema.sql), manual DNS-check verifier
       (`src/lib/domains/dns.ts`), Vercel + Cloudflare provider modules, `/api/admin/domains/
-      verify` route. Type-checked. **Not yet called from the Admin Domains page** — see
-      "Resume point" above, this is the one remaining loose end.
+      verify` route. Type-checked. Admin Domains "Check now" now calls this endpoint.
 - [x] Phase 6 — Catalog Builder: 3-step wizard, responsive (edit/preview tabs on mobile instead
       of separate phone-chrome), publish flow writing to Supabase. Committed, type-checked.
 - [x] Phase 7 — Marketing site: Landing page (`src/app/page.tsx`), Templates gallery
@@ -143,8 +130,8 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
       project — do that as part of SETUP.md step 5 once a project exists.
 - [x] Phase 9 — Docs: `.env.example`, `SETUP.md`, `CLOUDFLARE.md`, `DEPLOY.md`. Committed.
 - [x] Phase 10 — Build/lint pass: `npx tsc --noEmit` and `npx eslint .` both clean across the
-      whole project. **Not done yet:** wire Domains "Check now" (above), and a real manual
-      click-through against a live Supabase project — do that next.
+      whole project. Domains "Check now" is wired. **Still untested:** a real click-through
+      against a live Supabase project — do that next (see Resume point).
 
 ## Known gaps (deliberately not built — flagging rather than silently skipping)
 
