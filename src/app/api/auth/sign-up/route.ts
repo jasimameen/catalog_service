@@ -1,9 +1,9 @@
 import { getServerSupabase } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { provisionAccount } from "@/lib/auth/provision";
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json({ error: "Supabase isn't configured yet. See SETUP.md." }, { status: 500 });
   }
 
@@ -26,7 +26,14 @@ export async function POST(request: Request) {
   }
 
   const supabase = await getServerSupabase();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { company_name: companyName },
+      emailRedirectTo: callbackUrl(request),
+    },
+  });
 
   if (error) {
     return Response.json({ error: error.message }, { status: 400 });
@@ -35,59 +42,31 @@ export async function POST(request: Request) {
     return Response.json({ error: "Could not create your account. Please try again." }, { status: 500 });
   }
 
-  if (!data.session) {
-    // Supabase project has "confirm email" turned on — the user must click
-    // the link in their inbox before a session (and account) is created.
-    // We provision the account+membership lazily on first successful sign-in
-    // instead (see /api/auth/sign-in), since we have no session to attach it
-    // to yet.
-    return Response.json({ ok: true, needsConfirmation: true });
+  // Empty identities = Supabase's anti-enumeration stub for an existing email.
+  // Don't create a real account row for that fake user id.
+  const realUser = Boolean(data.session || (data.user.identities && data.user.identities.length > 0));
+
+  if (realUser) {
+    const provisioned = await provisionAccount(data.user.id, companyName);
+    if (!provisioned && data.session) {
+      return Response.json(
+        { error: "Signed up, but couldn't set up your account. Check SUPABASE_SERVICE_ROLE_KEY (see SETUP.md)." },
+        { status: 500 }
+      );
+    }
   }
 
-  const provisioned = await provisionAccount(data.user.id, companyName);
-  if (!provisioned) {
-    return Response.json(
-      { error: "Signed up, but couldn't set up your account. Please try signing in." },
-      { status: 500 }
-    );
+  if (!data.session) {
+    return Response.json({ ok: true, needsConfirmation: true });
   }
 
   return Response.json({ ok: true, needsConfirmation: false });
 }
 
-/**
- * Creates the account + owner membership for a brand-new user. Uses the
- * service-role client since there's no INSERT policy on accounts/
- * account_members — regular app code never creates these except here and in
- * the sign-in fallback below.
- */
-export async function provisionAccount(userId: string, companyName: string): Promise<boolean> {
-  const service = getServiceClient();
-
-  const { data: existing } = await service
-    .from("account_members")
-    .select("account_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (existing) return true;
-
-  const { data: account, error: accountError } = await service
-    .from("accounts")
-    .insert({ name: companyName })
-    .select("id")
-    .single();
-  if (accountError || !account) {
-    console.error("provisionAccount: failed to create account", accountError);
-    return false;
-  }
-
-  const { error: memberError } = await service
-    .from("account_members")
-    .insert({ account_id: account.id, user_id: userId, role: "owner" });
-  if (memberError) {
-    console.error("provisionAccount: failed to create membership", memberError);
-    return false;
-  }
-
-  return true;
+function callbackUrl(request: Request): string {
+  const url = new URL(request.url);
+  const host = request.headers.get("x-forwarded-host") || url.host;
+  const proto =
+    request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "") || "http";
+  return `${proto}://${host}/auth/callback`;
 }

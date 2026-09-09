@@ -26,6 +26,8 @@ export type PublishResult =
   | { ok: true; catalogId: string; slug: string }
   | { ok: false; error: string; field?: "slug" | "items" };
 
+const TEMPLATES: CatalogTemplate[] = ["grid", "lookbook", "menu", "pricelist"];
+
 /**
  * Publishes the draft built in the wizard: inserts the `catalogs` row, then
  * bulk-inserts `catalog_items`. Runs as a Server Action so errors (in
@@ -39,8 +41,9 @@ export type PublishResult =
  * node_modules/next/dist/docs/01-app/02-guides/server-actions.md ("a
  * well-formed object can still refer to a row the caller does not own").
  */
+
 export async function publishCatalog(input: PublishInput): Promise<PublishResult> {
-  const account = await requireAccount();
+  const account = await requireAccount({ next: "/new" });
 
   const name = input.name.trim().slice(0, 120) || `${account.name}'s catalog`;
   const slug = normalizeSlug(input.slug);
@@ -66,6 +69,7 @@ export async function publishCatalog(input: PublishInput): Promise<PublishResult
 
   const accent = /^#[0-9a-fA-F]{6}$/.test(input.accent) ? input.accent : "#0b5fce";
   const orderEmail = input.orderEmail.trim() || null;
+  const template: CatalogTemplate = TEMPLATES.includes(input.template) ? input.template : "grid";
 
   const supabase = await getServerSupabase();
 
@@ -76,7 +80,7 @@ export async function publishCatalog(input: PublishInput): Promise<PublishResult
       name,
       slug,
       status: "live",
-      template: input.template as CatalogTemplate,
+      template,
       accent,
       currency: account.currency,
       order_email: orderEmail,

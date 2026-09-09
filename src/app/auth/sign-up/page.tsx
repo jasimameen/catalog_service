@@ -46,7 +46,7 @@ export default function SignUpPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">Check your email</h1>
         <p className="mt-3 text-sm leading-relaxed text-[#6e6e73]">
           We sent a confirmation link to <strong>{email}</strong>. Click it, then{" "}
-          <Link href="/auth/sign-in" className="font-medium text-[var(--cat-accent)]">
+          <Link href="/auth/sign-in?next=/new" className="font-medium text-[var(--cat-accent)]">
             sign in
           </Link>
           .

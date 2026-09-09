@@ -43,7 +43,13 @@ export function useSlugAvailability(rawSlug: string, active: boolean): SlugAvail
         .then((data) => {
           if (requestId.current !== thisRequest) return; // superseded by a newer keystroke
           const status: SlugAvailability =
-            data.reason === "invalid" ? "invalid" : data.available ? "available" : "taken";
+            data.reason === "invalid"
+              ? "invalid"
+              : data.reason === "error"
+                ? "idle"
+                : data.available
+                  ? "available"
+                  : "taken";
           setRemote({ slug, status });
         })
         .catch(() => {

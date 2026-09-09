@@ -8,6 +8,11 @@ import { BuilderClient } from "./BuilderClient";
 // should never serve a cached/static render.
 export const dynamic = "force-dynamic";
 
+function daysLeftOnTrial(trialEndsAt: string): number {
+  const ms = new Date(trialEndsAt).getTime() - Date.now();
+  return Number.isFinite(ms) ? Math.max(0, Math.ceil(ms / 86_400_000)) : 0;
+}
+
 /**
  * Thin server wrapper: resolves the signed-in account (redirects to
  * /auth/sign-in if there isn't one — requireAccount() does this; note
@@ -17,21 +22,14 @@ export const dynamic = "force-dynamic";
  * accent selection, live preview) lives in BuilderClient.
  */
 export default async function NewCatalogPage() {
-  const account = await requireAccount();
+  const account = await requireAccount({ next: "/new" });
 
   const supabase = await getServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Computed here (once per request, in a Server Component) rather than in
-  // BuilderClient with `Date.now()` at render time — the latter trips the
-  // react-hooks "purity" lint rule (impure call during render) and there's
-  // no need for it to be reactive on the client anyway.
-  const trialDaysLeft = Math.max(
-    0,
-    Math.ceil((new Date(account.trial_ends_at).getTime() - Date.now()) / 86_400_000)
-  );
+  const trialDaysLeft = daysLeftOnTrial(account.trial_ends_at);
 
   return (
     <BuilderClient

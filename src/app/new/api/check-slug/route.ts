@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!isSupabaseConfigured()) {
-    return Response.json({ available: false, reason: "error" }, { status: 500 });
+    return Response.json({ available: false, reason: "error" });
   }
 
   try {

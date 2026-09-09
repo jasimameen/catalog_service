@@ -4,14 +4,24 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
+function signInErrorFromQuery(error: string | null): string {
+  if (error === "no-account") {
+    return "We couldn't find an account for this login. Try signing up again.";
+  }
+  if (error === "confirm") {
+    return "That confirmation link didn't work. Sign in, or request a new one by signing up again.";
+  }
+  return "";
+}
+
 function SignInForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/admin";
+  const next = params.get("next");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => signInErrorFromQuery(params.get("error")));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,7 +31,7 @@ function SignInForm() {
       const res = await fetch("/api/auth/sign-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, next }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -29,7 +39,7 @@ function SignInForm() {
         setStatus("error");
         return;
       }
-      router.push(next);
+      router.push(typeof data.next === "string" && data.next.startsWith("/") ? data.next : "/admin");
       router.refresh();
     } catch {
       setError("Could not reach the server.");

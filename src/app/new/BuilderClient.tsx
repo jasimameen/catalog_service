@@ -43,7 +43,9 @@ export function BuilderClient({ account, trialDaysLeft, ownerEmail, rootDomain }
   const [template, setTemplate] = useState<CatalogTemplateKey>("grid");
   const [accent, setAccent] = useState("#0b5fce");
   const [catalogName, setCatalogName] = useState(`${account.name}'s catalog`);
-  const [subdomain, setSubdomain] = useState(() => normalizeSlug(account.name).slice(0, 30));
+  const [subdomain, setSubdomain] = useState(
+    () => normalizeSlug(account.name).slice(0, 30) || "catalog"
+  );
   const [orderEmail, setOrderEmail] = useState(ownerEmail);
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -80,6 +82,14 @@ export function BuilderClient({ account, trialDaysLeft, ownerEmail, rootDomain }
     }
     if (step === 2) {
       setStep(3);
+      return;
+    }
+    if (availability === "taken" || availability === "invalid") {
+      setPublishError(
+        availability === "taken"
+          ? "That address is taken — try another."
+          : "Pick an address using lowercase letters, numbers and dashes."
+      );
       return;
     }
     handlePublish();
@@ -213,7 +223,10 @@ export function BuilderClient({ account, trialDaysLeft, ownerEmail, rootDomain }
             <button
               type="button"
               onClick={goNext}
-              disabled={isPending}
+              disabled={
+                isPending ||
+                (step === 3 && (availability === "taken" || availability === "invalid"))
+              }
               className="w-full rounded-full bg-[#0b5fce] px-7 py-3 text-[15px] font-medium text-white disabled:opacity-60 sm:w-auto"
             >
               {stepMeta[step].nextLabel}

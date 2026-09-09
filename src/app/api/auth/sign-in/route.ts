@@ -1,13 +1,13 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { provisionAccount } from "../sign-up/route";
+import { companyNameFromUser, provisionAccount, safeNextPath } from "@/lib/auth/provision";
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json({ error: "Supabase isn't configured yet. See SETUP.md." }, { status: 500 });
   }
 
-  let body: { email?: string; password?: string };
+  let body: { email?: string; password?: string; next?: string };
   try {
     body = await request.json();
   } catch {
@@ -27,10 +27,25 @@ export async function POST(request: Request) {
     return Response.json({ error: "Incorrect email or password." }, { status: 401 });
   }
 
-  // Covers the "confirm email" flow: the account wasn't provisioned at
-  // sign-up time because there was no session yet, so do it on first
-  // successful sign-in instead. No-op if it already exists.
-  await provisionAccount(data.user.id, "My company");
+  const provisioned = await provisionAccount(data.user.id, companyNameFromUser(data.user));
+  if (!provisioned) {
+    return Response.json(
+      {
+        error:
+          "Signed in, but couldn't set up your account. Add SUPABASE_SERVICE_ROLE_KEY to .env.local (see SETUP.md).",
+      },
+      { status: 500 }
+    );
+  }
 
-  return Response.json({ ok: true });
+  const requested = safeNextPath(body.next, "");
+  if (requested) {
+    return Response.json({ ok: true, next: requested });
+  }
+
+  const { count } = await supabase
+    .from("catalogs")
+    .select("id", { count: "exact", head: true });
+
+  return Response.json({ ok: true, next: (count ?? 0) === 0 ? "/new" : "/admin" });
 }
