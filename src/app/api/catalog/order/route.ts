@@ -1,5 +1,5 @@
-import nodemailer from "nodemailer";
 import { getServiceClient } from "@/lib/supabase/service";
+import { sendMail } from "@/lib/mail";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { generateOrderReference, formatMoney } from "@/lib/catalog/currency";
 import type { OrderPayload } from "@/lib/catalog/order-types";
@@ -149,25 +149,14 @@ async function sendOrderEmail(args: {
   notes: string;
 }) {
   const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes } = args;
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE, ORDER_FROM_EMAIL } =
-    process.env;
   const toEmail = catalog.order_email;
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !toEmail) {
+  if (!toEmail) {
     // Order is already saved in Supabase and visible in the Admin inbox even
     // if email isn't configured for this catalog yet — don't fail the request.
-    console.warn(
-      `Catalog order ${reference}: email not sent (SMTP not configured, or catalog has no order_email).`
-    );
+    console.warn(`Catalog order ${reference}: email not sent (catalog has no order_email).`);
     return;
   }
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT ? Number(SMTP_PORT) : 587,
-    secure: SMTP_SECURE === "true",
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
 
   const itemRows = items
     .map(
@@ -226,13 +215,15 @@ Total: ${formatMoney(total, catalog.currency)}
   `;
 
   try {
-    await transporter.sendMail({
-      from: ORDER_FROM_EMAIL || SMTP_USER,
+    const sent = await sendMail({
       to: toEmail,
       subject: `New order ${reference} from ${shopName} (${phone})`,
       text: textBody,
       html: htmlBody,
     });
+    if (!sent) {
+      console.warn(`Catalog order ${reference}: email not sent (SMTP not configured).`);
+    }
   } catch (error) {
     // The order is already saved — a mail failure shouldn't fail the checkout
     // for the customer. It's still visible in the Admin inbox.

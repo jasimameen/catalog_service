@@ -1,6 +1,7 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { provisionAccount } from "@/lib/auth/provision";
+import { sendMail } from "@/lib/mail";
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
@@ -54,6 +55,9 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+    if (provisioned) {
+      await sendWelcomeEmail(email, companyName);
+    }
   }
 
   if (!data.session) {
@@ -69,4 +73,33 @@ function callbackUrl(request: Request): string {
   const proto =
     request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "") || "http";
   return `${proto}://${host}/auth/callback`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function sendWelcomeEmail(to: string, companyName: string) {
+  const company = companyName.trim() || "your company";
+  const subject = "Welcome to Instant Catalog";
+  const text = `Welcome to Instant Catalog.
+
+Your account for ${company} is ready. Sign in and start a catalog.
+
+— Instant Catalog`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:560px;">
+  <p style="margin:0 0 12px;">Welcome to Instant Catalog.</p>
+  <p style="margin:0 0 12px;">Your account for <strong>${escapeHtml(company)}</strong> is ready. Sign in and start a catalog.</p>
+  <p style="margin:0;color:#46505e;">— Instant Catalog</p>
+</div>`;
+
+  try {
+    await sendMail({ to, subject, text, html });
+  } catch (err) {
+    console.error("Welcome email failed", err);
+  }
 }
