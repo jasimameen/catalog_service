@@ -1,6 +1,9 @@
 import nodemailer from "nodemailer";
-import { PRODUCTS } from "@/data/catalog-products";
+import { getServiceClient } from "@/lib/supabase/service";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { generateOrderReference, formatMoney } from "@/lib/catalog/currency";
 import type { OrderPayload } from "@/lib/catalog/order-types";
+import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 
 function clean(value: unknown, max = 300): string {
   if (typeof value !== "string") return "";
@@ -8,6 +11,13 @@ function clean(value: unknown, max = 300): string {
 }
 
 export async function POST(request: Request) {
+  if (!isSupabaseConfigured()) {
+    return Response.json(
+      { error: "Ordering is not configured yet. See SETUP.md." },
+      { status: 500 }
+    );
+  }
+
   let body: OrderPayload;
   try {
     body = await request.json();
@@ -15,6 +25,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
 
+  const catalogId = clean(body.catalogId, 100);
   const shopName = clean(body.shopName, 120);
   const phone = clean(body.phone, 40);
   const location = clean(body.location, 300);
@@ -22,6 +33,9 @@ export async function POST(request: Request) {
   const notes = clean(body.notes, 500);
   const requestedItems = Array.isArray(body.items) ? body.items : [];
 
+  if (!catalogId) {
+    return Response.json({ error: "Missing catalog." }, { status: 400 });
+  }
   if (!shopName || !phone || !location) {
     return Response.json(
       { error: "Shop name, phone number, and location are required." },
@@ -29,16 +43,39 @@ export async function POST(request: Request) {
     );
   }
 
+  const supabase = getServiceClient();
+
+  const { data: catalogData, error: catalogError } = await supabase
+    .from("catalogs")
+    .select("*")
+    .eq("id", catalogId)
+    .eq("status", "live")
+    .maybeSingle();
+
+  const catalog = catalogData as CatalogRow | null;
+  if (catalogError || !catalog) {
+    return Response.json({ error: "This catalog is not available." }, { status: 404 });
+  }
+
+  const { data: itemRows } = await supabase
+    .from("catalog_items")
+    .select("*")
+    .eq("catalog_id", catalogId)
+    .eq("visible", true);
+
+  const catalogItems = (itemRows as CatalogItemRow[] | null) ?? [];
+
   // Recompute items from server-side catalog data — never trust client-sent prices.
   const items = requestedItems
     .map((entry) => {
-      const product = PRODUCTS.find((p) => p.code === entry.code);
+      const item = catalogItems.find((p) => p.code === entry.code);
       const qty = Math.floor(Number(entry.qty));
-      if (!product || !Number.isFinite(qty) || qty <= 0) return null;
+      if (!item || !Number.isFinite(qty) || qty <= 0) return null;
       return {
-        code: product.code,
-        category: product.category,
-        price: product.price,
+        code: item.code,
+        category: item.category,
+        name: item.name,
+        price: Number(item.price),
         qty,
       };
     })
@@ -49,24 +86,74 @@ export async function POST(request: Request) {
   }
 
   const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const reference = `KL-${Math.floor(1000 + Math.random() * 9000)}`;
+  const reference = generateOrderReference(catalog.slug);
 
-  const {
-    SMTP_HOST,
-    SMTP_PORT,
-    SMTP_USER,
-    SMTP_PASS,
-    SMTP_SECURE,
-    ORDER_FROM_EMAIL,
-    ORDER_TO_EMAIL,
-  } = process.env;
+  const { data: orderRow, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      catalog_id: catalogId,
+      reference,
+      shop_name: shopName,
+      phone,
+      location,
+      maps_link: mapsLink || null,
+      notes: notes || null,
+      subtotal: total,
+    })
+    .select("id")
+    .single();
 
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !ORDER_TO_EMAIL) {
-    console.error("Catalog order: SMTP environment variables are not configured.");
-    return Response.json(
-      { error: "Ordering is not configured yet. Please contact the shop directly." },
-      { status: 500 }
+  if (orderError || !orderRow) {
+    console.error("Catalog order: failed to save order", orderError);
+    return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
+  }
+
+  await supabase.from("order_items").insert(
+    items.map((item) => ({
+      order_id: orderRow.id,
+      code: item.code,
+      category: item.category,
+      name: item.name,
+      price: item.price,
+      qty: item.qty,
+      line_total: item.price * item.qty,
+    }))
+  );
+
+  await sendOrderEmail({ catalog, items, total, reference, shopName, phone, location, mapsLink, notes });
+
+  return Response.json({
+    ok: true,
+    total,
+    reference,
+    itemCount: items.reduce((s, i) => s + i.qty, 0),
+    lineCount: items.length,
+  });
+}
+
+async function sendOrderEmail(args: {
+  catalog: CatalogRow;
+  items: { code: string; name: string; price: number; qty: number }[];
+  total: number;
+  reference: string;
+  shopName: string;
+  phone: string;
+  location: string;
+  mapsLink: string;
+  notes: string;
+}) {
+  const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes } = args;
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE, ORDER_FROM_EMAIL } =
+    process.env;
+  const toEmail = catalog.order_email;
+
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !toEmail) {
+    // Order is already saved in Supabase and visible in the Admin inbox even
+    // if email isn't configured for this catalog yet — don't fail the request.
+    console.warn(
+      `Catalog order ${reference}: email not sent (SMTP not configured, or catalog has no order_email).`
     );
+    return;
   }
 
   const transporter = nodemailer.createTransport({
@@ -79,13 +166,11 @@ export async function POST(request: Request) {
   const itemRows = items
     .map(
       (item) =>
-        `${item.code} (${item.category}) — qty ${item.qty} × QAR ${item.price.toFixed(2)} = QAR ${(
-          item.price * item.qty
-        ).toFixed(2)}`
+        `${item.code} ${item.name} — qty ${item.qty} × ${formatMoney(item.price, catalog.currency)} = ${formatMoney(item.price * item.qty, catalog.currency)}`
     )
     .join("\n");
 
-  const textBody = `New Kleaner catalogue order — ${reference}
+  const textBody = `New ${catalog.name} order — ${reference}
 
 Shop name: ${shopName}
 Phone: ${phone}
@@ -94,28 +179,24 @@ ${mapsLink ? `Maps link: ${mapsLink}\n` : ""}${notes ? `Notes: ${notes}\n` : ""}
 Items:
 ${itemRows}
 
-Total: QAR ${total.toFixed(2)}
+Total: ${formatMoney(total, catalog.currency)}
 `;
 
   const itemRowsHtml = items
     .map(
       (item) => `<tr>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.code}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.category}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.name}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center;">${item.qty}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">QAR ${item.price.toFixed(
-          2
-        )}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">QAR ${(
-          item.price * item.qty
-        ).toFixed(2)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatMoney(item.price, catalog.currency)}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatMoney(item.price * item.qty, catalog.currency)}</td>
       </tr>`
     )
     .join("");
 
   const htmlBody = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:640px;">
-      <h2 style="margin:0 0 4px;">New Kleaner catalogue order</h2>
+      <h2 style="margin:0 0 4px;">New ${catalog.name} order</h2>
       <p style="margin:0 0 12px;color:#46505e;">Reference: <strong>${reference}</strong></p>
       <p style="margin:0 0 4px;"><strong>Shop name:</strong> ${shopName}</p>
       <p style="margin:0 0 4px;"><strong>Phone:</strong> ${phone}</p>
@@ -134,26 +215,21 @@ Total: QAR ${total.toFixed(2)}
         </thead>
         <tbody>${itemRowsHtml}</tbody>
       </table>
-      <p style="margin-top:16px;font-size:16px;"><strong>Total: QAR ${total.toFixed(2)}</strong></p>
+      <p style="margin-top:16px;font-size:16px;"><strong>Total: ${formatMoney(total, catalog.currency)}</strong></p>
     </div>
   `;
 
   try {
     await transporter.sendMail({
       from: ORDER_FROM_EMAIL || SMTP_USER,
-      to: ORDER_TO_EMAIL,
-      replyTo: undefined,
+      to: toEmail,
       subject: `New order ${reference} from ${shopName} (${phone})`,
       text: textBody,
       html: htmlBody,
     });
   } catch (error) {
-    console.error("Catalog order: failed to send email", error);
-    return Response.json(
-      { error: "Could not send the order. Please try again or contact the shop directly." },
-      { status: 502 }
-    );
+    // The order is already saved — a mail failure shouldn't fail the checkout
+    // for the customer. It's still visible in the Admin inbox.
+    console.error(`Catalog order ${reference}: failed to send email`, error);
   }
-
-  return Response.json({ ok: true, total, reference, itemCount: items.reduce((s, i) => s + i.qty, 0), lineCount: items.length });
 }

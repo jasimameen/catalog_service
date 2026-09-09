@@ -8,13 +8,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PRODUCTS } from "@/data/catalog-products";
-
-const STORAGE_KEY = "kleaner-catalog-cart";
+import type { StorefrontItem } from "./types";
 
 type CartMap = Record<string, number>;
 
 interface CartContextValue {
+  items: StorefrontItem[];
   quantities: CartMap;
   itemCount: number;
   lineCount: number;
@@ -27,10 +26,14 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function readStoredCart(): CartMap {
+function storageKey(catalogId: string) {
+  return `catalog-cart:${catalogId}`;
+}
+
+function readStoredCart(catalogId: string): CartMap {
   if (typeof window === "undefined") return {};
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(catalogId));
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return {};
@@ -40,23 +43,42 @@ function readStoredCart(): CartMap {
   }
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
+/**
+ * Cart state, scoped to one catalog (`catalogId`). Each tenant storefront
+ * mounts its own provider around itself, keyed by its own catalog id, so
+ * carts from different catalogs never mix in the same browser.
+ */
+export function CartProvider({
+  catalogId,
+  items,
+  children,
+}: {
+  catalogId: string;
+  items: StorefrontItem[];
+  children: ReactNode;
+}) {
   const [quantities, setQuantities] = useState<CartMap>({});
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setQuantities(readStoredCart());
+    // Deliberate: read localStorage after mount so server and first-client
+    // render both start from {} (avoids a hydration mismatch), then sync in
+    // the real cart. This is the documented exception to "don't setState in
+    // an effect" — synchronizing from an external store (localStorage) that
+    // isn't available during SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setQuantities(readStoredCart(catalogId));
     setHydrated(true);
-  }, []);
+  }, [catalogId]);
 
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(quantities));
+      window.localStorage.setItem(storageKey(catalogId), JSON.stringify(quantities));
     } catch {
       // ignore storage failures (private mode, quota, etc.)
     }
-  }, [quantities, hydrated]);
+  }, [quantities, hydrated, catalogId]);
 
   const setQuantity = (code: string, qty: number) => {
     setQuantities((prev) => {
@@ -93,18 +115,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     let lines = 0;
     let total = 0;
     for (const [code, qty] of Object.entries(quantities)) {
-      const product = PRODUCTS.find((p) => p.code === code);
-      if (!product || qty <= 0) continue;
+      const item = items.find((p) => p.code === code);
+      if (!item || qty <= 0) continue;
       count += qty;
       lines += 1;
-      total += product.price * qty;
+      total += item.price * qty;
     }
     return { itemCount: count, lineCount: lines, subtotal: total };
-  }, [quantities]);
+  }, [quantities, items]);
 
   return (
     <CartContext.Provider
       value={{
+        items,
         quantities,
         itemCount,
         lineCount,

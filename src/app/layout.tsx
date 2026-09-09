@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Archivo, IBM_Plex_Sans } from "next/font/google";
-import { CartProvider } from "@/lib/catalog/cart-context";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -15,40 +14,25 @@ const plexSans = IBM_Plex_Sans({
   weight: ["400", "500", "600"],
 });
 
-const title = "Kleaner Catalogue — Order Cleaning Supplies";
+const title = "Instant Catalog — Your catalog, live in five minutes";
 const description =
-  "Browse the full Kleaner cleaning products catalogue — mops, brooms, brushes, scourers, cloths and more. Add items to your order and we'll call to confirm stock and delivery.";
-
-const ogImage = "/catalog/brand/og-cover.jpg";
-const ogImageAlt =
-  "Flat-lay of Kleaner cleaning supplies — microfiber flat mop, folded microfiber cloths, scrub brush, sponges and squeegee.";
+  "Add your items, pick a template, share the link. Customers browse, add quantities and send an order — straight to your inbox and dashboard. No storefront to build, no developer.";
 
 export const metadata: Metadata = {
   title,
   description,
-  keywords: [
-    "Kleaner",
-    "cleaning supplies Qatar",
-    "cleaning products catalogue",
-    "wholesale cleaning supplies",
-    "mops and brooms",
-    "Citadel Trading",
-  ],
-  applicationName: "Kleaner Catalogue",
-  robots: { index: false, follow: false },
+  applicationName: "Instant Catalog",
+  robots: { index: true, follow: true },
   openGraph: {
     title,
     description,
     type: "website",
-    locale: "en_QA",
-    siteName: "Kleaner Catalogue",
-    images: [{ url: ogImage, width: 1200, height: 630, alt: ogImageAlt }],
+    siteName: "Instant Catalog",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title,
     description,
-    images: [{ url: ogImage, alt: ogImageAlt }],
   },
 };
 
@@ -56,12 +40,14 @@ export const viewport = {
   themeColor: "#0b5fce",
 };
 
+// NOTE: this layout wraps the marketing site, /admin and /auth. Tenant
+// storefronts (src/app/s/[host]/page.tsx) provide their own CartProvider
+// scoped to their own catalog id — cart state must never be shared between
+// two different tenants' storefronts in the same browser.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${archivo.variable} ${plexSans.variable} h-full`}>
-      <body className="min-h-full antialiased">
-        <CartProvider>{children}</CartProvider>
-      </body>
+      <body className="min-h-full antialiased">{children}</body>
     </html>
   );
 }
