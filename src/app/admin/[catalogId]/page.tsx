@@ -59,6 +59,12 @@ export default async function CatalogDashboardPage({
     supabase.from("catalog_items").select("code, image").eq("catalog_id", catalogId),
   ]);
 
+  const loadFailed = Boolean(
+    viewsThisMonthRes.error ||
+      ordersRes.error ||
+      itemsCountRes.error ||
+      recentOrdersRes.error,
+  );
   const viewsThisMonth = viewsThisMonthRes.count ?? 0;
   const orders = ordersRes.data ?? [];
   const orderCount = orders.length;
@@ -112,6 +118,9 @@ export default async function CatalogDashboardPage({
         account={account}
       />
       <div className="flex flex-col gap-6 p-4 pb-16 sm:p-8">
+        {loadFailed ? (
+          <p className="text-[13px] text-[#b2432b]">Could not load every dashboard figure. Refresh and try again.</p>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--cat-border)] p-5">
           <div>
             <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">Live at</p>
@@ -155,7 +164,9 @@ export default async function CatalogDashboardPage({
             </div>
             <div className="mt-3.5 flex flex-col">
               {recentOrders.length === 0 ? (
-                <p className="py-3 text-xs text-[var(--cat-muted)]">No orders yet.</p>
+                <p className="py-3 text-[13px] text-[var(--cat-muted)]">
+                  No orders yet. They will show up here when a shop places one.
+                </p>
               ) : (
                 recentOrders.map((order) => (
                   <Link
@@ -182,7 +193,9 @@ export default async function CatalogDashboardPage({
             <h3 className="m-0 text-[15px] font-semibold text-[var(--cat-ink)]">Most ordered items</h3>
             <div className="mt-3.5 flex flex-col gap-3">
               {topItems.length === 0 ? (
-                <p className="text-xs text-[var(--cat-muted)]">No orders yet.</p>
+                <p className="text-[13px] text-[var(--cat-muted)]">
+                  No orders yet. Most-ordered items will rank here.
+                </p>
               ) : (
                 topItems.map((item) => (
                   <div key={item.code} className="flex items-center gap-3">

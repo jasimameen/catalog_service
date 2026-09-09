@@ -11,7 +11,7 @@ export default async function ItemsPage({ params }: { params: Promise<{ catalogI
   const catalog = await getCatalogOrNotFound(catalogId);
   const supabase = await getServerSupabase();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("catalog_items")
     .select("*")
     .eq("catalog_id", catalogId)
@@ -23,6 +23,9 @@ export default async function ItemsPage({ params }: { params: Promise<{ catalogI
     <>
       <PageHeader title="Items" subtitle={`${catalog.name} · ${items.length} items`} account={account} />
       <div className="p-4 pb-16 sm:p-8">
+        {error ? (
+          <p className="mb-4 text-[13px] text-[#b2432b]">Could not load items. Refresh and try again.</p>
+        ) : null}
         <ItemsClient catalogId={catalogId} items={items} currency={catalog.currency} />
       </div>
     </>

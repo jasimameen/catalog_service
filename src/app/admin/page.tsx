@@ -46,13 +46,13 @@ export default async function CatalogsPage() {
   const account = await requireAccount();
   const supabase = await getServerSupabase();
 
-  const { data: catalogs } = await supabase
+  const { data: catalogs, error: catalogsError } = await supabase
     .from("catalogs")
     .select("*")
     .eq("account_id", account.id)
     .order("created_at", { ascending: false });
 
-  const cards = await loadCatalogCards((catalogs ?? []) as CatalogRow[]);
+  const cards = catalogsError ? [] : await loadCatalogCards((catalogs ?? []) as CatalogRow[]);
   const liveCount = cards.filter((c) => c.catalog.status === "live").length;
 
   return (
@@ -63,6 +63,9 @@ export default async function CatalogsPage() {
         account={account}
       />
       <div className="p-4 pb-16 sm:p-8">
+        {catalogsError ? (
+          <p className="mb-4 text-[13px] text-[#b2432b]">Could not load catalogs. Refresh and try again.</p>
+        ) : null}
         <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
           {cards.map(({ catalog, thumbs, itemCount, orderCount, viewCount }) => {
             const isLive = catalog.status === "live";

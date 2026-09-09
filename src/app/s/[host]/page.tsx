@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveCatalogByHost, recordCatalogView } from "@/lib/catalog/resolve";
@@ -6,11 +7,28 @@ import { StorefrontApp } from "@/components/storefront/StorefrontApp";
 
 export const dynamic = "force-dynamic";
 
+function decodeHost(hostParam: string): string {
+  try {
+    return decodeURIComponent(hostParam);
+  } catch {
+    return hostParam;
+  }
+}
+
+function storefrontReady(): boolean {
+  return isSupabaseConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
 async function loadCatalog(hostParam: string) {
-  const host = decodeURIComponent(hostParam);
-  if (!isSupabaseConfigured()) return { host, catalog: null, configured: false as const };
-  const catalog = await resolveCatalogByHost(host);
-  return { host, catalog, configured: true as const };
+  const host = decodeHost(hostParam);
+  if (!storefrontReady()) return { host, catalog: null, configured: false as const };
+  try {
+    const catalog = await resolveCatalogByHost(host);
+    return { host, catalog, configured: true as const };
+  } catch (error) {
+    console.error("Storefront: failed to load catalog", error);
+    return { host, catalog: null, configured: true as const };
+  }
 }
 
 export async function generateMetadata({
@@ -18,8 +36,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ host: string }>;
 }): Promise<Metadata> {
-  const { host } = await params;
-  const { catalog, configured } = await loadCatalog(host);
+  const { host: hostParam } = await params;
+  const { catalog, configured } = await loadCatalog(hostParam);
   if (!configured) return { title: "Not configured" };
   if (!catalog) return { title: "Catalog not found" };
   return {
@@ -33,14 +51,14 @@ export default async function StorefrontPage({
 }: {
   params: Promise<{ host: string }>;
 }) {
-  const { host } = await params;
-  const { catalog, configured } = await loadCatalog(host);
+  const { host: hostParam } = await params;
+  const { host, catalog, configured } = await loadCatalog(hostParam);
 
   if (!configured) {
     return (
       <NoticeScreen
         title="Supabase isn't configured yet"
-        body="This storefront can't load its catalog until NEXT_PUBLIC_SUPABASE_URL and the other Supabase env vars are set. See SETUP.md."
+        body="This storefront can't load its catalog until NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY are set. See SETUP.md."
       />
     );
   }
@@ -59,7 +77,7 @@ export default async function StorefrontPage({
   const style = {
     "--cat-accent": catalog.accent,
     "--cat-accent-dark": darken(catalog.accent),
-  } as React.CSSProperties;
+  } as CSSProperties;
 
   return (
     <div style={style}>

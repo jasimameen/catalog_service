@@ -1,46 +1,113 @@
 import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { subdomainSlugFor } from "@/lib/tenant";
-import type { StorefrontCatalog } from "./types";
+import type { CatalogTemplateKey, StorefrontCatalog } from "./types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 
+const TEMPLATE_KEYS = new Set<CatalogTemplateKey>(["grid", "lookbook", "menu", "pricelist"]);
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function hostWithoutPort(host: string): string {
+  const cut = host.lastIndexOf(":");
+  if (cut > 0 && /^\d+$/.test(host.slice(cut + 1))) return host.slice(0, cut);
+  return host;
+}
+
+/** `{slug}.localhost` in local browsers when ROOT_DOMAIN is the production apex. */
+function localhostDevSlug(hostNoPort: string): string | null {
+  if (!hostNoPort.endsWith(".localhost")) return null;
+  const slug = hostNoPort.slice(0, -".localhost".length);
+  if (!slug || slug.includes(".")) return null;
+  return slug;
+}
+
+function asTemplate(value: string): CatalogTemplateKey {
+  return TEMPLATE_KEYS.has(value as CatalogTemplateKey) ? (value as CatalogTemplateKey) : "grid";
+}
+
+async function fetchLiveBySlug(
+  supabase: ReturnType<typeof getServiceClient>,
+  slug: string,
+): Promise<CatalogRow | null> {
+  const { data } = await supabase
+    .from("catalogs")
+    .select("*")
+    .eq("slug", slug)
+    .eq("status", "live")
+    .maybeSingle();
+  return (data as CatalogRow | null) ?? null;
+}
+
+async function fetchLiveById(
+  supabase: ReturnType<typeof getServiceClient>,
+  id: string,
+): Promise<CatalogRow | null> {
+  const { data } = await supabase
+    .from("catalogs")
+    .select("*")
+    .eq("id", id)
+    .eq("status", "live")
+    .maybeSingle();
+  return (data as CatalogRow | null) ?? null;
+}
+
+function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): StorefrontCatalog {
+  return {
+    id: catalogRow.id,
+    name: catalogRow.name,
+    slug: catalogRow.slug,
+    template: asTemplate(catalogRow.template),
+    accent: catalogRow.accent,
+    currency: catalogRow.currency,
+    items: (items ?? []).map((row) => ({
+      id: row.id,
+      code: row.code,
+      category: row.category,
+      name: row.name,
+      description: row.description,
+      price: Number(row.price),
+      pack: row.pack,
+      image: row.image,
+    })),
+  };
+}
+
 /**
- * Resolves a Host header to a live catalog + its visible items, using the
- * service-role client (public visitors have no Supabase session, so RLS
- * would otherwise block every read). Returns null if there's no live
- * catalog for that host — the storefront page renders a friendly
- * "not available" screen in that case rather than a raw 404.
+ * Resolves a Host header (or `/s/[host]` param) to a live catalog + its
+ * visible items, using the service-role client (public visitors have no
+ * Supabase session, so RLS would otherwise block every read). Returns null
+ * if there's no live catalog for that host — the storefront page renders a
+ * friendly "not available" screen in that case rather than a raw 404.
  */
 export async function resolveCatalogByHost(host: string): Promise<StorefrontCatalog | null> {
   const supabase = getServiceClient();
-  const lowerHost = host.toLowerCase();
-  const slug = subdomainSlugFor(lowerHost);
+  const lowerHost = host.toLowerCase().trim();
+  const hostNoPort = hostWithoutPort(lowerHost);
 
   let catalogRow: CatalogRow | null = null;
 
+  const slug = subdomainSlugFor(lowerHost) ?? localhostDevSlug(hostNoPort);
   if (slug) {
-    const { data } = await supabase
-      .from("catalogs")
-      .select("*")
-      .eq("slug", slug)
-      .eq("status", "live")
-      .maybeSingle();
-    catalogRow = (data as CatalogRow | null) ?? null;
-  } else {
+    catalogRow = await fetchLiveBySlug(supabase, slug);
+  }
+
+  // `/s/acme` or `/s/{uuid}` on the root host — PLAN's catalogId path.
+  if (!catalogRow && !hostNoPort.includes(".")) {
+    catalogRow = UUID_RE.test(hostNoPort)
+      ? await fetchLiveById(supabase, hostNoPort)
+      : await fetchLiveBySlug(supabase, hostNoPort);
+  }
+
+  if (!catalogRow) {
     const { data: domain } = await supabase
       .from("domains")
       .select("catalog_id")
-      .eq("hostname", lowerHost)
+      .eq("hostname", hostNoPort)
       .eq("status", "verified")
       .maybeSingle();
     if (domain) {
-      const { data } = await supabase
-        .from("catalogs")
-        .select("*")
-        .eq("id", domain.catalog_id)
-        .eq("status", "live")
-        .maybeSingle();
-      catalogRow = (data as CatalogRow | null) ?? null;
+      catalogRow = await fetchLiveById(supabase, domain.catalog_id);
     }
   }
 
@@ -53,24 +120,7 @@ export async function resolveCatalogByHost(host: string): Promise<StorefrontCata
     .eq("visible", true)
     .order("position", { ascending: true });
 
-  return {
-    id: catalogRow.id,
-    name: catalogRow.name,
-    slug: catalogRow.slug,
-    template: catalogRow.template,
-    accent: catalogRow.accent,
-    currency: catalogRow.currency,
-    items: ((items as CatalogItemRow[] | null) ?? []).map((row) => ({
-      id: row.id,
-      code: row.code,
-      category: row.category,
-      name: row.name,
-      description: row.description,
-      price: Number(row.price),
-      pack: row.pack,
-      image: row.image,
-    })),
-  };
+  return toStorefront(catalogRow, (items as CatalogItemRow[] | null) ?? []);
 }
 
 /** Fire-and-forget page view counter for the Admin dashboard's "views" stat. */

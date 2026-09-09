@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useActionState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import type { CatalogItemRow } from "@/lib/supabase/types";
@@ -14,7 +14,8 @@ function VisibleToggle({
   item: CatalogItemRow;
 }) {
   const [pending, startTransition] = useTransition();
-  const [visible, setVisible] = useState(item.visible);
+  const [override, setOverride] = useState<boolean | null>(null);
+  const visible = override ?? item.visible;
 
   return (
     <button
@@ -22,8 +23,10 @@ function VisibleToggle({
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          setVisible((v) => !v);
-          await toggleItemVisible(catalogId, item.id, !visible);
+          const next = !visible;
+          setOverride(next);
+          const result = await toggleItemVisible(catalogId, item.id, next);
+          setOverride(result.error ? !next : null);
         })
       }
       className="text-xs font-medium disabled:opacity-50"
@@ -37,6 +40,10 @@ function VisibleToggle({
 function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () => void }) {
   const boundAction = useMemo(() => addItem.bind(null, catalogId), [catalogId]);
   const [state, formAction, pending] = useActionState<AddItemState, FormData>(boundAction, null);
+
+  useEffect(() => {
+    if (state?.saved) onClose();
+  }, [state, onClose]);
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
@@ -216,8 +223,10 @@ export function ItemsClient({
           <span>Visible</span>
         </div>
         {filtered.length === 0 ? (
-          <p className="p-[18px] text-xs text-[var(--cat-muted)]">
-            {items.length === 0 ? "No items yet." : "No items match your search."}
+          <p className="p-[18px] text-[13px] text-[var(--cat-muted)]">
+            {items.length === 0
+              ? "No items yet. Add one, or paste a list from a spreadsheet."
+              : "No items match your search."}
           </p>
         ) : (
           filtered.map((item) => (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -49,15 +48,11 @@ export function LookbookTemplate({
                     onClick={() => setSelected(item)}
                     className="relative block aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-[var(--cat-photo-bg)]"
                   >
-                    {item.image && (
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        sizes="(max-width: 640px) 100vw, 480px"
-                        className="object-contain"
-                      />
-                    )}
+                    {item.image ? (
+                      // User-pasted https/data URLs are not in next/image remotePatterns.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.image} alt={item.name} className="absolute inset-0 h-full w-full object-contain" />
+                    ) : null}
                   </button>
                   <h3 className="mt-5 text-xl font-semibold tracking-tight text-[var(--cat-ink)]">
                     {item.name}

@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/catalog/currency";
 export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [order, setOrder] = useState<OrderResult | null>(null);
-  const Template = TEMPLATE_COMPONENTS[catalog.template];
+  const Template = TEMPLATE_COMPONENTS[catalog.template] ?? TEMPLATE_COMPONENTS.grid;
 
   return (
     <CartProvider catalogId={catalog.id} items={catalog.items}>

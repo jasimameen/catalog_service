@@ -6,17 +6,18 @@ Update the checklist below as work lands. Each phase is committed to git separat
 
 ## ⏸ Resume point
 
-**All 10 phases are committed** on `saas-platform`, and the leftover Domains **"Check now"**
-button is wired to `POST /api/admin/domains/verify` (badge + inline `{ status, message }`).
+**All 10 phases are committed** on `saas-platform`. Domains **"Check now"** is wired to
+`POST /api/admin/domains/verify`. Auth, builder, admin, and storefront seams are also
+fixed (account provision + email callback, slug/publish guards, owned-catalog item
+writes, settings sync to catalogs, host resolve + cart/order types, tenant `/api`
+passthrough).
 
 ### What's genuinely untested
 
 Nothing here has run against a **real Supabase project** — this environment has no
-`.env.local`. Every "not configured" fallback path was verified (graceful errors, no crashes),
-but the actual sign-up → build a catalog → publish → place an order → see it in Admin flow has
-only been verified by reading the code and type-checking it, not by clicking through it. Do
-`SETUP.md` first (5 minutes: create a Supabase project, run `schema.sql` then `seed.sql`, fill
-`.env.local`), then click through that full flow once for real before calling this done.
+`.env.local`. Paste keys via [`SETUP.md`](SETUP.md) (create a project, run `schema.sql`
+then `seed.sql`, fill `.env.local`), then click through sign-up → build a catalog →
+publish → place an order → see it in Admin once for real.
 
 ### Known gaps (by design, see the section below for full detail)
 

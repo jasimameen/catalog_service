@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
@@ -30,14 +29,9 @@ export function ProductDetailModal({
       >
         <div className="relative aspect-[584/480] w-full shrink-0 bg-[var(--cat-photo-bg)] sm:aspect-auto sm:w-1/2">
           {item.image ? (
-            <Image
-              src={item.image}
-              alt={item.name}
-              fill
-              sizes="(max-width: 640px) 100vw, 400px"
-              className="object-contain"
-              priority
-            />
+            // User-pasted https/data URLs are not in next/image remotePatterns.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.image} alt={item.name} className="absolute inset-0 h-full w-full object-contain" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-[var(--cat-muted)]">
               No photo yet

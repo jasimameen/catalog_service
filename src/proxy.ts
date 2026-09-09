@@ -11,6 +11,13 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!isRootHost(host)) {
+    // Tenant hosts still serve /api/* (order submit) and Next internals on
+    // the same origin. Rewriting those to /s/[host] made checkout return
+    // HTML instead of JSON.
+    if (pathname.startsWith("/api/") || pathname.startsWith("/_next/")) {
+      return NextResponse.next();
+    }
+
     // Any other Host header is a tenant storefront — either {slug}.<root> or
     // a fully custom domain that's been added under Domains. Internally
     // rewrite to the catch-all storefront route; the visible URL in the
@@ -44,6 +51,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|catalog/|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|webm|txt)$).*)",
+    "/((?!_next/|api/|catalog/|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|webm|txt)$).*)",
   ],
 };

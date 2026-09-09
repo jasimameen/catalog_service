@@ -15,12 +15,15 @@ export function CopyLinkButton({
 
   async function handleClick() {
     try {
-      await navigator.clipboard.writeText(url);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        window.prompt("Copy this catalog link", url);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API unavailable (e.g. insecure context) — silently no-op,
-      // the URL is still visible on screen for manual copy.
+      window.prompt("Copy this catalog link", url);
     }
   }
 

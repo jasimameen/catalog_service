@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -85,7 +84,9 @@ export function GridTemplate({
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-5">
-        {totalMatches === 0 ? (
+        {catalog.items.length === 0 ? (
+          <p className="py-16 text-center text-sm text-[var(--cat-muted)]">No items yet.</p>
+        ) : totalMatches === 0 ? (
           <p className="py-16 text-center text-sm text-[var(--cat-muted)]">
             No products match your search.
           </p>
@@ -148,15 +149,11 @@ function GridCard({
         className="relative aspect-[584/480] w-full bg-[var(--cat-photo-bg)]"
         aria-label={`View details for ${item.name}`}
       >
-        {item.image && (
-          <Image
-            src={item.image}
-            alt={item.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
-            className="object-contain"
-          />
-        )}
+        {item.image ? (
+          // User-pasted https/data URLs are not in next/image remotePatterns.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.image} alt={item.name} className="absolute inset-0 h-full w-full object-contain" />
+        ) : null}
       </button>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <button type="button" onClick={() => onSelect(item)} className="text-left">

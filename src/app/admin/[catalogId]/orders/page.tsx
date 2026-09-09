@@ -136,19 +136,23 @@ export default async function OrdersPage({
             </div>
 
             <div className="mt-5 border-t border-[#f0f0f4]">
-              {lines.map((line) => (
-                <div key={line.id} className="flex items-center gap-3 border-b border-[#f0f0f4] py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="m-0 truncate text-[13px] font-medium text-[var(--cat-ink)]">{line.name}</p>
-                    <p className="m-0 mt-0.5 text-xs text-[#86868b]">
-                      {line.code} · {formatMoney(Number(line.price), catalog.currency)} × {line.qty}
-                    </p>
+              {lines.length === 0 ? (
+                <p className="py-3 text-xs text-[var(--cat-muted)]">No line items on this order.</p>
+              ) : (
+                lines.map((line) => (
+                  <div key={line.id} className="flex items-center gap-3 border-b border-[#f0f0f4] py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="m-0 truncate text-[13px] font-medium text-[var(--cat-ink)]">{line.name}</p>
+                      <p className="m-0 mt-0.5 text-xs text-[#86868b]">
+                        {line.code} · {formatMoney(Number(line.price), catalog.currency)} × {line.qty}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[13px] font-semibold text-[var(--cat-ink)]">
+                      {formatMoney(Number(line.line_total), catalog.currency)}
+                    </span>
                   </div>
-                  <span className="shrink-0 text-[13px] font-semibold text-[var(--cat-ink)]">
-                    {formatMoney(Number(line.line_total), catalog.currency)}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             <div className="mt-4 flex justify-between text-[16px] font-semibold text-[var(--cat-ink)]">

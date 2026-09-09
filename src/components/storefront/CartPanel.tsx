@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
 import type { OrderResult } from "@/lib/catalog/order-types";
@@ -72,17 +71,23 @@ export function CartPanel({
           items: cartItems.map(({ item, qty }) => ({ code: item.code, qty })),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMessage(data.error || "Something went wrong. Please try again.");
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        reference?: string;
+        total?: number;
+        itemCount?: number;
+        lineCount?: number;
+      } | null;
+      if (!res.ok || !data?.reference || typeof data.total !== "number") {
+        setErrorMessage(data?.error || "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }
       const result: OrderResult = {
         reference: data.reference,
         total: data.total,
-        itemCount: data.itemCount,
-        lineCount: data.lineCount,
+        itemCount: data.itemCount ?? 0,
+        lineCount: data.lineCount ?? 0,
         shopName,
         phone,
       };
@@ -147,9 +152,11 @@ export function CartPanel({
               {cartItems.map(({ item, qty }) => (
                 <li key={item.code} className="flex items-center gap-3 py-3">
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-[var(--cat-photo-bg)]">
-                    {item.image && (
-                      <Image src={item.image} alt={item.name} fill sizes="56px" className="object-contain" />
-                    )}
+                    {item.image ? (
+                      // User-pasted https/data URLs are not in next/image remotePatterns.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.image} alt={item.name} className="h-full w-full object-contain" />
+                    ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-[var(--cat-ink)]">{item.name}</p>

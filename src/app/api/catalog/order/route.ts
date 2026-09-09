@@ -11,7 +11,7 @@ function clean(value: unknown, max = 300): string {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json(
       { error: "Ordering is not configured yet. See SETUP.md." },
       { status: 500 }
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
   }
 
-  await supabase.from("order_items").insert(
+  const { error: itemsError } = await supabase.from("order_items").insert(
     items.map((item) => ({
       order_id: orderRow.id,
       code: item.code,
@@ -117,8 +117,14 @@ export async function POST(request: Request) {
       price: item.price,
       qty: item.qty,
       line_total: item.price * item.qty,
-    }))
+    })),
   );
+
+  if (itemsError) {
+    console.error("Catalog order: failed to save order items", itemsError);
+    await supabase.from("orders").delete().eq("id", orderRow.id);
+    return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
+  }
 
   await sendOrderEmail({ catalog, items, total, reference, shopName, phone, location, mapsLink, notes });
 
