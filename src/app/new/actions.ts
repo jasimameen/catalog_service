@@ -3,6 +3,7 @@
 import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
+import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 
 export interface PublishDraftItem {
@@ -123,5 +124,6 @@ export async function publishCatalog(input: PublishInput): Promise<PublishResult
     return { ok: false, error: "Couldn't save your items. Please try again." };
   }
 
+  revalidateStorefrontCatalog();
   return { ok: true, catalogId: catalog.id, slug: catalog.slug };
 }

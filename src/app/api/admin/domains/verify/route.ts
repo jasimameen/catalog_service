@@ -1,5 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import { verifyCustomDomain } from "@/lib/domains/verify";
+import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 
 /**
  * Triggers a DNS/provider verification check for one custom domain — the
@@ -29,5 +30,6 @@ export async function POST(request: Request) {
   }
 
   const result = await verifyCustomDomain(domainId);
+  if (result.status === "verified") revalidateStorefrontCatalog();
   return Response.json(result);
 }

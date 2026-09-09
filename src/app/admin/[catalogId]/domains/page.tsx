@@ -9,17 +9,19 @@ import { DomainsClient } from "./DomainsClient";
 
 export default async function DomainsPage({ params }: { params: Promise<{ catalogId: string }> }) {
   const { catalogId } = await params;
-  const account = await requireAccount();
-  const catalog = await getCatalogOrNotFound(catalogId);
   const supabase = await getServerSupabase();
 
-  const { data } = await supabase
-    .from("domains")
-    .select("*")
-    .eq("catalog_id", catalogId)
-    .eq("kind", "custom")
-    .order("created_at", { ascending: true });
-  const customDomains = (data ?? []) as DomainRow[];
+  const [account, catalog, domainsRes] = await Promise.all([
+    requireAccount(),
+    getCatalogOrNotFound(catalogId),
+    supabase
+      .from("domains")
+      .select("*")
+      .eq("catalog_id", catalogId)
+      .eq("kind", "custom")
+      .order("created_at", { ascending: true }),
+  ]);
+  const customDomains = (domainsRes.data ?? []) as DomainRow[];
 
   return (
     <>

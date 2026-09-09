@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -80,7 +81,7 @@ export function CartProvider({
     }
   }, [quantities, hydrated, catalogId]);
 
-  const setQuantity = (code: string, qty: number) => {
+  const setQuantity = useCallback((code: string, qty: number) => {
     setQuantities((prev) => {
       const next = { ...prev };
       if (qty <= 0) {
@@ -90,13 +91,13 @@ export function CartProvider({
       }
       return next;
     });
-  };
+  }, []);
 
-  const increment = (code: string) => {
+  const increment = useCallback((code: string) => {
     setQuantities((prev) => ({ ...prev, [code]: (prev[code] ?? 0) + 1 }));
-  };
+  }, []);
 
-  const decrement = (code: string) => {
+  const decrement = useCallback((code: string) => {
     setQuantities((prev) => {
       const current = prev[code] ?? 0;
       if (current <= 1) {
@@ -106,9 +107,9 @@ export function CartProvider({
       }
       return { ...prev, [code]: current - 1 };
     });
-  };
+  }, []);
 
-  const clear = () => setQuantities({});
+  const clear = useCallback(() => setQuantities({}), []);
 
   const { itemCount, lineCount, subtotal } = useMemo(() => {
     let count = 0;
@@ -124,23 +125,22 @@ export function CartProvider({
     return { itemCount: count, lineCount: lines, subtotal: total };
   }, [quantities, items]);
 
-  return (
-    <CartContext.Provider
-      value={{
-        items,
-        quantities,
-        itemCount,
-        lineCount,
-        subtotal,
-        setQuantity,
-        increment,
-        decrement,
-        clear,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  const value = useMemo(
+    () => ({
+      items,
+      quantities,
+      itemCount,
+      lineCount,
+      subtotal,
+      setQuantity,
+      increment,
+      decrement,
+      clear,
+    }),
+    [items, quantities, itemCount, lineCount, subtotal, setQuantity, increment, decrement, clear],
   );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

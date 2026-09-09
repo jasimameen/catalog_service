@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { ACCENT_COLORS, TEMPLATES } from "@/lib/catalog/templates";
@@ -15,6 +16,7 @@ function revalidateCatalog(catalogId: string, slug: string) {
   revalidatePath(`/admin/${catalogId}`);
   revalidatePath("/admin");
   revalidatePath(`/s/${slug}`);
+  revalidateStorefrontCatalog();
 }
 
 export async function updateCatalogLook(

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { cache } from "react";
 import type { Metadata } from "next";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { resolveCatalogByHost, recordCatalogView } from "@/lib/catalog/resolve";
@@ -19,7 +20,7 @@ function storefrontReady(): boolean {
   return isSupabaseConfigured() && hasSupabaseSecretKey();
 }
 
-async function loadCatalog(hostParam: string) {
+const loadCatalog = cache(async (hostParam: string) => {
   const host = decodeHost(hostParam);
   if (!storefrontReady()) return { host, catalog: null, configured: false as const };
   try {
@@ -29,7 +30,7 @@ async function loadCatalog(hostParam: string) {
     console.error("Storefront: failed to load catalog", error);
     return { host, catalog: null, configured: true as const };
   }
-}
+});
 
 export async function generateMetadata({
   params,

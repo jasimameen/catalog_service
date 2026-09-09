@@ -31,7 +31,14 @@ export function ProductDetailModal({
           {item.image ? (
             // User-pasted https/data URLs are not in next/image remotePatterns.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.image} alt={item.name} className="absolute inset-0 h-full w-full object-contain" />
+            <img
+              src={item.image}
+              alt={item.name}
+              width={584}
+              height={480}
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-[var(--cat-muted)]">
               No photo yet

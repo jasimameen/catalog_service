@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { generateItemCode } from "@/app/admin/_lib/urls";
@@ -12,6 +13,7 @@ function revalidateItems(catalogId: string) {
   revalidatePath(`/admin/${catalogId}/items`);
   revalidatePath(`/admin/${catalogId}`);
   revalidatePath("/admin");
+  revalidateStorefrontCatalog();
 }
 
 async function ownedCatalog(catalogId: string) {

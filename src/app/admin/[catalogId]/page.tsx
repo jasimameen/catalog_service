@@ -23,11 +23,11 @@ export default async function CatalogDashboardPage({
   params: Promise<{ catalogId: string }>;
 }) {
   const { catalogId } = await params;
-  const account = await requireAccount();
-  const catalog = await getCatalogOrNotFound(catalogId);
   const supabase = await getServerSupabase();
 
   const [
+    account,
+    catalog,
     viewsThisMonthRes,
     ordersRes,
     itemsCountRes,
@@ -36,6 +36,8 @@ export default async function CatalogDashboardPage({
     allOrderIdsRes,
     catalogItemsRes,
   ] = await Promise.all([
+    requireAccount(),
+    getCatalogOrNotFound(catalogId),
     supabase
       .from("catalog_views")
       .select("*", { count: "exact", head: true })
@@ -211,7 +213,15 @@ export default async function CatalogDashboardPage({
                     <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[var(--cat-photo-bg)]">
                       {item.image ? (
                         // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided image URLs
-                        <img src={item.image} alt="" className="h-full w-full object-contain" />
+                        <img
+                          src={item.image}
+                          alt=""
+                          width={40}
+                          height={40}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-contain"
+                        />
                       ) : null}
                     </div>
                     <div className="min-w-0 flex-1">

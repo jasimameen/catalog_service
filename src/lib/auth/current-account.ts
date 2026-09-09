@@ -1,9 +1,23 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { AccountRow } from "@/lib/supabase/types";
 import { companyNameFromUser, provisionAccount, safeNextPath } from "./provision";
+
+/** One auth.getUser() per request — shared by requireAccount and /new. */
+export const getSessionUser = cache(async (): Promise<User | null> => {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = await getServerSupabase();
+    const { data } = await supabase.auth.getUser();
+    return data.user;
+  } catch {
+    return null;
+  }
+});
 
 /**
  * Resolves the signed-in user's account for use in Server Components /
@@ -15,8 +29,12 @@ import { companyNameFromUser, provisionAccount, safeNextPath } from "./provision
  * team invites aren't built), so "the user's account" is unambiguous.
  */
 export async function requireAccount(options?: { next?: string }): Promise<AccountRow> {
-  const signIn = options?.next
-    ? `/auth/sign-in?next=${encodeURIComponent(safeNextPath(options.next, "/admin"))}`
+  return loadRequiredAccount(options?.next);
+}
+
+const loadRequiredAccount = cache(async (next?: string): Promise<AccountRow> => {
+  const signIn = next
+    ? `/auth/sign-in?next=${encodeURIComponent(safeNextPath(next, "/admin"))}`
     : "/auth/sign-in";
 
   if (!isSupabaseConfigured()) {
@@ -24,11 +42,10 @@ export async function requireAccount(options?: { next?: string }): Promise<Accou
   }
 
   let supabase;
-  let user;
+  let user: User | null;
   try {
     supabase = await getServerSupabase();
-    const result = await supabase.auth.getUser();
-    user = result.data.user;
+    user = await getSessionUser();
   } catch {
     redirect(signIn);
   }
@@ -53,7 +70,7 @@ export async function requireAccount(options?: { next?: string }): Promise<Accou
   throw new Error(
     "Your login worked, but the account could not be created. Add SUPABASE_SECRET_KEY to .env.local (see SETUP.md) and try again."
   );
-}
+});
 
 async function loadAccount(
   supabase: Awaited<ReturnType<typeof getServerSupabase>>,

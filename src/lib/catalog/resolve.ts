@@ -1,9 +1,12 @@
 import "server-only";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { getServiceClient } from "@/lib/supabase/service";
 import { subdomainSlugFor } from "@/lib/tenant";
 import type { CatalogTemplateKey, StorefrontCatalog } from "./types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 import { parseCheckoutFields } from "./checkout-fields";
+import { STOREFRONT_CATALOG_CACHE_TAG } from "./storefront-cache";
 
 const TEMPLATE_KEYS = new Set<CatalogTemplateKey>(["grid", "lookbook", "menu", "pricelist"]);
 const UUID_RE =
@@ -82,7 +85,7 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
  * if there's no live catalog for that host — the storefront page renders a
  * friendly "not available" screen in that case rather than a raw 404.
  */
-export async function resolveCatalogByHost(host: string): Promise<StorefrontCatalog | null> {
+async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCatalog | null> {
   const supabase = getServiceClient();
   const lowerHost = host.toLowerCase().trim();
   const hostNoPort = hostWithoutPort(lowerHost);
@@ -124,6 +127,20 @@ export async function resolveCatalogByHost(host: string): Promise<StorefrontCata
 
   return toStorefront(catalogRow, (items as CatalogItemRow[] | null) ?? []);
 }
+
+const getCachedCatalogByHost = unstable_cache(
+  async (host: string) => resolveCatalogByHostUncached(host),
+  ["storefront-catalog-by-host"],
+  { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
+);
+
+/**
+ * Request-deduped + short-TTL cached live catalog for a Host header.
+ * Writes (orders, views) must not go through this path.
+ */
+export const resolveCatalogByHost = cache(async (host: string): Promise<StorefrontCatalog | null> => {
+  return getCachedCatalogByHost(host.toLowerCase().trim());
+});
 
 /** Fire-and-forget page view counter for the Admin dashboard's "views" stat. */
 export async function recordCatalogView(catalogId: string): Promise<void> {

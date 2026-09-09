@@ -1,5 +1,4 @@
-import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { getRootDomain } from "@/lib/tenant";
 import { BuilderClient } from "./BuilderClient";
 
@@ -23,11 +22,7 @@ function daysLeftOnTrial(trialEndsAt: string): number {
  */
 export default async function NewCatalogPage() {
   const account = await requireAccount({ next: "/new" });
-
-  const supabase = await getServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   const trialDaysLeft = daysLeftOnTrial(account.trial_ends_at);
 

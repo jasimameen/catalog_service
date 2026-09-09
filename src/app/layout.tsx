@@ -6,12 +6,14 @@ const archivo = Archivo({
   variable: "--kl-font-display",
   subsets: ["latin"],
   weight: ["600", "700"],
+  display: "swap",
 });
 
 const plexSans = IBM_Plex_Sans({
   variable: "--kl-font-body",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 const title = "Instant Catalog — Your catalog, live in five minutes";

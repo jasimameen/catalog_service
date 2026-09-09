@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
@@ -10,7 +11,7 @@ import type { Database } from "./database";
  * user's own JWT, so Postgres RLS enforces "only this account's data" —
  * there is no separate authorization check to forget.
  */
-export async function getServerSupabase() {
+export const getServerSupabase = cache(async () => {
   const cookieStore = await cookies();
   return createServerClient<Database>(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
@@ -30,4 +31,4 @@ export async function getServerSupabase() {
       },
     },
   });
-}
+});

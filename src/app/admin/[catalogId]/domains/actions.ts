@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
+import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 
 export type SlugState = { error?: string } | null;
 
@@ -32,6 +33,7 @@ export async function updateSlug(
   revalidatePath(`/admin/${catalogId}/domains`);
   revalidatePath(`/admin/${catalogId}`);
   revalidatePath("/admin");
+  revalidateStorefrontCatalog();
   return null;
 }
 
@@ -66,6 +68,7 @@ export async function addCustomDomain(
   }
 
   revalidatePath(`/admin/${catalogId}/domains`);
+  revalidateStorefrontCatalog();
   return null;
 }
 
@@ -73,4 +76,5 @@ export async function removeDomain(catalogId: string, domainId: string) {
   const supabase = await getServerSupabase();
   await supabase.from("domains").delete().eq("id", domainId).eq("catalog_id", catalogId);
   revalidatePath(`/admin/${catalogId}/domains`);
+  revalidateStorefrontCatalog();
 }

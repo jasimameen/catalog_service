@@ -67,7 +67,7 @@ export default async function CatalogsPage() {
           <p className="mb-4 text-[13px] text-[#b2432b]">Could not load catalogs. Refresh and try again.</p>
         ) : null}
         <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map(({ catalog, thumbs, itemCount, orderCount, viewCount }) => {
+          {cards.map(({ catalog, thumbs, itemCount, orderCount, viewCount }, cardIndex) => {
             const isLive = catalog.status === "live";
             const meta = isLive
               ? `${itemCount} items · ${orderCount} orders · ${viewCount} views`
@@ -90,7 +90,15 @@ export default async function CatalogsPage() {
                       >
                         {image ? (
                           // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided image URLs
-                          <img src={image} alt="" className="h-full w-full object-contain" />
+                          <img
+                            src={image}
+                            alt=""
+                            width={160}
+                            height={120}
+                            loading={cardIndex === 0 ? "eager" : "lazy"}
+                            decoding="async"
+                            className="h-full w-full object-contain"
+                          />
                         ) : null}
                       </div>
                     );

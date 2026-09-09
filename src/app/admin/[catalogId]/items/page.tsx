@@ -7,17 +7,20 @@ import { ItemsClient } from "./ItemsClient";
 
 export default async function ItemsPage({ params }: { params: Promise<{ catalogId: string }> }) {
   const { catalogId } = await params;
-  const account = await requireAccount();
-  const catalog = await getCatalogOrNotFound(catalogId);
   const supabase = await getServerSupabase();
 
-  const { data, error } = await supabase
-    .from("catalog_items")
-    .select("*")
-    .eq("catalog_id", catalogId)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
-  const items = (data ?? []) as CatalogItemRow[];
+  const [account, catalog, itemsRes] = await Promise.all([
+    requireAccount(),
+    getCatalogOrNotFound(catalogId),
+    supabase
+      .from("catalog_items")
+      .select("*")
+      .eq("catalog_id", catalogId)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true }),
+  ]);
+  const items = (itemsRes.data ?? []) as CatalogItemRow[];
+  const error = itemsRes.error;
 
   return (
     <>

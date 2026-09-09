@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useActionState } from "react";
+import dynamic from "next/dynamic";
 import { formatMoney } from "@/lib/catalog/currency";
 import type { CatalogItemRow } from "@/lib/supabase/types";
 import { addItem, pasteImportItems, toggleItemVisible, type AddItemState, type PasteImportState } from "./actions";
-import { UploadImportModal } from "./UploadImportModal";
+
+const UploadImportModal = dynamic(
+  () => import("./UploadImportModal").then((mod) => mod.UploadImportModal),
+  { ssr: false },
+);
 
 function VisibleToggle({
   catalogId,
@@ -278,7 +283,7 @@ export function ItemsClient({
               : "No items match your search."}
           </p>
         ) : (
-          filtered.map((item) => (
+          filtered.map((item, index) => (
             <div
               key={item.id}
               className="grid grid-cols-[56px_minmax(0,2fr)_1fr_1fr_70px] items-center gap-3 border-b border-[#f0f0f4] px-[18px] py-2.5 last:border-b-0 sm:grid-cols-[56px_minmax(0,2fr)_1fr_1fr_90px]"
@@ -286,7 +291,15 @@ export function ItemsClient({
               <div className="h-10 w-10 overflow-hidden rounded-lg bg-[var(--cat-photo-bg)]">
                 {item.image ? (
                   // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided image URLs
-                  <img src={item.image} alt="" className="h-full w-full object-contain" />
+                  <img
+                    src={item.image}
+                    alt=""
+                    width={40}
+                    height={40}
+                    loading={index < 12 ? "eager" : "lazy"}
+                    decoding="async"
+                    className="h-full w-full object-contain"
+                  />
                 ) : null}
               </div>
               <div className="min-w-0">

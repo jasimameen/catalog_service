@@ -28,18 +28,15 @@ export default async function OrdersPage({
   params: Promise<{ catalogId: string }>;
   searchParams: Promise<{ order?: string }>;
 }) {
-  const { catalogId } = await params;
-  const { order: selectedOrderId } = await searchParams;
-  const account = await requireAccount();
-  const catalog = await getCatalogOrNotFound(catalogId);
+  const [{ catalogId }, { order: selectedOrderId }] = await Promise.all([params, searchParams]);
   const supabase = await getServerSupabase();
 
-  const { data: ordersData } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("catalog_id", catalogId)
-    .order("created_at", { ascending: false });
-  const orders = (ordersData ?? []) as OrderRow[];
+  const [account, catalog, ordersRes] = await Promise.all([
+    requireAccount(),
+    getCatalogOrNotFound(catalogId),
+    supabase.from("orders").select("*").eq("catalog_id", catalogId).order("created_at", { ascending: false }),
+  ]);
+  const orders = (ordersRes.data ?? []) as OrderRow[];
 
   const openOrder = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : orders[0];
 

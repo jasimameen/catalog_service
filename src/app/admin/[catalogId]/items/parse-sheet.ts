@@ -1,4 +1,3 @@
-import Papa from "papaparse";
 import type { ImportField, ImportFieldOrSkip, MappedImportRow } from "@/lib/catalog/import-map";
 import { guessField, parsePrice, IMPORT_ROW_LIMIT } from "@/lib/catalog/import-map";
 
@@ -22,7 +21,8 @@ export async function parseCatalogFile(file: File): Promise<ParsedSheet> {
   return parseCsv(file);
 }
 
-function parseCsv(file: File): Promise<ParsedSheet> {
+async function parseCsv(file: File): Promise<ParsedSheet> {
+  const Papa = (await import("papaparse")).default;
   return new Promise((resolve, reject) => {
     Papa.parse<string[]>(file, {
       header: false,

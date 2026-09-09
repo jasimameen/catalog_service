@@ -39,7 +39,7 @@ export function LookbookTemplate({
           <p className="mt-16 text-sm text-[var(--cat-muted)]">No items yet.</p>
         ) : (
           <div className="mt-12 grid grid-cols-1 gap-10 sm:grid-cols-2">
-            {catalog.items.map((item) => {
+            {catalog.items.map((item, index) => {
               const qty = quantities[item.code] ?? 0;
               return (
                 <div key={item.code}>
@@ -51,7 +51,15 @@ export function LookbookTemplate({
                     {item.image ? (
                       // User-pasted https/data URLs are not in next/image remotePatterns.
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.image} alt={item.name} className="absolute inset-0 h-full w-full object-contain" />
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        width={800}
+                        height={600}
+                        loading={index < 2 ? "eager" : "lazy"}
+                        decoding="async"
+                        className="absolute inset-0 h-full w-full object-contain"
+                      />
                     ) : null}
                   </button>
                   <h3 className="mt-5 text-xl font-semibold tracking-tight text-[var(--cat-ink)]">

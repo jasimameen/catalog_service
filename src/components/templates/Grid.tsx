@@ -92,28 +92,34 @@ export function GridTemplate({
           </p>
         ) : (
           <div className="space-y-8 pb-28">
-            {sections.map(({ group, items }) => (
-              <section key={group}>
-                {showGroupHeaders && (
-                  <div className="mb-3 flex items-baseline gap-2 border-b border-[var(--cat-border)] pb-2">
-                    <h2 className="font-catalog-display text-lg font-bold text-[var(--cat-ink)]">
-                      {group}
-                    </h2>
-                    <span className="text-sm text-[var(--cat-muted)]">{items.length} items</span>
+            {sections.map(({ group, items }, sectionIndex) => {
+              const priorCount = sections
+                .slice(0, sectionIndex)
+                .reduce((sum, section) => sum + section.items.length, 0);
+              return (
+                <section key={group}>
+                  {showGroupHeaders && (
+                    <div className="mb-3 flex items-baseline gap-2 border-b border-[var(--cat-border)] pb-2">
+                      <h2 className="font-catalog-display text-lg font-bold text-[var(--cat-ink)]">
+                        {group}
+                      </h2>
+                      <span className="text-sm text-[var(--cat-muted)]">{items.length} items</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {items.map((item, itemIndex) => (
+                      <GridCard
+                        key={item.code}
+                        item={item}
+                        currency={catalog.currency}
+                        eager={priorCount + itemIndex < 8}
+                        onSelect={setSelected}
+                      />
+                    ))}
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {items.map((item) => (
-                    <GridCard
-                      key={item.code}
-                      item={item}
-                      currency={catalog.currency}
-                      onSelect={setSelected}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
+                </section>
+              );
+            })}
           </div>
         )}
       </div>
@@ -132,10 +138,12 @@ export function GridTemplate({
 function GridCard({
   item,
   currency,
+  eager,
   onSelect,
 }: {
   item: StorefrontItem;
   currency: string;
+  eager?: boolean;
   onSelect: (item: StorefrontItem) => void;
 }) {
   const { quantities, increment, decrement, setQuantity } = useCart();
@@ -152,7 +160,15 @@ function GridCard({
         {item.image ? (
           // User-pasted https/data URLs are not in next/image remotePatterns.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.image} alt={item.name} className="absolute inset-0 h-full w-full object-contain" />
+          <img
+            src={item.image}
+            alt={item.name}
+            width={584}
+            height={480}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-contain"
+          />
         ) : null}
       </button>
       <div className="flex flex-1 flex-col gap-2 p-3">
