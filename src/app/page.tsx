@@ -1,13 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
+import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { MONTHLY_PRICE_USD } from "@/lib/billing/plan";
+import { PRODUCT_DOMAIN, PRODUCT_NAME_LONG } from "@/lib/brand";
 import { TEMPLATES } from "@/lib/catalog/templates";
 
 // Display-only — the product's intended home once its domain is pointed at
 // this app (see PLAN.md / CLOUDFLARE.md). Routing itself follows
 // NEXT_PUBLIC_ROOT_DOMAIN, which defaults to localhost in dev.
-const PRODUCT_DOMAIN = "catalog.hevyf.com";
 const MONTHLY_PRICE = MONTHLY_PRICE_USD;
 const TRIAL_DAYS = 14;
 
@@ -32,7 +33,10 @@ export default function LandingPage() {
       <MarketingHeader variant="home" />
 
       <section className="mx-auto max-w-[1120px] px-6 pt-24 text-center">
-        <p className="mb-4 text-[15px] text-[#6e6e73]">For suppliers, shops, kitchens and distributors</p>
+        <p className="mb-4 text-[15px] text-[#6e6e73]">
+          <span className="font-medium text-[#1d1d1f]">{PRODUCT_NAME_LONG}</span>
+          {" · For suppliers, shops, kitchens and distributors"}
+        </p>
         <h1 className="mx-auto text-balance text-[clamp(40px,6.4vw,76px)] font-semibold leading-[1.04] tracking-[-0.035em]">
           Your catalog, live in
           <br />
@@ -251,18 +255,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="mt-28 border-t border-[#e8e8ed] px-6 pb-16 pt-10">
-        <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4">
-          <p className="text-xs text-[#86868b]">
-            {PRODUCT_DOMAIN} · Made for people who sell from a list.
-          </p>
-          <div className="flex gap-5 text-xs">
-            <a href="#templates">Templates</a>
-            <a href="#pricing">Pricing</a>
-            <Link href="/admin">Dashboard</Link>
-          </div>
-        </div>
-      </footer>
+      <div className="mt-28">
+        <MarketingFooter variant="home" />
+      </div>
     </div>
   );
 }

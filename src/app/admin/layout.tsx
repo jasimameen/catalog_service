@@ -10,7 +10,9 @@ import {
   isPaid,
   trialDaysLeft,
 } from "@/lib/billing/status";
+import { CatalogLogo } from "@/components/brand/CatalogLogo";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { PRODUCT_NAME } from "@/lib/brand";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
 
@@ -82,14 +84,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen flex-col bg-white md:flex-row">
       <aside className="flex shrink-0 flex-row items-center gap-4 border-b border-[var(--cat-border)] bg-[#fbfbfd] p-3.5 print:hidden md:w-[236px] md:flex-col md:items-stretch md:border-b-0 md:border-r">
-        <div className="flex items-center gap-2.5 px-2">
-          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-[var(--cat-ink)] text-xs font-semibold text-white">
-            C
-          </span>
+        <Link href="/admin" className="flex items-center gap-2.5 px-2">
+          <CatalogLogo size={28} />
           <span className="hidden text-[14px] font-semibold tracking-tight text-[var(--cat-ink)] md:inline">
-            Catalog
+            {PRODUCT_NAME}
           </span>
-        </div>
+        </Link>
 
         <NewCatalogLink />
 

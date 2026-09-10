@@ -5,6 +5,7 @@ import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { CartProvider } from "@/lib/catalog/cart-context";
 import { TEMPLATE_COMPONENTS } from "@/components/templates";
 import { CartPanel } from "./CartPanel";
+import { StorefrontWatermark } from "./StorefrontWatermark";
 import type { OrderResult } from "@/lib/catalog/order-types";
 import { formatMoney } from "@/lib/catalog/currency";
 
@@ -43,10 +44,12 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
           >
             Back to catalogue
           </button>
+          <StorefrontWatermark />
         </main>
       ) : (
         <main>
           <Template catalog={catalog} onOpenCart={() => setCartOpen(true)} />
+          <StorefrontWatermark />
           <CartPanel
             catalogId={catalog.id}
             currency={catalog.currency}

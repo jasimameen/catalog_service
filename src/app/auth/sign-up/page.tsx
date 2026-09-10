@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CatalogLogo } from "@/components/brand/CatalogLogo";
+import { COMPANY_NAME, COMPANY_URL, PRODUCT_NAME } from "@/lib/brand";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -51,6 +53,11 @@ export default function SignUpPage() {
           </Link>
           .
         </p>
+        <p className="mt-10 text-xs text-[#86868b]">
+          <a href={COMPANY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Powered by {COMPANY_NAME}
+          </a>
+        </p>
       </div>
     );
   }
@@ -58,10 +65,8 @@ export default function SignUpPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-16">
       <Link href="/" className="mb-8 flex items-center gap-2 text-[13px] font-semibold text-[#1d1d1f]">
-        <span className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[#1d1d1f] text-[12px] font-semibold text-white">
-          C
-        </span>
-        Catalog
+        <CatalogLogo size={28} />
+        {PRODUCT_NAME}
       </Link>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
         Create your catalog
@@ -116,6 +121,11 @@ export default function SignUpPage() {
         <Link href="/auth/sign-in" className="font-medium text-[var(--cat-accent)]">
           Sign in
         </Link>
+      </p>
+      <p className="mt-10 text-center text-xs text-[#86868b]">
+        <a href={COMPANY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
+          Powered by {COMPANY_NAME}
+        </a>
       </p>
     </div>
   );

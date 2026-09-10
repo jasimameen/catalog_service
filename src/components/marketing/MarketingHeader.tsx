@@ -1,6 +1,6 @@
 import Link from "next/link";
-
-const PRODUCT_DOMAIN = "catalog.hevyf.com";
+import { CatalogLogo } from "@/components/brand/CatalogLogo";
+import { PRODUCT_DOMAIN, PRODUCT_NAME } from "@/lib/brand";
 
 type MarketingHeaderProps = {
   /** Homepage keeps in-page anchors; other pages point those sections at `/`. */
@@ -16,11 +16,9 @@ export function MarketingHeader({ variant = "inner" }: MarketingHeaderProps) {
     <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/[0.82] backdrop-blur-xl">
       <nav className="mx-auto flex h-[52px] max-w-[1120px] items-center justify-between gap-4 px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-[#1d1d1f] text-xs font-semibold text-white">
-            C
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight">Catalog</span>
-          <span className="text-xs text-[#86868b]">{PRODUCT_DOMAIN}</span>
+          <CatalogLogo size={28} />
+          <span className="text-[15px] font-semibold tracking-tight">{PRODUCT_NAME}</span>
+          <span className="hidden text-xs text-[#86868b] sm:inline">{PRODUCT_DOMAIN}</span>
         </Link>
         <div className="flex items-center gap-6">
           <Link href={templatesHref} className="hidden text-xs sm:inline">

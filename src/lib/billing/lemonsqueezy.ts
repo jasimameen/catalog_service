@@ -95,7 +95,7 @@ function checkoutPayload(input: {
         product_options: {
           enabled_variants: [Number(input.variantId)],
           redirect_url: input.redirectUrl,
-          receipt_button_text: "Back to Instant Catalog",
+          receipt_button_text: "Back to HV Catalog",
         },
       },
       relationships: {

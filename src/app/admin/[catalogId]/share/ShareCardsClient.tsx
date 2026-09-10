@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-const POWERED_BY = "Powered by catalog.hevyf.com";
+const POWERED_BY = "Powered by HV Catalog";
 const DEFAULT_SUBTITLE = "Scan to browse and order";
 
 const TEMPLATES = [

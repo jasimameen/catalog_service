@@ -3,6 +3,8 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CatalogLogo } from "@/components/brand/CatalogLogo";
+import { COMPANY_NAME, COMPANY_URL, PRODUCT_NAME } from "@/lib/brand";
 
 function signInErrorFromQuery(error: string | null): string {
   if (error === "no-account") {
@@ -50,10 +52,8 @@ function SignInForm() {
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-16">
       <Link href="/" className="mb-8 flex items-center gap-2 text-[13px] font-semibold text-[#1d1d1f]">
-        <span className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[#1d1d1f] text-[12px] font-semibold text-white">
-          C
-        </span>
-        Catalog
+        <CatalogLogo size={28} />
+        {PRODUCT_NAME}
       </Link>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">Sign in</h1>
       <p className="mt-2 text-[14px] text-[#6e6e73]">Welcome back to your dashboard.</p>
@@ -94,6 +94,11 @@ function SignInForm() {
         <Link href="/auth/sign-up" className="font-medium text-[var(--cat-accent)]">
           Create your catalog
         </Link>
+      </p>
+      <p className="mt-10 text-center text-xs text-[#86868b]">
+        <a href={COMPANY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
+          Powered by {COMPANY_NAME}
+        </a>
       </p>
     </div>
   );

@@ -85,16 +85,16 @@ function escapeHtml(value: string): string {
 
 async function sendWelcomeEmail(to: string, companyName: string) {
   const company = companyName.trim() || "your company";
-  const subject = "Welcome to Instant Catalog";
-  const text = `Welcome to Instant Catalog.
+  const subject = "Welcome to HV Catalog";
+  const text = `Welcome to HV Catalog.
 
 Your account for ${company} is ready. Sign in and start a catalog.
 
-— Instant Catalog`;
+— HV Catalog`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:560px;">
-  <p style="margin:0 0 12px;">Welcome to Instant Catalog.</p>
+  <p style="margin:0 0 12px;">Welcome to HV Catalog.</p>
   <p style="margin:0 0 12px;">Your account for <strong>${escapeHtml(company)}</strong> is ready. Sign in and start a catalog.</p>
-  <p style="margin:0;color:#46505e;">— Instant Catalog</p>
+  <p style="margin:0;color:#46505e;">— HV Catalog</p>
 </div>`;
 
   try {

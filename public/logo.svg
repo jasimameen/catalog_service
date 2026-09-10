@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="logoTitle">
+  <title id="logoTitle">HV Catalog</title>
+  <!-- Accent stamp: cart with catalog list lines. Chunky so it holds at 16px. -->
   <rect width="32" height="32" rx="8" fill="#0b5fce"/>
   <path
     d="M10.8 14.2c0-4.4 10.4-4.4 10.4 0"

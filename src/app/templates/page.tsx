@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { TEMPLATES } from "@/lib/catalog/templates";
 import type { CatalogTemplateKey } from "@/lib/catalog/types";
@@ -79,6 +80,7 @@ export default function TemplatesGalleryPage() {
         </div>
         </div>
       </div>
+      <MarketingFooter />
     </div>
   );
 }

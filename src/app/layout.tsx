@@ -16,23 +16,24 @@ const plexSans = IBM_Plex_Sans({
   display: "swap",
 });
 
-const title = "Instant Catalog — Your catalog, live in five minutes";
+const title = "HV Instant Catalog — Your catalog, live in five minutes";
 const description =
   "Add your items, pick a template, share the link. Customers browse, add quantities and send an order — straight to your inbox and dashboard. No storefront to build, no developer.";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://catalog.hevyf.com"),
   title,
   description,
-  applicationName: "Instant Catalog",
+  applicationName: "HV Catalog",
   robots: { index: true, follow: true },
   openGraph: {
     title,
     description,
     type: "website",
-    siteName: "Instant Catalog",
+    siteName: "HV Instant Catalog",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title,
     description,
   },
