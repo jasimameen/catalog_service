@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { COMPANY_NAME, COMPANY_URL } from "@/lib/brand";
+import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL } from "@/lib/brand";
 
 type MarketingFooterProps = {
   variant?: "home" | "inner";
@@ -17,6 +17,10 @@ export function MarketingFooter({ variant = "inner" }: MarketingFooterProps) {
             className="font-medium text-[#1d1d1f] hover:underline"
           >
             Powered by {COMPANY_NAME}
+          </a>
+          <span> · </span>
+          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:underline">
+            Questions? {CONTACT_EMAIL}
           </a>
           <span> · Made for people who sell from a list.</span>
         </p>

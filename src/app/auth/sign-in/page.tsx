@@ -3,8 +3,9 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthFooter } from "@/components/brand/AuthFooter";
 import { CatalogLogo } from "@/components/brand/CatalogLogo";
-import { COMPANY_NAME, COMPANY_URL, PRODUCT_NAME } from "@/lib/brand";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 function signInErrorFromQuery(error: string | null): string {
   if (error === "no-account") {
@@ -95,11 +96,7 @@ function SignInForm() {
           Create your catalog
         </Link>
       </p>
-      <p className="mt-10 text-center text-xs text-[#86868b]">
-        <a href={COMPANY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
-          Powered by {COMPANY_NAME}
-        </a>
-      </p>
+      <AuthFooter />
     </div>
   );
 }

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AuthFooter } from "@/components/brand/AuthFooter";
 import { CatalogLogo } from "@/components/brand/CatalogLogo";
-import { COMPANY_NAME, COMPANY_URL, PRODUCT_NAME } from "@/lib/brand";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -53,11 +54,7 @@ export default function SignUpPage() {
           </Link>
           .
         </p>
-        <p className="mt-10 text-xs text-[#86868b]">
-          <a href={COMPANY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
-            Powered by {COMPANY_NAME}
-          </a>
-        </p>
+        <AuthFooter />
       </div>
     );
   }
@@ -122,11 +119,7 @@ export default function SignUpPage() {
           Sign in
         </Link>
       </p>
-      <p className="mt-10 text-center text-xs text-[#86868b]">
-        <a href={COMPANY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
-          Powered by {COMPANY_NAME}
-        </a>
-      </p>
+      <AuthFooter />
     </div>
   );
 }
