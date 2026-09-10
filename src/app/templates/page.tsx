@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { TEMPLATES } from "@/lib/catalog/templates";
 import type { CatalogTemplateKey } from "@/lib/catalog/types";
 
@@ -22,8 +23,10 @@ export default function TemplatesGalleryPage() {
   const meta = TEMPLATES.find((t) => t.key === active)!;
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] px-6 py-10 sm:px-10">
-      <div className="mx-auto max-w-[1080px]">
+    <div className="min-h-screen bg-[#f5f5f7]">
+      <MarketingHeader />
+      <div className="px-6 py-10 sm:px-10">
+        <div className="mx-auto max-w-[1080px]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-[34px] font-semibold tracking-tight">Catalog templates</h1>
@@ -73,6 +76,7 @@ export default function TemplatesGalleryPage() {
           {active === "cards" && <CardsPreview />}
           {active === "compact" && <CompactPreview />}
           {active === "spotlight" && <SpotlightPreview />}
+        </div>
         </div>
       </div>
     </div>

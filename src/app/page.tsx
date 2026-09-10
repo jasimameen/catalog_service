@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { MONTHLY_PRICE_USD } from "@/lib/billing/plan";
 import { TEMPLATES } from "@/lib/catalog/templates";
 
@@ -28,29 +29,7 @@ const PLAN_INCLUDES = [
 export default function LandingPage() {
   return (
     <div className="w-full overflow-x-hidden bg-white text-[#1d1d1f]">
-      <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/[0.82] backdrop-blur-xl">
-        <nav className="mx-auto flex h-[52px] max-w-[1120px] items-center justify-between gap-4 px-6">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-[6px] bg-[#1d1d1f] text-xs font-semibold text-white">
-              C
-            </span>
-            <span className="text-[15px] font-semibold tracking-tight">Catalog</span>
-            <span className="text-xs text-[#86868b]">{PRODUCT_DOMAIN}</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#templates" className="hidden text-xs sm:inline">Templates</a>
-            <a href="#how" className="hidden text-xs sm:inline">How it works</a>
-            <a href="#pricing" className="hidden text-xs sm:inline">Pricing</a>
-            <Link href="/auth/sign-in" className="text-xs">Sign in</Link>
-            <Link
-              href="/auth/sign-up"
-              className="rounded-full bg-[var(--cat-accent)] px-3.5 py-1.5 text-xs font-medium text-white"
-            >
-              Start free
-            </Link>
-          </div>
-        </nav>
-      </header>
+      <MarketingHeader variant="home" />
 
       <section className="mx-auto max-w-[1120px] px-6 pt-24 text-center">
         <p className="mb-4 text-[15px] text-[#6e6e73]">For suppliers, shops, kitchens and distributors</p>
