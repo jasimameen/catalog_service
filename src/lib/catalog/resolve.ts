@@ -9,8 +9,11 @@ import { parseCheckoutFields } from "./checkout-fields";
 import { parseFulfillmentModes, resolveCheckoutForm } from "./checkout-form";
 import { parseItemOptions } from "./item-options";
 import { parseBanners, parseImageFit, parseItemImageFit } from "./merchandising";
+import { parseCoord, resolveLocations } from "./locations";
+import { isStockPhotoUrl } from "./placeholders";
 import { STOREFRONT_CATALOG_CACHE_TAG } from "./storefront-cache";
 import { isTemplateKey } from "./templates";
+import { pausedOrdersMessage, storefrontAlertText } from "./order-tracking";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,6 +65,24 @@ async function fetchLiveById(
 function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): StorefrontCatalog {
   const checkoutFields = parseCheckoutFields(catalogRow.checkout_fields);
   const imageFit = parseImageFit(catalogRow.image_fit);
+  const placeholder = (catalogRow.placeholder_image_url ?? "").trim();
+  const mappedItems = (items ?? []).map((row) => {
+    const image = (row.image ?? "").trim() || placeholder;
+    return {
+      id: row.id,
+      code: row.code,
+      category: row.category,
+      name: row.name,
+      description: row.description,
+      price: Number(row.price),
+      pack: row.pack,
+      image,
+      options: parseItemOptions(row.options),
+      featured: Boolean(row.featured),
+      available: row.visible !== false,
+      imageFit: parseItemImageFit(row.image_fit) ?? imageFit,
+    };
+  });
   return {
     id: catalogRow.id,
     name: catalogRow.name,
@@ -78,24 +99,27 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
     banners: parseBanners(catalogRow.banners),
     imageFit,
     phone: catalogRow.phone ?? "",
+    email: catalogRow.email ?? "",
     address: catalogRow.address ?? "",
     hours: catalogRow.hours ?? "",
     whatsapp: catalogRow.whatsapp ?? "",
     instagram: catalogRow.instagram ?? "",
-    items: (items ?? []).map((row) => ({
-      id: row.id,
-      code: row.code,
-      category: row.category,
-      name: row.name,
-      description: row.description,
-      price: Number(row.price),
-      pack: row.pack,
-      image: row.image,
-      options: parseItemOptions(row.options),
-      featured: Boolean(row.featured),
-      available: row.visible !== false,
-      imageFit: parseItemImageFit(row.image_fit) ?? imageFit,
-    })),
+    acceptOrders: catalogRow.accept_orders !== false,
+    ordersPausedMessage: pausedOrdersMessage(catalogRow.orders_paused_message),
+    storefrontAlert: storefrontAlertText(catalogRow.storefront_alert),
+    showStorefrontAlert: catalogRow.show_storefront_alert === true,
+    showMap: Boolean(catalogRow.show_map),
+    showHours: catalogRow.show_hours !== false,
+    showContact: catalogRow.show_contact !== false,
+    showSocial: catalogRow.show_social !== false,
+    locations: resolveLocations(catalogRow.locations, catalogRow.address ?? ""),
+    geoLat: parseCoord(catalogRow.geo_lat),
+    geoLng: parseCoord(catalogRow.geo_lng),
+    placeholderImage: placeholder,
+    usedPlaceholderImages: mappedItems.some(
+      (item) => Boolean(item.image) && (item.image === placeholder || isStockPhotoUrl(item.image)),
+    ),
+    items: mappedItems,
   };
 }
 
@@ -150,7 +174,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host-v4"],
+  ["storefront-catalog-by-host-v6"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

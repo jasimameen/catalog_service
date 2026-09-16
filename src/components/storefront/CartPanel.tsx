@@ -175,6 +175,7 @@ export function CartPanel({
         total?: number;
         itemCount?: number;
         lineCount?: number;
+        trackUrl?: string;
       } | null;
       if (!res.ok || !data?.reference || typeof data.total !== "number") {
         setErrorMessage(data?.error || "Something went wrong. Please try again.");
@@ -188,6 +189,7 @@ export function CartPanel({
         lineCount: data.lineCount ?? 0,
         shopName: mapped.shopName,
         phone: mapped.phone || phoneValue,
+        trackUrl: typeof data.trackUrl === "string" ? data.trackUrl : undefined,
       };
       saveGuestAddress(catalogId, mapped.phone || phoneValue, {
         address: mapped.location || formValues.address || "",

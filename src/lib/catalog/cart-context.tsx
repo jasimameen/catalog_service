@@ -24,6 +24,8 @@ type LineMap = Record<string, CartLine>;
 
 interface CartContextValue {
   items: StorefrontItem[];
+  acceptOrders: boolean;
+  pausedMessage: string;
   quantities: Record<string, number>;
   lines: CartLine[];
   itemCount: number;
@@ -113,10 +115,14 @@ function writeLine(prev: LineMap, code: string, options: SelectedOption[], qty: 
 export function CartProvider({
   catalogId,
   items,
+  acceptOrders = true,
+  pausedMessage = "We are not taking orders right now.",
   children,
 }: {
   catalogId: string;
   items: StorefrontItem[];
+  acceptOrders?: boolean;
+  pausedMessage?: string;
   children: ReactNode;
 }) {
   const [lineMap, setLineMap] = useState<LineMap>({});
@@ -146,19 +152,21 @@ export function CartProvider({
   }, [lineMap, hydrated, catalogId]);
 
   const setQuantity = useCallback((code: string, qty: number) => {
+    if (!acceptOrders) return;
     const item = items.find((p) => p.code === code);
     if (item && item.available === false) return;
     setLineMap((prev) => writeLine(prev, code, [], qty));
-  }, [items]);
+  }, [acceptOrders, items]);
 
   const increment = useCallback((code: string) => {
+    if (!acceptOrders) return;
     const item = items.find((p) => p.code === code);
     if (item && item.available === false) return;
     setLineMap((prev) => {
       const current = prev[code]?.qty ?? 0;
       return writeLine(prev, code, prev[code]?.options ?? [], current + 1);
     });
-  }, [items]);
+  }, [acceptOrders, items]);
 
   const decrement = useCallback((code: string) => {
     setLineMap((prev) => {
@@ -168,6 +176,7 @@ export function CartProvider({
   }, []);
 
   const addLine = useCallback((code: string, options: SelectedOption[], qty = 1) => {
+    if (!acceptOrders) return;
     const item = items.find((p) => p.code === code);
     if (item && item.available === false) return;
     const add = Math.max(1, Math.floor(qty));
@@ -176,9 +185,10 @@ export function CartProvider({
       const current = prev[key]?.qty ?? 0;
       return writeLine(prev, code, options, current + add);
     });
-  }, [items]);
+  }, [acceptOrders, items]);
 
   const incrementLine = useCallback((key: string) => {
+    if (!acceptOrders) return;
     setLineMap((prev) => {
       const line = prev[key];
       if (!line) return prev;
@@ -186,7 +196,7 @@ export function CartProvider({
       if (item && item.available === false) return prev;
       return writeLine(prev, line.code, line.options, line.qty + 1);
     });
-  }, [items]);
+  }, [acceptOrders, items]);
 
   const decrementLine = useCallback((key: string) => {
     setLineMap((prev) => {
@@ -236,6 +246,8 @@ export function CartProvider({
   const value = useMemo(
     () => ({
       items,
+      acceptOrders,
+      pausedMessage,
       quantities,
       lines,
       itemCount,
@@ -253,6 +265,8 @@ export function CartProvider({
     }),
     [
       items,
+      acceptOrders,
+      pausedMessage,
       quantities,
       lines,
       itemCount,

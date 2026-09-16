@@ -4,6 +4,9 @@ import type { StorefrontItem } from "./types";
 export const MERCHANDISING_SQL_HINT =
   "Run supabase/merchandising.sql in the Supabase SQL editor, then try again.";
 
+export const STOREFRONT_SETTINGS_SQL_HINT =
+  "Run supabase/storefront-settings.sql in the Supabase SQL editor, then try again.";
+
 export const MAX_BANNERS = 5;
 
 export function parseImageFit(value: unknown, fallback: ImageFit = "cover"): ImageFit {
@@ -62,6 +65,23 @@ export function instagramHref(raw: string): string | null {
   const handle = trimmed.replace(/^@/, "").replace(/^instagram\.com\//i, "");
   if (!handle) return null;
   return `https://instagram.com/${handle}`;
+}
+
+export function instagramHandle(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) {
+    const match = trimmed.match(/instagram\.com\/([^/?#]+)/i);
+    return match ? `@${match[1]}` : "Instagram";
+  }
+  const handle = trimmed.replace(/^@/, "").replace(/^instagram\.com\//i, "");
+  return handle ? `@${handle}` : "";
+}
+
+export function mailtoHref(raw: string): string | null {
+  const email = raw.trim();
+  if (!email || !email.includes("@")) return null;
+  return `mailto:${email}`;
 }
 
 export function telHref(raw: string): string | null {

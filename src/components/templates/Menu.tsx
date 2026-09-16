@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -14,12 +15,16 @@ import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 export function MenuTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
-  const { quantities, increment, decrement } = useCart();
+  const { quantities, increment, decrement, acceptOrders } = useCart();
 
   const sections = useMemo(() => {
     const order: string[] = [];
@@ -44,6 +49,8 @@ export function MenuTemplate({
         />
         <CartButton onClick={onOpenCart} />
       </div>
+
+      <CatalogSlots filters={filters} featured={featured} />
 
       <div className="mx-auto max-w-3xl px-6 py-12 sm:px-10">
         <div className="border-b border-[#e6e0d3] pb-6 text-center">
@@ -73,7 +80,7 @@ export function MenuTemplate({
                       type="button"
                       onClick={() => {
                         if (!available) return;
-                        if (hasItemOptions(item)) {
+                        if (!acceptOrders || hasItemOptions(item)) {
                           setSelected(item);
                           return;
                         }

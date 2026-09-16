@@ -183,18 +183,28 @@ function mergeVariantGroup(rows: MappedImportRow[]): MappedImportRow {
   };
 }
 
-/** Collapse one-row-per-size sheets into one item + options. No-op when Variant is unmapped. */
+/** Collapse one-row-per-size sheets into one item + options. */
 export function foldVariantRows(rows: MappedImportRow[]): MappedImportRow[] {
-  const shouldFold = rows.some((row) => row.variant.trim());
+  const codeCounts = new Map<string, number>();
+  for (const row of rows) {
+    const code = row.code.trim().toLowerCase();
+    if (code) codeCounts.set(code, (codeCounts.get(code) ?? 0) + 1);
+  }
+  const shouldFold =
+    rows.some((row) => row.variant.trim() || row.variantGroup.trim()) ||
+    [...codeCounts.values()].some((count) => count > 1);
   if (!shouldFold) return rows;
 
   const groups = new Map<string, MappedImportRow[]>();
   const order: string[] = [];
   for (const row of rows) {
     const group = row.variantGroup.trim();
+    const code = row.code.trim();
     const key = group
       ? `g:${group.toLowerCase()}`
-      : `n:${row.name.trim().toLowerCase()}|${row.category.trim().toLowerCase()}`;
+      : code
+        ? `c:${code.toLowerCase()}`
+        : `n:${row.name.trim().toLowerCase()}|${row.category.trim().toLowerCase()}`;
     if (!groups.has(key)) {
       groups.set(key, []);
       order.push(key);

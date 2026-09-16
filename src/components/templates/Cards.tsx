@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -14,12 +15,16 @@ import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 export function CardsTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
-  const { quantities, increment } = useCart();
+  const { quantities, increment, acceptOrders } = useCart();
 
   return (
     <div className="bg-white">
@@ -27,6 +32,8 @@ export function CardsTemplate({
         <BrandHeader catalog={catalog} />
         <CartButton onClick={onOpenCart} />
       </div>
+
+      <CatalogSlots filters={filters} featured={featured} />
 
       <div className="mx-auto max-w-5xl px-5 py-10 sm:px-8">
         {catalog.items.length === 0 ? (
@@ -86,13 +93,15 @@ export function CardsTemplate({
                         {formatMoney(item.price, catalog.currency)}
                       </span>
                       {available ? (
-                        <button
-                          type="button"
-                          onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
-                          className="min-h-11 rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
-                        >
-                          {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-                        </button>
+                        acceptOrders ? (
+                          <button
+                            type="button"
+                            onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
+                            className="min-h-11 rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
+                          >
+                            {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+                          </button>
+                        ) : null
                       ) : (
                         <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
                       )}

@@ -43,6 +43,18 @@ export function hasItemOptions(item: { options?: ItemOptionGroup[] | unknown } |
   return parseItemOptions(item?.options).some((group) => group.values.length > 0);
 }
 
+/** Short storefront cue so variant items never look like a single SKU. */
+export function optionsCue(item: { options?: ItemOptionGroup[] | unknown } | null | undefined): string | null {
+  const groups = parseItemOptions(item?.options).filter((group) => group.values.length > 0);
+  if (groups.length === 0) return null;
+  const count = groups.reduce((sum, group) => sum + group.values.length, 0);
+  if (groups.length === 1) {
+    const name = groups[0]!.name;
+    return count > 1 ? `${name} · ${count} options` : name;
+  }
+  return `${count} options`;
+}
+
 export function optionsKey(options: SelectedOption[]): string {
   if (!options.length) return "";
   return options

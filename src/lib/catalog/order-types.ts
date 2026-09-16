@@ -29,4 +29,5 @@ export interface OrderResult {
   lineCount: number;
   shopName: string;
   phone: string;
+  trackUrl?: string;
 }

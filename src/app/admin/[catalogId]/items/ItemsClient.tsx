@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { formatMoney } from "@/lib/catalog/currency";
 import type { CatalogItemRow, ImageFit, ItemOptionGroup } from "@/lib/supabase/types";
@@ -9,6 +10,7 @@ import { ItemOptionsEditor } from "@/components/admin/ItemOptionsEditor";
 import { hasItemOptions, parseItemOptions } from "@/lib/catalog/item-options";
 import {
   addItem,
+  applyItemPlaceholder,
   deleteItem,
   pasteImportItems,
   toggleItemFeatured,
@@ -20,11 +22,51 @@ import {
   type UpdateItemState,
 } from "./actions";
 import { parseItemImageFit } from "@/lib/catalog/merchandising";
+import { PlaceholderPicker } from "@/components/admin/PlaceholderPicker";
 
 const UploadImportModal = dynamic(
   () => import("./UploadImportModal").then((mod) => mod.UploadImportModal),
   { ssr: false },
 );
+
+function RowPlaceholderButton({
+  catalogId,
+  itemId,
+}: {
+  catalogId: string;
+  itemId: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--cat-photo-bg)] text-[10px] font-medium text-[#86868b]"
+      >
+        Photo
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-11 z-10 w-56 rounded-xl border border-[#e8e8ed] bg-white p-2 shadow-lg">
+          <PlaceholderPicker
+            value=""
+            onSelect={(url) =>
+              startTransition(async () => {
+                await applyItemPlaceholder(catalogId, itemId, url);
+                router.refresh();
+                setOpen(false);
+              })
+            }
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function VisibleToggle({
   catalogId,
@@ -52,7 +94,7 @@ function VisibleToggle({
       className="text-xs font-medium disabled:opacity-50"
       style={{ color: visible ? "#1e9e4a" : "#b2432b" }}
     >
-      {visible ? "On" : "Unavailable"}
+      {visible ? "Available" : "Unavailable"}
     </button>
   );
 }
@@ -133,6 +175,7 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
   const [state, formAction, pending] = useActionState<AddItemState, FormData>(boundAction, null);
   const [preview, setPreview] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
   const [options, setOptions] = useState<ItemOptionGroup[]>([]);
 
   useEffect(() => {
@@ -226,10 +269,13 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
             <input
               name="image"
               type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://…"
               className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
             />
           </div>
+          <PlaceholderPicker value={imageUrl} onSelect={setImageUrl} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Category</label>
@@ -394,6 +440,7 @@ function EditItemModal({
   const [state, formAction, pending] = useActionState<UpdateItemState, FormData>(boundAction, null);
   const [preview, setPreview] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState(item.image);
 
   useEffect(() => {
     if (state?.saved) onClose();
@@ -405,7 +452,7 @@ function EditItemModal({
     };
   }, [preview]);
 
-  const shown = preview ?? item.image;
+  const shown = preview ?? imageUrl;
 
   return (
     <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4">
@@ -490,11 +537,13 @@ function EditItemModal({
             <input
               name="image"
               type="url"
-              defaultValue={item.image}
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://…"
               className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
             />
           </div>
+          <PlaceholderPicker value={imageUrl} onSelect={setImageUrl} />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Category</label>
@@ -690,7 +739,7 @@ export function ItemsClient({
           <span>Item</span>
           <span>Code</span>
           <span>Price</span>
-          <span>Visible</span>
+          <span>Available</span>
           <span>Featured</span>
           <span></span>
         </div>
@@ -718,7 +767,9 @@ export function ItemsClient({
                     decoding="async"
                     className="h-full w-full object-contain"
                   />
-                ) : null}
+                ) : (
+                  <RowPlaceholderButton catalogId={catalogId} itemId={item.id} />
+                )}
               </div>
               <div className="min-w-0">
                 <p className="m-0 truncate text-[13px] font-medium text-[var(--cat-ink)]">{item.name}</p>

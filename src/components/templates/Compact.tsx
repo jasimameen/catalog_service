@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -13,13 +13,17 @@ import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 export function CompactTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
-  const { quantities, increment, decrement } = useCart();
+  const { quantities, increment, decrement, acceptOrders, pausedMessage } = useCart();
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -43,7 +47,7 @@ export function CompactTemplate({
           />
           <CartButton onClick={onOpenCart} />
         </div>
-        <div className="mx-auto max-w-4xl px-4 pb-3">
+        <div className="mx-auto max-w-4xl space-y-3 px-4 pb-3">
           <input
             type="search"
             value={query}
@@ -51,8 +55,11 @@ export function CompactTemplate({
             placeholder="Search name or code"
             className="w-full rounded-[9px] border border-[var(--cat-border)] bg-white px-3 py-1.5 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
           />
+          {filters}
         </div>
       </div>
+
+      {featured}
 
       <div className="mx-auto max-w-4xl px-4 py-3 pb-28">
         {catalog.items.length === 0 ? (
@@ -77,6 +84,8 @@ export function CompactTemplate({
                   hasItemOptions(item) ? setSelected(item) : decrement(item.code)
                 }
                 optioned={hasItemOptions(item)}
+                acceptOrders={acceptOrders}
+                pausedMessage={pausedMessage}
               />
             ))}
           </div>
@@ -102,6 +111,8 @@ function CompactRow({
   onIncrement,
   onDecrement,
   optioned,
+  acceptOrders,
+  pausedMessage,
 }: {
   item: StorefrontItem;
   currency: string;
@@ -110,6 +121,8 @@ function CompactRow({
   onIncrement: () => void;
   onDecrement: () => void;
   optioned: boolean;
+  acceptOrders: boolean;
+  pausedMessage: string;
 }) {
   return (
     <div className="flex items-center gap-2.5 border-b border-[var(--cat-border)] px-2.5 py-2 last:border-b-0">
@@ -145,7 +158,9 @@ function CompactRow({
         <p className="text-[10px] uppercase tracking-wide text-[var(--cat-muted)]">{currency}</p>
         <p className="text-sm font-bold text-[var(--cat-ink)]">{item.price.toFixed(2)}</p>
       </div>
-      {!isItemAvailable(item) ? (
+      {!acceptOrders ? (
+        <span className="max-w-[9rem] text-right text-[11px] text-[var(--cat-muted)]">{pausedMessage}</span>
+      ) : !isItemAvailable(item) ? (
         <span className="shrink-0 text-[11px] font-medium text-[var(--cat-muted)]">Unavailable</span>
       ) : optioned ? (
         <button

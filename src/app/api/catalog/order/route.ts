@@ -13,6 +13,8 @@ import {
 } from "@/lib/catalog/checkout-form";
 import { formatSelectedOptions, parseItemOptions, resolveSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import type { OrderPayload } from "@/lib/catalog/order-types";
+import { resolveIncomingOrderStatus } from "@/lib/catalog/order-statuses";
+import { newTrackToken, trackingUrl } from "@/lib/catalog/order-tracking";
 import type { CatalogItemRow, CatalogRow, OrderFulfillment } from "@/lib/supabase/types";
 
 function clean(value: unknown, max = 300): string {
@@ -63,6 +65,9 @@ export async function POST(request: Request) {
   const catalog = catalogData as CatalogRow | null;
   if (catalogError || !catalog) {
     return Response.json({ error: "This catalog is not available." }, { status: 404 });
+  }
+  if (catalog.accept_orders === false) {
+    return Response.json({ error: "This catalog is not taking orders." }, { status: 403 });
   }
 
   const checkout = parseCheckoutFields(catalog.checkout_fields);
@@ -173,6 +178,8 @@ export async function POST(request: Request) {
   const total = items.reduce((sum, item) => sum + item.price * item.qty, 0);
   const reference = generateOrderReference(catalog.slug, checkout.orderPrefix);
 
+  const status = resolveIncomingOrderStatus(catalog);
+  const trackToken = newTrackToken();
   const { data: orderRow, error: orderError } = await supabase
     .from("orders")
     .insert({
@@ -184,7 +191,8 @@ export async function POST(request: Request) {
       maps_link: mapsLink || null,
       notes: combinedNotes || null,
       subtotal: total,
-      status: "new",
+      status,
+      track_token: trackToken,
       fulfillment,
       table_no: tableNo || null,
       geo_lat: geoLat,
@@ -199,7 +207,9 @@ export async function POST(request: Request) {
     const hint =
       orderError?.code === "42703" || orderError?.message?.includes("fulfillment")
         ? " Run supabase/restaurant.sql in the Supabase SQL editor."
-        : "";
+        : orderError?.code === "23514" || orderError?.message?.includes("orders_status_check")
+          ? " Run supabase/order-statuses.sql in the Supabase SQL editor."
+          : "";
     return Response.json({ error: `Could not save your order. Please try again.${hint}` }, { status: 500 });
   }
 
@@ -223,6 +233,21 @@ export async function POST(request: Request) {
     return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
   }
 
+  await supabase.from("order_status_events").insert({
+    order_id: orderRow.id,
+    from_status: null,
+    to_status: status,
+    actor: "customer",
+  });
+
+  const { data: domainRows } = await supabase
+    .from("domains")
+    .select("hostname, kind")
+    .eq("catalog_id", catalogId)
+    .eq("status", "verified");
+  const customHost = (domainRows ?? []).find((row) => row.kind === "custom")?.hostname ?? null;
+  const trackUrl = trackingUrl(catalog.slug, trackToken, customHost);
+
   await sendOrderEmail({
     catalog,
     items,
@@ -235,6 +260,7 @@ export async function POST(request: Request) {
     notes: combinedNotes,
     fulfillment,
     tableNo,
+    trackUrl,
   });
 
   return Response.json({
@@ -243,6 +269,7 @@ export async function POST(request: Request) {
     reference,
     itemCount: items.reduce((s, i) => s + i.qty, 0),
     lineCount: items.length,
+    trackUrl,
   });
 }
 
@@ -258,8 +285,9 @@ async function sendOrderEmail(args: {
   notes: string;
   fulfillment: OrderFulfillment | null;
   tableNo: string;
+  trackUrl: string;
 }) {
-  const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes, fulfillment, tableNo } = args;
+  const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes, fulfillment, tableNo, trackUrl } = args;
   const toEmail = catalog.order_email;
 
   if (!toEmail) {
@@ -286,6 +314,8 @@ Items:
 ${itemRows}
 
 Total: ${formatMoney(total, catalog.currency)}
+
+Track: ${trackUrl}
 `;
 
   const itemRowsHtml = items
@@ -325,6 +355,7 @@ Total: ${formatMoney(total, catalog.currency)}
         <tbody>${itemRowsHtml}</tbody>
       </table>
       <p style="margin-top:16px;font-size:16px;"><strong>Total: ${formatMoney(total, catalog.currency)}</strong></p>
+      <p style="margin-top:12px;"><a href="${trackUrl}">Track this order</a></p>
     </div>
   `;
 

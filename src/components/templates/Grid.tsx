@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
-import { hasItemOptions } from "@/lib/catalog/item-options";
+import { hasItemOptions, optionsCue } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { HeaderContact } from "@/components/storefront/HeaderContact";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
+import { PausedNote } from "@/components/storefront/PausedNote";
 
 const QUICK_MULTIPLES = [6, 12, 24];
 
@@ -24,9 +26,13 @@ const QUICK_MULTIPLES = [6, 12, 24];
 export function GridTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
@@ -64,7 +70,10 @@ export function GridTemplate({
       <div className="sticky top-0 z-10 border-b border-[var(--cat-border)] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <BrandHeader catalog={catalog} />
-          <CartButton onClick={onOpenCart} />
+          <div className="flex shrink-0 items-center gap-3">
+            <HeaderContact catalog={catalog} />
+            <CartButton onClick={onOpenCart} />
+          </div>
         </div>
         <div className="mx-auto max-w-6xl space-y-3 px-4 pb-3">
           <div className="relative">
@@ -79,8 +88,11 @@ export function GridTemplate({
               className="w-full rounded-[9px] border border-[var(--cat-border)] bg-white py-2 pl-9 pr-3 text-sm focus:border-[var(--cat-accent)] focus:outline-none"
             />
           </div>
+          {filters}
         </div>
       </div>
+
+      {featured}
 
       <div className="mx-auto max-w-6xl px-4 py-5">
         {catalog.items.length === 0 ? (
@@ -145,8 +157,9 @@ function GridCard({
   eager?: boolean;
   onSelect: (item: StorefrontItem) => void;
 }) {
-  const { quantities, increment, decrement, setQuantity } = useCart();
+  const { quantities, increment, decrement, setQuantity, acceptOrders, pausedMessage } = useCart();
   const qty = quantities[item.code] ?? 0;
+  const cue = optionsCue(item);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm">
@@ -169,6 +182,11 @@ function GridCard({
             className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
+        {cue ? (
+          <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--cat-accent)] shadow-sm">
+            {cue}
+          </span>
+        ) : null}
       </button>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <button type="button" onClick={() => onSelect(item)} className="text-left">
@@ -176,6 +194,9 @@ function GridCard({
             {item.name}
           </p>
           {item.code && <p className="text-xs text-[var(--cat-muted)]">{item.code}</p>}
+          {cue ? (
+            <p className="mt-0.5 text-[11px] font-semibold text-[var(--cat-accent)]">{cue}</p>
+          ) : null}
         </button>
         {item.description && (
           <p className="kl-line-clamp-2 text-xs text-[var(--cat-muted)]">{item.description}</p>
@@ -195,7 +216,9 @@ function GridCard({
           )}
         </div>
 
-        {!isItemAvailable(item) ? (
+        {!acceptOrders ? (
+          <PausedNote message={pausedMessage} />
+        ) : !isItemAvailable(item) ? (
           <p className="min-h-11 rounded-[9px] bg-slate-100 py-2 text-center text-sm font-semibold text-[var(--cat-muted)]">
             Unavailable
           </p>

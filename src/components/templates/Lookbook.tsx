@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -14,12 +15,16 @@ import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 export function LookbookTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
-  const { quantities, increment } = useCart();
+  const { quantities, increment, acceptOrders } = useCart();
 
   return (
     <div>
@@ -27,6 +32,8 @@ export function LookbookTemplate({
         <BrandHeader catalog={catalog} />
         <CartButton onClick={onOpenCart} />
       </div>
+
+      <CatalogSlots filters={filters} featured={featured} />
 
       <div className="mx-auto max-w-5xl bg-white px-6 py-14 sm:px-12">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cat-muted)]">
@@ -76,13 +83,15 @@ export function LookbookTemplate({
                       {formatMoney(item.price, catalog.currency)}
                     </span>
                     {isItemAvailable(item) ? (
-                      <button
-                        type="button"
-                        onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
-                        className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
-                      >
-                        {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-                      </button>
+                      acceptOrders ? (
+                        <button
+                          type="button"
+                          onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
+                          className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
+                        >
+                          {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+                        </button>
+                      ) : null
                     ) : (
                       <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
                     )}

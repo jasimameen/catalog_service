@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { GridTemplate } from "./Grid";
 import { LookbookTemplate } from "./Lookbook";
@@ -11,6 +11,8 @@ import { SpotlightTemplate } from "./Spotlight";
 export interface TemplateProps {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }
 
 export const TEMPLATE_COMPONENTS: Record<StorefrontCatalog["template"], ComponentType<TemplateProps>> = {

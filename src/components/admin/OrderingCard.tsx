@@ -15,10 +15,18 @@ export function OrderingCard({
   catalogId,
   fulfillmentModes,
   checkoutForm,
+  acceptOrders,
+  ordersPausedMessage,
+  storefrontAlert,
+  showStorefrontAlert,
 }: {
   catalogId: string;
   fulfillmentModes: OrderFulfillment[];
   checkoutForm: CheckoutFormField[];
+  acceptOrders: boolean;
+  ordersPausedMessage: string;
+  storefrontAlert: string;
+  showStorefrontAlert: boolean;
 }) {
   const [modes, setModes] = useState<OrderFulfillment[]>(fulfillmentModes);
   const [fields, setFields] = useState<CheckoutFormField[]>(checkoutForm);
@@ -62,6 +70,53 @@ export function OrderingCard({
       <form action={formAction} className="mt-4 flex flex-col gap-5">
         <input type="hidden" name="fulfillment_modes" value={JSON.stringify(modes)} />
         <input type="hidden" name="checkout_form" value={JSON.stringify(fields)} />
+
+        <label className="flex items-start gap-2.5 rounded-[12px] border border-[#e8e8ed] px-3 py-2.5 text-[13px] text-[var(--cat-ink)]">
+          <input type="checkbox" name="acceptOrders" value="1" defaultChecked={acceptOrders} className="mt-0.5" />
+          <span>
+            Take orders
+            <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">
+              Off hides cart and add-to-cart. Browsing and search still work.
+            </span>
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-[13px] font-medium text-[var(--cat-ink)]">
+          Message when orders are paused
+          <textarea
+            name="ordersPausedMessage"
+            defaultValue={ordersPausedMessage}
+            rows={2}
+            maxLength={280}
+            placeholder="We are not taking orders right now."
+            className="min-h-11 rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] font-normal"
+          />
+        </label>
+        <label className="flex items-start gap-2.5 rounded-[12px] border border-[#e8e8ed] px-3 py-2.5 text-[13px] text-[var(--cat-ink)]">
+          <input
+            type="checkbox"
+            name="showStorefrontAlert"
+            value="1"
+            defaultChecked={showStorefrontAlert}
+            className="mt-0.5"
+          />
+          <span>
+            Show storefront alert
+            <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">
+              A short banner at the top, even while taking orders.
+            </span>
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-[13px] font-medium text-[var(--cat-ink)]">
+          Alert text
+          <textarea
+            name="storefrontAlert"
+            defaultValue={storefrontAlert}
+            rows={2}
+            maxLength={280}
+            placeholder="Kitchen is running 20 minutes behind tonight."
+            className="min-h-11 rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] font-normal"
+          />
+        </label>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">

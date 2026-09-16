@@ -11,6 +11,7 @@ import type {
   DomainRow,
   OrderRow,
   OrderItemRow,
+  OrderStatusEventRow,
   CatalogViewRow,
 } from "./types";
 
@@ -31,6 +32,7 @@ export interface Database {
       domains: TableDef<DomainRow>;
       orders: TableDef<OrderRow>;
       order_items: TableDef<OrderItemRow>;
+      order_status_events: TableDef<OrderStatusEventRow>;
       catalog_views: TableDef<CatalogViewRow>;
     };
     Views: Record<string, never>;

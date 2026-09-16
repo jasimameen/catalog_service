@@ -12,6 +12,7 @@ import { OrderingCard } from "@/components/admin/OrderingCard";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
 import { parseBanners, parseImageFit } from "@/lib/catalog/merchandising";
+import { locationsToText, parseCoord, parseLocations } from "@/lib/catalog/locations";
 import type { OrderRow } from "@/lib/supabase/types";
 
 function startOfMonthIso(): string {
@@ -164,16 +165,29 @@ export default async function CatalogDashboardPage({
           banners={parseBanners(catalog.banners)}
           imageFit={parseImageFit(catalog.image_fit)}
           phone={catalog.phone ?? ""}
+          email={catalog.email ?? ""}
           address={catalog.address ?? ""}
           hours={catalog.hours ?? ""}
           whatsapp={catalog.whatsapp ?? ""}
           instagram={catalog.instagram ?? ""}
+          locationsText={locationsToText(parseLocations(catalog.locations))}
+          geoLat={parseCoord(catalog.geo_lat)}
+          geoLng={parseCoord(catalog.geo_lng)}
+          placeholderImageUrl={catalog.placeholder_image_url ?? ""}
+          showHours={catalog.show_hours !== false}
+          showContact={catalog.show_contact !== false}
+          showSocial={catalog.show_social !== false}
+          showMap={Boolean(catalog.show_map)}
         />
 
         <OrderingCard
           catalogId={catalogId}
           fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
           checkoutForm={parseCheckoutForm(catalog.checkout_form)}
+          acceptOrders={catalog.accept_orders !== false}
+          ordersPausedMessage={catalog.orders_paused_message ?? ""}
+          storefrontAlert={catalog.storefront_alert ?? ""}
+          showStorefrontAlert={catalog.show_storefront_alert === true}
         />
 
         <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">

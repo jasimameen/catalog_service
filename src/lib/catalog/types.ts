@@ -12,6 +12,7 @@ import type {
   ItemOptionGroup,
   OrderFulfillment,
 } from "@/lib/supabase/types";
+import type { CatalogLocation } from "./locations";
 
 export type CatalogTemplateKey =
   | "grid"
@@ -58,9 +59,23 @@ export interface StorefrontCatalog {
   banners: CatalogBanner[];
   imageFit: ImageFit;
   phone: string;
+  email: string;
   address: string;
   hours: string;
   whatsapp: string;
   instagram: string;
+  acceptOrders: boolean;
+  ordersPausedMessage: string;
+  storefrontAlert: string;
+  showStorefrontAlert: boolean;
+  showMap: boolean;
+  showHours: boolean;
+  showContact: boolean;
+  showSocial: boolean;
+  locations: CatalogLocation[];
+  geoLat: number | null;
+  geoLng: number | null;
+  placeholderImage: string;
+  usedPlaceholderImages: boolean;
   items: StorefrontItem[];
 }

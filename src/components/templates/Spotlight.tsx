@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -14,9 +15,13 @@ import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 export function SpotlightTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
   const { quantities, increment } = useCart();
@@ -28,6 +33,8 @@ export function SpotlightTemplate({
         <BrandHeader catalog={catalog} />
         <CartButton onClick={onOpenCart} />
       </div>
+
+      <CatalogSlots filters={filters} featured={featured} />
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         {catalog.items.length === 0 ? (
@@ -89,6 +96,7 @@ function HeroCard({
   onSelect: (item: StorefrontItem) => void;
   onAdd: () => void;
 }) {
+  const { acceptOrders } = useCart();
   return (
     <div className="overflow-hidden rounded-[18px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm sm:grid sm:grid-cols-2">
       <button
@@ -134,13 +142,15 @@ function HeroCard({
             {formatMoney(item.price, currency)}
           </span>
           {isItemAvailable(item) ? (
-            <button
-              type="button"
-              onClick={onAdd}
-              className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
-            >
-              {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-            </button>
+            acceptOrders ? (
+              <button
+                type="button"
+                onClick={onAdd}
+                className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
+              >
+                {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+              </button>
+            ) : null
           ) : (
             <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
           )}
@@ -165,6 +175,7 @@ function SpotCard({
   onSelect: (item: StorefrontItem) => void;
   onAdd: () => void;
 }) {
+  const { acceptOrders } = useCart();
   return (
     <div className="flex flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-[var(--cat-surface)]">
       <button
@@ -195,13 +206,15 @@ function SpotCard({
           {formatMoney(item.price, currency)}
         </p>
         {isItemAvailable(item) ? (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
-          >
-            {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
-          </button>
+          acceptOrders ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
+            >
+              {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
+            </button>
+          ) : null
         ) : (
           <p className="text-center text-xs font-medium text-[var(--cat-muted)]">Unavailable</p>
         )}

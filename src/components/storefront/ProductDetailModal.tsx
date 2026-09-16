@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import { QuantityStepper } from "./QuantityStepper";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
+import { PausedNote } from "./PausedNote";
 
 const QUICK_MULTIPLES = [6, 12, 24];
 
@@ -20,7 +21,7 @@ export function ProductDetailModal({
   currency: string;
   onClose: () => void;
 }) {
-  const { quantities, increment, decrement, setQuantity, addLine, incrementLine, decrementLine, lineFor } =
+  const { quantities, increment, decrement, setQuantity, addLine, incrementLine, decrementLine, lineFor, acceptOrders, pausedMessage } =
     useCart();
   const optioned = hasItemOptions(item);
   const [singlePick, setSinglePick] = useState<Record<string, string>>(() => {
@@ -177,7 +178,9 @@ export function ProductDetailModal({
           </div>
 
           <div className="mt-auto space-y-2 pt-2">
-            {!isItemAvailable(item) ? (
+            {!acceptOrders ? (
+              <PausedNote message={pausedMessage} />
+            ) : !isItemAvailable(item) ? (
               <p className="min-h-11 rounded-[9px] bg-slate-100 py-2.5 text-center text-sm font-semibold text-[var(--cat-muted)]">
                 Unavailable
               </p>

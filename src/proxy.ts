@@ -24,6 +24,10 @@ export async function proxy(request: NextRequest) {
     // browser is untouched. Storefront is a single page (cart/checkout are
     // client state), so every path on a tenant host renders the same route.
     const url = request.nextUrl.clone();
+    if (pathname.startsWith("/track/")) {
+      url.pathname = `/s/${encodeURIComponent(host)}${pathname}`;
+      return NextResponse.rewrite(url);
+    }
     url.pathname = `/s/${encodeURIComponent(host)}`;
     return NextResponse.rewrite(url);
   }

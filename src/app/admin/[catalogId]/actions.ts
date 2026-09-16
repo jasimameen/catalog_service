@@ -12,9 +12,12 @@ import type { CatalogTemplate } from "@/lib/supabase/types";
 import {
   MAX_BANNERS,
   MERCHANDISING_SQL_HINT,
+  STOREFRONT_SETTINGS_SQL_HINT,
   parseBannersFromForm,
   parseImageFit,
 } from "@/lib/catalog/merchandising";
+import { parseCoord, parseLocationsFromText } from "@/lib/catalog/locations";
+import { STOCK_PHOTOS } from "@/lib/catalog/placeholders";
 
 export type LookState = { error?: string; saved?: boolean } | null;
 
@@ -111,10 +114,22 @@ export async function updateCatalogLook(
 
   const imageFit = parseImageFit(formData.get("imageFit"));
   const phone = String(formData.get("companyPhone") ?? "").trim().slice(0, 40);
+  const email = String(formData.get("companyEmail") ?? "").trim().slice(0, 120);
   const address = String(formData.get("companyAddress") ?? "").trim().slice(0, 200);
-  const hours = String(formData.get("companyHours") ?? "").trim().slice(0, 200);
+  const hours = String(formData.get("companyHours") ?? "").trim().slice(0, 800);
   const whatsapp = String(formData.get("companyWhatsapp") ?? "").trim().slice(0, 40);
   const instagram = String(formData.get("companyInstagram") ?? "").trim().slice(0, 80);
+  const locations = parseLocationsFromText(String(formData.get("companyLocations") ?? ""));
+  const geoLat = parseCoord(formData.get("companyLat"));
+  const geoLng = parseCoord(formData.get("companyLng"));
+  const placeholderRaw = String(formData.get("placeholderImageUrl") ?? "").trim();
+  const placeholderImageUrl = STOCK_PHOTOS.some((photo) => photo.url === placeholderRaw)
+    ? placeholderRaw
+    : "";
+  const showHours = formData.get("showHours") === "1";
+  const showContact = formData.get("showContact") === "1";
+  const showSocial = formData.get("showSocial") === "1";
+  const showMap = formData.get("showMap") === "1";
 
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
@@ -129,10 +144,19 @@ export async function updateCatalogLook(
       banners,
       image_fit: imageFit,
       phone: phone || null,
+      email: email || null,
       address: address || null,
       hours: hours || null,
       whatsapp: whatsapp || null,
       instagram: instagram || null,
+      locations,
+      geo_lat: geoLat,
+      geo_lng: geoLng,
+      placeholder_image_url: placeholderImageUrl || null,
+      show_hours: showHours,
+      show_contact: showContact,
+      show_social: showSocial,
+      show_map: showMap,
     })
     .eq("id", catalogId)
     .select("slug")
@@ -149,6 +173,17 @@ export async function updateCatalogLook(
       error?.message?.includes("instagram")
     ) {
       return { error: MERCHANDISING_SQL_HINT };
+    }
+    if (
+      error?.message?.includes("accept_orders") ||
+      error?.message?.includes("show_map") ||
+      error?.message?.includes("show_hours") ||
+      error?.message?.includes("locations") ||
+      error?.message?.includes("geo_lat") ||
+      error?.message?.includes("placeholder") ||
+      error?.message?.includes("email")
+    ) {
+      return { error: STOREFRONT_SETTINGS_SQL_HINT };
     }
     if (
       error?.code === "23514" ||
@@ -178,6 +213,16 @@ export async function updateCatalogOrdering(
     safeJson(formData.get("fulfillment_modes")),
   );
   const checkoutForm = parseCheckoutForm(safeJson(formData.get("checkout_form")));
+  const acceptOrders = formData.get("acceptOrders") === "1";
+  const ordersPausedMessage =
+    typeof formData.get("ordersPausedMessage") === "string"
+      ? String(formData.get("ordersPausedMessage")).trim().slice(0, 280)
+      : "";
+  const storefrontAlert =
+    typeof formData.get("storefrontAlert") === "string"
+      ? String(formData.get("storefrontAlert")).trim().slice(0, 280)
+      : "";
+  const showStorefrontAlert = formData.get("showStorefrontAlert") === "1";
 
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
@@ -185,6 +230,10 @@ export async function updateCatalogOrdering(
     .update({
       fulfillment_modes: fulfillmentModes,
       checkout_form: checkoutForm,
+      accept_orders: acceptOrders,
+      orders_paused_message: ordersPausedMessage || null,
+      storefront_alert: storefrontAlert || null,
+      show_storefront_alert: showStorefrontAlert,
     })
     .eq("id", catalogId)
     .select("slug")
@@ -199,6 +248,18 @@ export async function updateCatalogOrdering(
       error?.message?.includes("fulfillment")
     ) {
       return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
+    }
+    if (
+      error?.message?.includes("accept_orders") ||
+      error?.message?.includes("orders_paused_message") ||
+      error?.message?.includes("storefront_alert")
+    ) {
+      return {
+        error:
+          error.message.includes("orders_paused") || error.message.includes("storefront_alert")
+            ? "Run supabase/order-status-history.sql in the Supabase SQL editor, then try again."
+            : STOREFRONT_SETTINGS_SQL_HINT,
+      };
     }
     return { error: "Could not save ordering. Try again." };
   }

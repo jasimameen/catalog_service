@@ -19,7 +19,7 @@ export type CatalogTemplate =
 export type CatalogStatus = "draft" | "live";
 export type DomainKind = "subdomain" | "custom";
 export type DomainStatus = "pending" | "verified" | "error";
-export type OrderStatus = "new" | "preparing" | "ready" | "done" | "confirmed" | "cancelled";
+export type OrderStatus = string;
 export type OrderFulfillment = "dine_in" | "pickup" | "delivery";
 export type LsStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type CheckoutFieldMode = "required" | "optional" | "hidden";
@@ -112,6 +112,21 @@ export type CatalogRow = {
   hours?: string | null;
   whatsapp?: string | null;
   instagram?: string | null;
+  email?: string | null;
+  accept_orders?: boolean | null;
+  show_map?: boolean | null;
+  show_hours?: boolean | null;
+  show_contact?: boolean | null;
+  show_social?: boolean | null;
+  locations?: unknown;
+  geo_lat?: number | null;
+  geo_lng?: number | null;
+  placeholder_image_url?: string | null;
+  order_statuses?: unknown;
+  default_order_status?: string | null;
+  orders_paused_message?: string | null;
+  storefront_alert?: string | null;
+  show_storefront_alert?: boolean | null;
   created_at: string;
   updated_at: string;
 };
@@ -162,6 +177,16 @@ export type OrderRow = {
   geo_lat?: number | null;
   geo_lng?: number | null;
   form_values?: Record<string, string> | unknown;
+  track_token?: string | null;
+  created_at: string;
+};
+
+export type OrderStatusEventRow = {
+  id: string;
+  order_id: string;
+  from_status: string | null;
+  to_status: string;
+  actor: string | null;
   created_at: string;
 };
 

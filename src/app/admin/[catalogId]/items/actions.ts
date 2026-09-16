@@ -10,6 +10,7 @@ import type { CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
 import { foldVariantRows, type MappedImportRow } from "@/lib/catalog/import-map";
 import { parseOptionsFromForm } from "@/lib/catalog/item-options";
 import { MERCHANDISING_SQL_HINT, parseItemImageFit } from "@/lib/catalog/merchandising";
+import { pickPlaceholder, STOCK_PHOTOS } from "@/lib/catalog/placeholders";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 const PHOTO_EXT: Record<string, string> = {
@@ -339,6 +340,34 @@ export async function updateItem(
   return { saved: true };
 }
 
+export async function applyItemPlaceholder(
+  catalogId: string,
+  itemId: string,
+  imageUrl: string,
+): Promise<{ error?: string }> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+  const allowed = STOCK_PHOTOS.some((photo) => photo.url === imageUrl);
+  if (!allowed && imageUrl !== "") return { error: "Pick one of the stock photos." };
+
+  const supabase = await getServerSupabase();
+  const { data, error } = await supabase
+    .from("catalog_items")
+    .update({ image: imageUrl })
+    .eq("id", itemId)
+    .eq("catalog_id", catalogId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("applyItemPlaceholder: update failed", error);
+    return { error: "Could not set the photo. Try again." };
+  }
+
+  revalidateItems(catalogId);
+  return {};
+}
+
 export async function deleteItem(
   catalogId: string,
   itemId: string,
@@ -442,11 +471,20 @@ export type FileImportResult = {
   skipReasons?: string[];
 };
 
+export type FileImportMode = "upsert" | "replace";
+
+export type FileImportOptions = {
+  mode?: FileImportMode;
+  fillPlaceholders?: boolean;
+  placeholderKeyword?: string;
+};
+
 const FILE_IMPORT_LIMIT = 1000;
 
 export async function fileImportItems(
   catalogId: string,
   rows: MappedImportInput[],
+  options: FileImportOptions = {},
 ): Promise<FileImportResult> {
   const catalog = await ownedCatalog(catalogId);
   if (!catalog) return { error: "Catalog not found." };
@@ -503,11 +541,26 @@ export async function fileImportItems(
     unique.push(row);
   }
 
+  const keyword = String(options.placeholderKeyword ?? "").trim().slice(0, 40);
+  if (options.fillPlaceholders) {
+    unique.forEach((row, index) => {
+      if (!row.image) row.image = pickPlaceholder(keyword, index);
+    });
+  }
+
   const supabase = await getServerSupabase();
-  const { data: existing } = await supabase
-    .from("catalog_items")
-    .select("code")
-    .eq("catalog_id", catalogId);
+  const replaceAll = options.mode === "replace";
+  if (replaceAll) {
+    const { error } = await supabase.from("catalog_items").delete().eq("catalog_id", catalogId);
+    if (error) {
+      console.error("fileImportItems: replace delete failed", error);
+      return { error: "Could not replace the catalog. Try again." };
+    }
+  }
+
+  const { data: existing } = replaceAll
+    ? { data: [] as { code: string }[] }
+    : await supabase.from("catalog_items").select("code").eq("catalog_id", catalogId);
   const existingByCode = new Map(
     (existing ?? []).map((row) => [String(row.code).toLowerCase(), String(row.code)]),
   );

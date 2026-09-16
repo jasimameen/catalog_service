@@ -5,6 +5,7 @@ import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import type { OrderItemRow, OrderRow, SelectedOption } from "@/lib/supabase/types";
 import { formatSelectedOptions } from "@/lib/catalog/item-options";
 import { fulfillmentLabel } from "@/lib/catalog/checkout-form";
+import { parseOrderStatuses, statusLabel } from "@/lib/catalog/order-statuses";
 
 function csvEscape(value: string | number): string {
   const str = String(value);
@@ -18,6 +19,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const { catalogId } = await params;
   await requireAccount();
   const catalog = await getCatalogOrNotFound(catalogId);
+  const statuses = parseOrderStatuses(catalog.order_statuses);
   const supabase = await getServerSupabase();
 
   const { data: ordersData } = await supabase
@@ -68,7 +70,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         [
           order.reference,
           order.created_at,
-          order.status,
+          statusLabel(statuses, order.status),
           fulfillmentLabel(order.fulfillment),
           order.table_no ?? "",
           order.shop_name,
@@ -93,7 +95,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         [
           order.reference,
           order.created_at,
-          order.status,
+          statusLabel(statuses, order.status),
           fulfillmentLabel(order.fulfillment),
           order.table_no ?? "",
           order.shop_name,

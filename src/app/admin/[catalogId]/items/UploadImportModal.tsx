@@ -8,7 +8,7 @@ import {
   type ImportFieldOrSkip,
 } from "@/lib/catalog/import-map";
 import { applyMapping, defaultMapping, parseCatalogFile, type ParsedSheet } from "./parse-sheet";
-import { fileImportItems } from "./actions";
+import { fileImportItems, type FileImportMode } from "./actions";
 
 const FIELD_OPTIONS: ImportFieldOrSkip[] = ["skip", ...IMPORT_FIELDS];
 
@@ -24,6 +24,10 @@ export function UploadImportModal({
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
   const [mapping, setMapping] = useState<ImportFieldOrSkip[]>([]);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [mode, setMode] = useState<FileImportMode>("upsert");
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [fillPlaceholders, setFillPlaceholders] = useState(false);
+  const [placeholderKeyword, setPlaceholderKeyword] = useState("");
   const [result, setResult] = useState<{
     error?: string;
     imported?: number;
@@ -44,6 +48,7 @@ export function UploadImportModal({
     if (!file) return;
     setFileError(null);
     setResult(null);
+    setConfirmReplace(false);
     try {
       const parsed = await parseCatalogFile(file);
       setSheet(parsed);
@@ -68,9 +73,18 @@ export function UploadImportModal({
 
   function importRows() {
     if (!mapped) return;
+    if (mode === "replace" && !confirmReplace) {
+      setConfirmReplace(true);
+      return;
+    }
     startTransition(async () => {
-      const next = await fileImportItems(catalogId, mapped.ready);
+      const next = await fileImportItems(catalogId, mapped.ready, {
+        mode,
+        fillPlaceholders,
+        placeholderKeyword,
+      });
       if (!next.error) router.refresh();
+      setConfirmReplace(false);
       setResult({
         error: next.error,
         imported: next.imported,
@@ -89,12 +103,43 @@ export function UploadImportModal({
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6">
         <h3 className="m-0 text-[16px] font-semibold text-[var(--cat-ink)]">Upload catalog</h3>
         <p className="mt-1.5 text-xs text-[var(--cat-muted)]">
-          CSV or Excel. Map your columns, then import. Name and price are required. Map
-          Variant / Size to fold repeated dishes into one item with options.{" "}
+          CSV or Excel. Map your columns, then import. Name and price are required. Groups and
+          variants are combined from Variant / Variant Group columns — same SKU or group id
+          becomes one item with options.{" "}
           <a href="/catalog-import-template.csv" download className="text-[var(--cat-accent)]">
             Download template
           </a>
         </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {(
+            [
+              { value: "upsert", label: "Upsert", hint: "Update matching SKUs. Rows without SKU are added." },
+              { value: "replace", label: "Replace all", hint: "Deletes every current item, then imports this file." },
+            ] as const
+          ).map((opt) => (
+            <label
+              key={opt.value}
+              className={`cursor-pointer rounded-[10px] border px-3 py-2 has-[:checked]:border-[var(--cat-accent)] ${
+                mode === opt.value ? "border-[var(--cat-accent)]" : "border-[#e8e8ed]"
+              }`}
+            >
+              <input
+                type="radio"
+                name="importMode"
+                value={opt.value}
+                checked={mode === opt.value}
+                onChange={() => {
+                  setMode(opt.value);
+                  setConfirmReplace(false);
+                }}
+                className="sr-only"
+              />
+              <span className="block text-[13px] font-semibold text-[var(--cat-ink)]">{opt.label}</span>
+              <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">{opt.hint}</span>
+            </label>
+          ))}
+        </div>
 
         <label className="mt-4 block">
           <span className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">File</span>
@@ -109,6 +154,30 @@ export function UploadImportModal({
 
         {sheet ? (
           <div className="mt-4 flex flex-col gap-3">
+            <label className="flex items-start gap-2 text-[13px] text-[var(--cat-ink)]">
+              <input
+                type="checkbox"
+                checked={fillPlaceholders}
+                onChange={(e) => setFillPlaceholders(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Fill missing images with placeholders
+                <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">
+                  Uses a small set of Unsplash photos. Optional keyword picks a matching style.
+                </span>
+              </span>
+            </label>
+            {fillPlaceholders ? (
+              <input
+                value={placeholderKeyword}
+                onChange={(e) => setPlaceholderKeyword(e.target.value)}
+                placeholder="Keyword — coffee, food, product…"
+                maxLength={40}
+                className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+              />
+            ) : null}
+
             <p className="m-0 text-xs text-[var(--cat-muted)]">
               {sheet.rows.length} rows · map each column
             </p>
@@ -154,6 +223,12 @@ export function UploadImportModal({
           </div>
         ) : null}
 
+        {confirmReplace ? (
+          <p className="m-0 mt-3 rounded-[10px] bg-[#fff4f1] px-3 py-2 text-xs text-[#b2432b]">
+            Replace all deletes every current item. Press Import again to confirm.
+          </p>
+        ) : null}
+
         {result?.error ? <p className="m-0 mt-3 text-xs text-[#b2432b]">{result.error}</p> : null}
         {result && !result.error ? (
           <p className="m-0 mt-3 text-xs text-[#1e9e4a]">
@@ -175,7 +250,7 @@ export function UploadImportModal({
             onClick={importRows}
             className="flex-1 rounded-[10px] bg-[var(--cat-accent)] py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
           >
-            {pending ? "Importing…" : "Import"}
+            {pending ? "Importing…" : confirmReplace ? "Yes, replace all" : "Import"}
           </button>
           <button
             type="button"

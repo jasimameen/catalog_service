@@ -49,6 +49,18 @@ create table if not exists catalogs (
   updated_at timestamptz not null default now()
 );
 
+alter table catalogs
+  add column if not exists accept_orders boolean not null default true,
+  add column if not exists show_map boolean not null default false,
+  add column if not exists show_hours boolean not null default true,
+  add column if not exists show_contact boolean not null default true,
+  add column if not exists show_social boolean not null default true,
+  add column if not exists email text,
+  add column if not exists locations jsonb not null default '[]'::jsonb,
+  add column if not exists geo_lat double precision,
+  add column if not exists geo_lng double precision,
+  add column if not exists placeholder_image_url text;
+
 create index if not exists catalogs_account_id_idx on catalogs(account_id);
 
 -- ---------------------------------------------------------------------------
@@ -352,6 +364,75 @@ alter table catalog_items add constraint catalog_items_image_fit_check
 create index if not exists catalog_items_featured_idx
   on catalog_items (catalog_id)
   where featured = true;
+
+-- ---------------------------------------------------------------------------
+-- Additive: merchant-configurable order statuses.
+-- Existing projects can run supabase/order-statuses.sql once instead.
+-- ---------------------------------------------------------------------------
+alter table catalogs
+  add column if not exists order_statuses jsonb not null default '[
+    {"id":"new","label":"New","sort":0,"is_done":false},
+    {"id":"preparing","label":"Preparing","sort":1,"is_done":false},
+    {"id":"ready","label":"Ready for collection","sort":2,"is_done":false},
+    {"id":"out_for_delivery","label":"Gone for delivery","sort":3,"is_done":false},
+    {"id":"done","label":"Done","sort":4,"is_done":true}
+  ]'::jsonb,
+  add column if not exists default_order_status text not null default 'new';
+
+alter table orders drop constraint if exists orders_status_check;
+
+-- ---------------------------------------------------------------------------
+-- Additive: order status history, tracking tokens, storefront pause/alert.
+-- Existing projects can run supabase/order-status-history.sql once instead.
+-- ---------------------------------------------------------------------------
+create table if not exists order_status_events (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references orders(id) on delete cascade,
+  from_status text,
+  to_status text not null,
+  actor text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists order_status_events_order_id_idx
+  on order_status_events (order_id, created_at);
+
+alter table order_status_events enable row level security;
+
+drop policy if exists "members can read order status events" on order_status_events;
+create policy "members can read order status events" on order_status_events
+  for select using (
+    exists (
+      select 1 from orders o
+      join catalogs c on c.id = o.catalog_id
+      where o.id = order_id and is_account_member(c.account_id)
+    )
+  );
+
+drop policy if exists "members can insert order status events" on order_status_events;
+create policy "members can insert order status events" on order_status_events
+  for insert with check (
+    exists (
+      select 1 from orders o
+      join catalogs c on c.id = o.catalog_id
+      where o.id = order_id and is_account_member(c.account_id)
+    )
+  );
+
+grant select, insert on table order_status_events to authenticated, service_role;
+grant all on table order_status_events to service_role;
+
+alter table orders
+  add column if not exists track_token text;
+
+create unique index if not exists orders_track_token_uidx
+  on orders (track_token)
+  where track_token is not null;
+
+alter table catalogs
+  add column if not exists orders_paused_message text,
+  add column if not exists storefront_alert text,
+  add column if not exists show_storefront_alert boolean not null default false;
 
 -- ---------------------------------------------------------------------------
 -- Storage: public catalog-images bucket (item photo uploads).

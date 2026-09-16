@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
@@ -11,9 +12,13 @@ import { BrandHeader } from "./BrandHeader";
 export function PriceListTemplate({
   catalog,
   onOpenCart,
+  filters,
+  featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  filters?: ReactNode;
+  featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
   const { quantities } = useCart();
@@ -29,6 +34,8 @@ export function PriceListTemplate({
         />
         <CartButton onClick={onOpenCart} />
       </div>
+
+      <CatalogSlots filters={filters} featured={featured} />
 
       <div className="mx-auto max-w-3xl px-6 py-10 sm:px-10">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-[var(--cat-ink)] pb-3.5">

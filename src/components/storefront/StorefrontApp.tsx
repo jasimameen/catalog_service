@@ -12,12 +12,14 @@ import { CategoryChips } from "./CategoryChips";
 import { StorefrontFooter } from "./StorefrontFooter";
 import type { OrderResult } from "@/lib/catalog/order-types";
 import { formatMoney } from "@/lib/catalog/currency";
+import { storefrontCategories } from "@/lib/catalog/merchandising";
 
 export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [category, setCategory] = useState("");
   const Template = TEMPLATE_COMPONENTS[catalog.template] ?? TEMPLATE_COMPONENTS.grid;
+  const showChips = storefrontCategories(catalog.items).length >= 2;
   const viewCatalog = useMemo<StorefrontCatalog>(() => {
     if (!category) return catalog;
     return {
@@ -27,7 +29,12 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   }, [catalog, category]);
 
   return (
-    <CartProvider catalogId={catalog.id} items={catalog.items}>
+    <CartProvider
+      catalogId={catalog.id}
+      items={catalog.items}
+      acceptOrders={catalog.acceptOrders}
+      pausedMessage={catalog.ordersPausedMessage}
+    >
       {order ? (
         <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 py-10 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--cat-success-bg)]">
@@ -47,7 +54,14 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
               label="Items"
               value={`${order.itemCount} unit${order.itemCount === 1 ? "" : "s"} · ${order.lineCount} line${order.lineCount === 1 ? "" : "s"}`}
             />
-            <Row label="Subtotal" value={formatMoney(order.total, catalog.currency)} bold last />
+            <Row label="Subtotal" value={formatMoney(order.total, catalog.currency)} bold last={!order.trackUrl} />
+            {order.trackUrl ? (
+              <div className="pt-2">
+                <a href={order.trackUrl} className="text-sm font-semibold text-[var(--cat-accent)]">
+                  Track this order
+                </a>
+              </div>
+            ) : null}
           </div>
           <button
             type="button"
@@ -60,24 +74,43 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
         </main>
       ) : (
         <main>
+          {catalog.showStorefrontAlert && catalog.storefrontAlert ? (
+            <div className="bg-[var(--cat-ink)] px-4 py-2.5 text-center text-sm font-medium text-white">
+              {catalog.storefrontAlert}
+            </div>
+          ) : null}
+          {!catalog.acceptOrders ? (
+            <div className="bg-[#fff4e5] px-4 py-2.5 text-center text-sm font-medium text-[#9a5b00]">
+              {catalog.ordersPausedMessage}
+            </div>
+          ) : null}
           <StorefrontHero banners={catalog.banners} />
-          <FeaturedStrip catalog={catalog} />
-          <CategoryChips items={catalog.items} selected={category} onSelect={setCategory} />
-          <Template catalog={viewCatalog} onOpenCart={() => setCartOpen(true)} />
-          <StorefrontFooter catalog={catalog} />
-          <CartPanel
-            catalogId={catalog.id}
-            currency={catalog.currency}
-            checkoutFields={catalog.checkoutFields}
-            checkoutForm={catalog.checkoutForm}
-            fulfillmentModes={catalog.fulfillmentModes}
-            open={cartOpen}
-            onClose={() => setCartOpen(false)}
-            onPlaced={(result) => {
-              setCartOpen(false);
-              setOrder(result);
-            }}
+          <Template
+            catalog={viewCatalog}
+            onOpenCart={() => setCartOpen(true)}
+            filters={
+              showChips ? (
+                <CategoryChips items={catalog.items} selected={category} onSelect={setCategory} />
+              ) : undefined
+            }
+            featured={<FeaturedStrip catalog={catalog} />}
           />
+          <StorefrontFooter catalog={catalog} />
+          {catalog.acceptOrders ? (
+            <CartPanel
+              catalogId={catalog.id}
+              currency={catalog.currency}
+              checkoutFields={catalog.checkoutFields}
+              checkoutForm={catalog.checkoutForm}
+              fulfillmentModes={catalog.fulfillmentModes}
+              open={cartOpen}
+              onClose={() => setCartOpen(false)}
+              onPlaced={(result) => {
+                setCartOpen(false);
+                setOrder(result);
+              }}
+            />
+          ) : null}
         </main>
       )}
     </CartProvider>

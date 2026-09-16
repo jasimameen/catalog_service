@@ -6,6 +6,7 @@ import { TEMPLATES, ACCENT_COLORS } from "@/lib/catalog/templates";
 import { CHECKOUT_FIELD_KEYS, CHECKOUT_FIELD_LABELS } from "@/lib/catalog/checkout-fields";
 import type { CatalogBanner, CatalogTemplate, CheckoutFields, ImageFit } from "@/lib/supabase/types";
 import { MAX_BANNERS } from "@/lib/catalog/merchandising";
+import { PlaceholderPicker } from "@/components/admin/PlaceholderPicker";
 import { updateCatalogLook, type LookState } from "./actions";
 
 const PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
@@ -36,10 +37,19 @@ export function LookSettingsForm({
   banners: initialBanners,
   imageFit,
   phone,
+  email,
   address,
   hours,
   whatsapp,
   instagram,
+  locationsText,
+  geoLat,
+  geoLng,
+  placeholderImageUrl,
+  showHours,
+  showContact,
+  showSocial,
+  showMap,
 }: {
   catalogId: string;
   template: CatalogTemplate;
@@ -51,10 +61,19 @@ export function LookSettingsForm({
   banners: CatalogBanner[];
   imageFit: ImageFit;
   phone: string;
+  email: string;
   address: string;
   hours: string;
   whatsapp: string;
   instagram: string;
+  locationsText: string;
+  geoLat: number | null;
+  geoLng: number | null;
+  placeholderImageUrl: string;
+  showHours: boolean;
+  showContact: boolean;
+  showSocial: boolean;
+  showMap: boolean;
 }) {
   const [state, formAction, pending] = useActionState<LookState, FormData>(
     updateCatalogLook.bind(null, catalogId),
@@ -64,6 +83,7 @@ export function LookSettingsForm({
   const [logoError, setLogoError] = useState<string | null>(null);
   const [banners, setBanners] = useState<CatalogBanner[]>(initialBanners);
   const [bannerError, setBannerError] = useState<string | null>(null);
+  const [placeholderUrl, setPlaceholderUrl] = useState(placeholderImageUrl);
   const accents = ACCENT_COLORS.includes(accent) ? ACCENT_COLORS : [...ACCENT_COLORS, accent];
   const shownLogo = logoPreview ?? logo;
 
@@ -234,11 +254,29 @@ export function LookSettingsForm({
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
-            Footer
+            Storefront
           </p>
           <p className="mb-3 text-xs text-[var(--cat-muted)]">
-            Shown under the menu. WhatsApp appears only if you add a number.
+            Hours, contact, map, and social only appear when enabled. Take orders is under Ordering.
           </p>
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            {(
+              [
+                { name: "showHours", label: "Show hours", checked: showHours },
+                { name: "showContact", label: "Show contact", checked: showContact },
+                { name: "showSocial", label: "Show social", checked: showSocial },
+                { name: "showMap", label: "Show map", checked: showMap },
+              ] as const
+            ).map((toggle) => (
+              <label
+                key={toggle.name}
+                className="flex min-h-11 items-center gap-2 rounded-[10px] border border-[#e8e8ed] px-3 text-[13px] text-[var(--cat-ink)]"
+              >
+                <input type="checkbox" name={toggle.name} value="1" defaultChecked={toggle.checked} />
+                {toggle.label}
+              </label>
+            ))}
+          </div>
           <label htmlFor="companyPhone" className="mb-1 block text-xs text-[#86868b]">
             Phone
           </label>
@@ -248,6 +286,18 @@ export function LookSettingsForm({
             defaultValue={phone}
             maxLength={40}
             placeholder="+974 3300 0000"
+            className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          <label htmlFor="companyEmail" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
+            Email
+          </label>
+          <input
+            id="companyEmail"
+            name="companyEmail"
+            type="email"
+            defaultValue={email}
+            maxLength={120}
+            placeholder="hello@shop.com"
             className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
           />
           <label htmlFor="companyAddress" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
@@ -268,11 +318,24 @@ export function LookSettingsForm({
             id="companyHours"
             name="companyHours"
             defaultValue={hours}
-            maxLength={200}
-            rows={2}
-            placeholder="Daily 7:00 – 02:00"
+            maxLength={800}
+            rows={3}
+            placeholder={"Mon–Fri 11:00 – 23:00\nSat–Sun 11:00 – 00:00"}
             className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
           />
+          <label htmlFor="companyLocations" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
+            Branches
+          </label>
+          <textarea
+            id="companyLocations"
+            name="companyLocations"
+            defaultValue={locationsText}
+            maxLength={2000}
+            rows={4}
+            placeholder={"Lusail, 4414 6262\nWukair, 4417 6262"}
+            className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          <p className="m-0 mt-1 text-[11px] text-[#86868b]">One branch per line: name, phone.</p>
           <div className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="companyWhatsapp" className="mb-1 block text-xs text-[#86868b]">
@@ -300,6 +363,38 @@ export function LookSettingsForm({
                 className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
               />
             </div>
+          </div>
+          <div className="mt-3.5 grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="companyLat" className="mb-1 block text-xs text-[#86868b]">
+                Map latitude
+              </label>
+              <input
+                id="companyLat"
+                name="companyLat"
+                defaultValue={geoLat ?? ""}
+                placeholder="25.3548"
+                className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+              />
+            </div>
+            <div>
+              <label htmlFor="companyLng" className="mb-1 block text-xs text-[#86868b]">
+                Map longitude
+              </label>
+              <input
+                id="companyLng"
+                name="companyLng"
+                defaultValue={geoLng ?? ""}
+                placeholder="51.1839"
+                className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+              />
+            </div>
+          </div>
+          <p className="m-0 mt-1 text-[11px] text-[#86868b]">OpenStreetMap embed. Hidden if off or empty.</p>
+          <div className="mt-4">
+            <input type="hidden" name="placeholderImageUrl" value={placeholderUrl} />
+            <p className="mb-1 text-xs text-[#86868b]">Default photo for items without an image</p>
+            <PlaceholderPicker value={placeholderUrl} onSelect={setPlaceholderUrl} />
           </div>
         </div>
 

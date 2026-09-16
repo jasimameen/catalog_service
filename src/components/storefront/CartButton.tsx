@@ -3,7 +3,8 @@
 import { useCart } from "@/lib/catalog/cart-context";
 
 export function CartButton({ onClick }: { onClick: () => void }) {
-  const { itemCount } = useCart();
+  const { itemCount, acceptOrders } = useCart();
+  if (!acceptOrders) return null;
   return (
     <button
       type="button"
