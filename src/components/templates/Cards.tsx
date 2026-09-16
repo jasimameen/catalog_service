@@ -6,6 +6,7 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
+import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 
 /** Large editorial image cards — one or two across. */
@@ -77,10 +78,10 @@ export function CardsTemplate({
                       </span>
                       <button
                         type="button"
-                        onClick={() => increment(item.code)}
-                        className="rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
+                        onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
+                        className="min-h-11 rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
                       >
-                        {qty > 0 ? `Added × ${qty}` : "Add to order"}
+                        {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
                       </button>
                     </div>
                   </div>

@@ -8,7 +8,9 @@ import { templateMeta } from "@/lib/catalog/templates";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
 import { LookSettingsForm } from "./LookSettingsForm";
+import { OrderingCard } from "@/components/admin/OrderingCard";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
+import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
 import type { OrderRow } from "@/lib/supabase/types";
 
 function startOfMonthIso(): string {
@@ -158,6 +160,12 @@ export default async function CatalogDashboardPage({
           logo={catalog.logo ?? ""}
           tagline={catalog.tagline ?? ""}
           about={catalog.about ?? ""}
+        />
+
+        <OrderingCard
+          catalogId={catalogId}
+          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
+          checkoutForm={parseCheckoutForm(catalog.checkout_form)}
         />
 
         <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">

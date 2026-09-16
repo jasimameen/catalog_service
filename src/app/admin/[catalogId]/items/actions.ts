@@ -6,7 +6,8 @@ import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { generateItemCode } from "@/app/admin/_lib/urls";
-import type { CatalogRow } from "@/lib/supabase/types";
+import type { CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
+import { parseOptionsFromForm } from "@/lib/catalog/item-options";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 const PHOTO_EXT: Record<string, string> = {
@@ -129,6 +130,8 @@ export async function addItem(
   const position = await nextPosition(supabase, catalogId);
   const rounded = Math.round(price * 100) / 100;
 
+  const options = parseOptionsFromForm(formData.get("options"));
+
   const { error } = await supabase.from("catalog_items").insert({
     catalog_id: catalogId,
     code: generateItemCode(),
@@ -139,12 +142,16 @@ export async function addItem(
     pack,
     description,
     barcode,
+    options,
     visible: true,
     position,
   });
 
-  if (error) {
+    if (error) {
     console.error("addItem: insert failed", error);
+    if (error.code === "42703" || error.message?.includes("options")) {
+      return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
+    }
     if (error.code === "23505") {
       const retry = await supabase.from("catalog_items").insert({
         catalog_id: catalogId,
@@ -156,6 +163,7 @@ export async function addItem(
         pack,
         description,
         barcode,
+        options,
         visible: true,
         position,
       });
@@ -195,6 +203,37 @@ export async function toggleItemVisible(
 
   revalidateItems(catalogId);
   return {};
+}
+
+export type UpdateOptionsState = { error?: string; saved?: boolean } | null;
+
+export async function updateItemOptions(
+  catalogId: string,
+  itemId: string,
+  options: ItemOptionGroup[],
+): Promise<UpdateOptionsState> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+
+  const supabase = await getServerSupabase();
+  const { data, error } = await supabase
+    .from("catalog_items")
+    .update({ options: parseOptionsFromForm(options) })
+    .eq("id", itemId)
+    .eq("catalog_id", catalogId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateItemOptions: update failed", error);
+    if (error?.code === "42703" || error?.message?.includes("options")) {
+      return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
+    }
+    return { error: "Could not save options. Try again." };
+  }
+
+  revalidateItems(catalogId);
+  return { saved: true };
 }
 
 export type PasteImportState = { error?: string; imported?: number } | null;

@@ -54,6 +54,8 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
             catalogId={catalog.id}
             currency={catalog.currency}
             checkoutFields={catalog.checkoutFields}
+            checkoutForm={catalog.checkoutForm}
+            fulfillmentModes={catalog.fulfillmentModes}
             open={cartOpen}
             onClose={() => setCartOpen(false)}
             onPlaced={(result) => {

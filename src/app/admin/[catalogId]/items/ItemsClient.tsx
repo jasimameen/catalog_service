@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useActionState } from "react";
 import dynamic from "next/dynamic";
 import { formatMoney } from "@/lib/catalog/currency";
-import type { CatalogItemRow } from "@/lib/supabase/types";
-import { addItem, pasteImportItems, toggleItemVisible, type AddItemState, type PasteImportState } from "./actions";
+import type { CatalogItemRow, ItemOptionGroup } from "@/lib/supabase/types";
+import { ItemOptionsEditor } from "@/components/admin/ItemOptionsEditor";
+import { hasItemOptions, parseItemOptions } from "@/lib/catalog/item-options";
+import { addItem, pasteImportItems, toggleItemVisible, updateItemOptions, type AddItemState, type PasteImportState } from "./actions";
 
 const UploadImportModal = dynamic(
   () => import("./UploadImportModal").then((mod) => mod.UploadImportModal),
@@ -51,6 +53,7 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
   const [state, formAction, pending] = useActionState<AddItemState, FormData>(boundAction, null);
   const [preview, setPreview] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [options, setOptions] = useState<ItemOptionGroup[]>([]);
 
   useEffect(() => {
     if (state?.saved) onClose();
@@ -63,10 +66,11 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
   }, [preview]);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6">
+    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-6 sm:max-w-md sm:rounded-2xl">
         <h3 className="m-0 text-[16px] font-semibold text-[var(--cat-ink)]">Add item</h3>
         <form action={formAction} className="mt-4 flex flex-col gap-3">
+          <input type="hidden" name="options" value={JSON.stringify(options)} />
           <div>
             <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Name</label>
             <input
@@ -169,6 +173,7 @@ function AddItemModal({ catalogId, onClose }: { catalogId: string; onClose: () =
               className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
             />
           </div>
+          <ItemOptionsEditor options={options} onChange={setOptions} />
           {state?.error ? <p className="m-0 text-xs text-[#b2432b]">{state.error}</p> : null}
           <div className="mt-2 flex gap-2">
             <button
@@ -238,6 +243,56 @@ function PasteImportModal({ catalogId, onClose }: { catalogId: string; onClose: 
   );
 }
 
+function EditOptionsModal({
+  catalogId,
+  item,
+  onClose,
+}: {
+  catalogId: string;
+  item: CatalogItemRow;
+  onClose: () => void;
+}) {
+  const [options, setOptions] = useState<ItemOptionGroup[]>(() => parseItemOptions(item.options));
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4">
+      <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-6 sm:max-w-md sm:rounded-2xl">
+        <h3 className="m-0 text-[16px] font-semibold text-[var(--cat-ink)]">Edit options</h3>
+        <p className="mt-1 text-xs text-[var(--cat-muted)]">{item.name}</p>
+        <div className="mt-4">
+          <ItemOptionsEditor options={options} onChange={setOptions} />
+        </div>
+        {error ? <p className="mt-3 text-xs text-[#b2432b]">{error}</p> : null}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const result = await updateItemOptions(catalogId, item.id, options);
+                if (result?.error) setError(result.error);
+                else onClose();
+              })
+            }
+            className="min-h-11 flex-1 rounded-[10px] bg-[var(--cat-accent)] text-[13px] font-medium text-white disabled:opacity-50"
+          >
+            {pending ? "Saving…" : "Save options"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-11 flex-1 rounded-[10px] border border-[#d2d2d7] bg-white text-[13px] font-medium text-[var(--cat-ink)]"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ItemsClient({
   catalogId,
   items,
@@ -252,6 +307,7 @@ export function ItemsClient({
   const [showAdd, setShowAdd] = useState(false);
   const [showPaste, setShowPaste] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [editItem, setEditItem] = useState<CatalogItemRow | null>(null);
 
   const categories = useMemo(() => {
     const unique = new Set(items.map((item) => item.category.trim()).filter(Boolean));
@@ -323,12 +379,13 @@ export function ItemsClient({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-[var(--cat-border)]">
-        <div className="grid grid-cols-[56px_minmax(0,2fr)_1fr_1fr_70px] gap-3 border-b border-[var(--cat-border)] bg-[#fbfbfd] px-[18px] py-3 text-[11px] font-semibold uppercase tracking-wide text-[#86868b] sm:grid-cols-[56px_minmax(0,2fr)_1fr_1fr_90px]">
+        <div className="grid grid-cols-[56px_minmax(0,2fr)_1fr_1fr_70px_64px] gap-3 border-b border-[var(--cat-border)] bg-[#fbfbfd] px-[18px] py-3 text-[11px] font-semibold uppercase tracking-wide text-[#86868b] sm:grid-cols-[56px_minmax(0,2fr)_1fr_1fr_90px_72px]">
           <span></span>
           <span>Item</span>
           <span>Code</span>
           <span>Price</span>
           <span>Visible</span>
+          <span></span>
         </div>
         {filtered.length === 0 ? (
           <p className="p-[18px] text-[13px] text-[var(--cat-muted)]">
@@ -340,7 +397,7 @@ export function ItemsClient({
           filtered.map((item, index) => (
             <div
               key={item.id}
-              className="grid grid-cols-[56px_minmax(0,2fr)_1fr_1fr_70px] items-center gap-3 border-b border-[#f0f0f4] px-[18px] py-2.5 last:border-b-0 sm:grid-cols-[56px_minmax(0,2fr)_1fr_1fr_90px]"
+              className="grid grid-cols-[56px_minmax(0,2fr)_1fr_1fr_70px_64px] items-center gap-3 border-b border-[#f0f0f4] px-[18px] py-2.5 last:border-b-0 sm:grid-cols-[56px_minmax(0,2fr)_1fr_1fr_90px_72px]"
             >
               <div className="h-10 w-10 overflow-hidden rounded-lg bg-[var(--cat-photo-bg)]">
                 {item.image ? (
@@ -368,6 +425,13 @@ export function ItemsClient({
                 {formatMoney(Number(item.price), currency)}
               </span>
               <VisibleToggle catalogId={catalogId} item={item} />
+              <button
+                type="button"
+                onClick={() => setEditItem(item)}
+                className="min-h-11 text-left text-xs font-medium text-[var(--cat-accent)]"
+              >
+                {hasItemOptions(item) ? "Options" : "Variants"}
+              </button>
             </div>
           ))
         )}
@@ -376,6 +440,9 @@ export function ItemsClient({
       {showAdd ? <AddItemModal catalogId={catalogId} onClose={() => setShowAdd(false)} /> : null}
       {showPaste ? <PasteImportModal catalogId={catalogId} onClose={() => setShowPaste(false)} /> : null}
       {showUpload ? <UploadImportModal catalogId={catalogId} onClose={() => setShowUpload(false)} /> : null}
+      {editItem ? (
+        <EditOptionsModal catalogId={catalogId} item={editItem} onClose={() => setEditItem(null)} />
+      ) : null}
     </div>
   );
 }

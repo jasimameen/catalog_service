@@ -6,6 +6,7 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
+import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 
 /** Large imagery, generous spacing, for a short, considered list. */
@@ -75,10 +76,10 @@ export function LookbookTemplate({
                     </span>
                     <button
                       type="button"
-                      onClick={() => increment(item.code)}
-                      className="rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
+                      onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
+                      className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
                     >
-                      {qty > 0 ? `Added × ${qty}` : "Add to order"}
+                      {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
                     </button>
                   </div>
                 </div>

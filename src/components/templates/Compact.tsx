@@ -5,6 +5,7 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 
 /** Dense rows for long trade lists — code, name, price, stepper. */
@@ -68,8 +69,13 @@ export function CompactTemplate({
                 currency={catalog.currency}
                 qty={quantities[item.code] ?? 0}
                 onSelect={setSelected}
-                onIncrement={() => increment(item.code)}
-                onDecrement={() => decrement(item.code)}
+                onIncrement={() =>
+                  hasItemOptions(item) ? setSelected(item) : increment(item.code)
+                }
+                onDecrement={() =>
+                  hasItemOptions(item) ? setSelected(item) : decrement(item.code)
+                }
+                optioned={hasItemOptions(item)}
               />
             ))}
           </div>
@@ -94,6 +100,7 @@ function CompactRow({
   onSelect,
   onIncrement,
   onDecrement,
+  optioned,
 }: {
   item: StorefrontItem;
   currency: string;
@@ -101,6 +108,7 @@ function CompactRow({
   onSelect: (item: StorefrontItem) => void;
   onIncrement: () => void;
   onDecrement: () => void;
+  optioned: boolean;
 }) {
   return (
     <div className="flex items-center gap-2.5 border-b border-[var(--cat-border)] px-2.5 py-2 last:border-b-0">
@@ -136,11 +144,19 @@ function CompactRow({
         <p className="text-[10px] uppercase tracking-wide text-[var(--cat-muted)]">{currency}</p>
         <p className="text-sm font-bold text-[var(--cat-ink)]">{item.price.toFixed(2)}</p>
       </div>
-      {qty === 0 ? (
+      {optioned ? (
         <button
           type="button"
           onClick={onIncrement}
-          className="shrink-0 rounded-[8px] border border-[var(--cat-accent)] px-2.5 py-1.5 text-xs font-semibold text-[var(--cat-accent)]"
+          className="min-h-11 shrink-0 rounded-[8px] border border-[var(--cat-accent)] px-3 text-xs font-semibold text-[var(--cat-accent)]"
+        >
+          {qty > 0 ? `× ${qty}` : "Options"}
+        </button>
+      ) : qty === 0 ? (
+        <button
+          type="button"
+          onClick={onIncrement}
+          className="min-h-11 shrink-0 rounded-[8px] border border-[var(--cat-accent)] px-3 text-xs font-semibold text-[var(--cat-accent)]"
         >
           Add
         </button>

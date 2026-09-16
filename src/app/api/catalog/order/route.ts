@@ -2,14 +2,32 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { sendMail } from "@/lib/mail";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { generateOrderReference, formatMoney } from "@/lib/catalog/currency";
-import { applyPhonePrefix, missingRequiredLabels, parseCheckoutFields } from "@/lib/catalog/checkout-fields";
+import { applyPhonePrefix, parseCheckoutFields } from "@/lib/catalog/checkout-fields";
+import {
+  fulfillmentLabel,
+  mapFormValues,
+  missingCustomFieldLabels,
+  parseFulfillmentModes,
+  resolveCheckoutForm,
+  visibleCheckoutFields,
+} from "@/lib/catalog/checkout-form";
+import { formatSelectedOptions, parseItemOptions, resolveSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import type { OrderPayload } from "@/lib/catalog/order-types";
-import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
+import type { CatalogItemRow, CatalogRow, OrderFulfillment } from "@/lib/supabase/types";
 
 function clean(value: unknown, max = 300): string {
   if (typeof value !== "string") return "";
   return value.replace(/[\r\n]+/g, " ").trim().slice(0, max);
 }
+
+function asCoord(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (Math.abs(n) > 180) return null;
+  return n;
+}
+
+const FULFILLMENT_SET = new Set<OrderFulfillment>(["dine_in", "pickup", "delivery"]);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
@@ -48,19 +66,41 @@ export async function POST(request: Request) {
   }
 
   const checkout = parseCheckoutFields(catalog.checkout_fields);
-  const shopName = clean(body.shopName, 120);
-  const phone = applyPhonePrefix(clean(body.phone, 40), checkout.phonePrefix);
-  const location = clean(body.location, 300);
-  const mapsLink = clean(body.mapsLink, 300);
-  const notes = clean(body.notes, 500);
+  const formFields = resolveCheckoutForm(catalog.checkout_form, checkout);
+  const modes = parseFulfillmentModes(catalog.fulfillment_modes);
+  const fulfillmentRaw = typeof body.fulfillment === "string" ? body.fulfillment : null;
+  const fulfillment: OrderFulfillment | null =
+    fulfillmentRaw && FULFILLMENT_SET.has(fulfillmentRaw) ? fulfillmentRaw : null;
 
-  const missing = missingRequiredLabels(checkout, {
-    shopName,
-    phone,
-    address: location,
-    maps: mapsLink,
-    notes,
-  });
+  if (modes.length > 0 && !fulfillment) {
+    return Response.json({ error: "Choose dine in, pickup, or delivery." }, { status: 400 });
+  }
+  if (fulfillment && modes.length > 0 && !modes.includes(fulfillment)) {
+    return Response.json({ error: "That order type is not available." }, { status: 400 });
+  }
+
+  const incomingValues: Record<string, string> = {};
+  if (body.formValues && typeof body.formValues === "object") {
+    for (const [key, value] of Object.entries(body.formValues)) {
+      if (typeof value === "string") incomingValues[key] = value;
+    }
+  }
+  function put(id: string, value: string) {
+    if (value && !incomingValues[id]) incomingValues[id] = value;
+  }
+  put("shopName", clean(body.shopName, 120));
+  put("name", clean(body.shopName, 120));
+  put("phone", clean(body.phone, 40));
+  put("location", clean(body.location, 300));
+  put("address", clean(body.location, 300));
+  put("maps", clean(body.mapsLink, 300));
+  put("mapsLink", clean(body.mapsLink, 300));
+  put("notes", clean(body.notes, 500));
+  put("table", clean(body.tableNo, 40));
+  put("table_no", clean(body.tableNo, 40));
+
+  const visible = visibleCheckoutFields(formFields, modes.length > 0 ? fulfillment : null);
+  const missing = missingCustomFieldLabels(visible, incomingValues);
   if (missing.length > 0) {
     const list =
       missing.length === 1
@@ -68,6 +108,23 @@ export async function POST(request: Request) {
         : `${missing.slice(0, -1).join(", ")} and ${missing[missing.length - 1]}`;
     return Response.json({ error: `${list.charAt(0).toUpperCase()}${list.slice(1)} ${missing.length === 1 ? "is" : "are"} required.` }, { status: 400 });
   }
+
+  const mapped = mapFormValues(visible, incomingValues);
+  const shopName = mapped.shopName || clean(body.shopName, 120);
+  const phone = applyPhonePrefix(mapped.phone || clean(body.phone, 40), checkout.phonePrefix);
+  const location = mapped.location || clean(body.location, 300);
+  const mapsLink = mapped.mapsLink || clean(body.mapsLink, 300);
+  const notes = mapped.notes || clean(body.notes, 500);
+  const tableNo = mapped.tableNo || clean(body.tableNo, 40);
+  const geoLat = asCoord(body.geoLat);
+  const geoLng = asCoord(body.geoLng);
+  const extraNote = Object.entries(mapped.extras)
+    .map(([id, value]) => {
+      const field = visible.find((f) => f.id === id);
+      return field ? `${field.label}: ${value}` : `${id}: ${value}`;
+    })
+    .join("\n");
+  const combinedNotes = [notes, extraNote].filter(Boolean).join("\n") || "";
 
   const { data: itemRows } = await supabase
     .from("catalog_items")
@@ -78,20 +135,36 @@ export async function POST(request: Request) {
   const catalogItems = (itemRows as CatalogItemRow[] | null) ?? [];
 
   // Recompute items from server-side catalog data — never trust client-sent prices.
-  const items = requestedItems
-    .map((entry) => {
-      const item = catalogItems.find((p) => p.code === entry.code);
-      const qty = Math.floor(Number(entry.qty));
-      if (!item || !Number.isFinite(qty) || qty <= 0) return null;
-      return {
-        code: item.code,
-        category: item.category,
-        name: item.name,
-        price: Number(item.price),
-        qty,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const items: {
+    code: string;
+    category: string;
+    name: string;
+    price: number;
+    qty: number;
+    options: ReturnType<typeof resolveSelectedOptions>["options"];
+    notes: string;
+  }[] = [];
+
+  for (const entry of requestedItems) {
+    const item = catalogItems.find((p) => p.code === entry.code);
+    const qty = Math.floor(Number(entry.qty));
+    if (!item || !Number.isFinite(qty) || qty <= 0) continue;
+    const groups = parseItemOptions(item.options);
+    const resolved = resolveSelectedOptions(groups, entry.options);
+    if (resolved.error) {
+      return Response.json({ error: resolved.error }, { status: 400 });
+    }
+    const price = unitPriceWithOptions(Number(item.price), resolved.options);
+    items.push({
+      code: item.code,
+      category: item.category,
+      name: item.name,
+      price,
+      qty,
+      options: resolved.options,
+      notes: clean(entry.notes, 200),
+    });
+  }
 
   if (items.length === 0) {
     return Response.json({ error: "Your cart is empty." }, { status: 400 });
@@ -109,15 +182,25 @@ export async function POST(request: Request) {
       phone,
       location,
       maps_link: mapsLink || null,
-      notes: notes || null,
+      notes: combinedNotes || null,
       subtotal: total,
+      status: "new",
+      fulfillment,
+      table_no: tableNo || null,
+      geo_lat: geoLat,
+      geo_lng: geoLng,
+      form_values: incomingValues,
     })
     .select("id")
     .single();
 
   if (orderError || !orderRow) {
     console.error("Catalog order: failed to save order", orderError);
-    return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
+    const hint =
+      orderError?.code === "42703" || orderError?.message?.includes("fulfillment")
+        ? " Run supabase/restaurant.sql in the Supabase SQL editor."
+        : "";
+    return Response.json({ error: `Could not save your order. Please try again.${hint}` }, { status: 500 });
   }
 
   const { error: itemsError } = await supabase.from("order_items").insert(
@@ -129,6 +212,8 @@ export async function POST(request: Request) {
       price: item.price,
       qty: item.qty,
       line_total: item.price * item.qty,
+      options_json: item.options,
+      notes: item.notes || null,
     })),
   );
 
@@ -138,7 +223,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
   }
 
-  await sendOrderEmail({ catalog, items, total, reference, shopName, phone, location, mapsLink, notes });
+  await sendOrderEmail({
+    catalog,
+    items,
+    total,
+    reference,
+    shopName,
+    phone,
+    location,
+    mapsLink,
+    notes: combinedNotes,
+    fulfillment,
+    tableNo,
+  });
 
   return Response.json({
     ok: true,
@@ -151,7 +248,7 @@ export async function POST(request: Request) {
 
 async function sendOrderEmail(args: {
   catalog: CatalogRow;
-  items: { code: string; name: string; price: number; qty: number }[];
+  items: { code: string; name: string; price: number; qty: number; options: { group: string; values: { name: string }[] }[] }[];
   total: number;
   reference: string;
   shopName: string;
@@ -159,8 +256,10 @@ async function sendOrderEmail(args: {
   location: string;
   mapsLink: string;
   notes: string;
+  fulfillment: OrderFulfillment | null;
+  tableNo: string;
 }) {
-  const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes } = args;
+  const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes, fulfillment, tableNo } = args;
   const toEmail = catalog.order_email;
 
   if (!toEmail) {
@@ -171,15 +270,15 @@ async function sendOrderEmail(args: {
   }
 
   const itemRows = items
-    .map(
-      (item) =>
-        `${item.code} ${item.name} — qty ${item.qty} × ${formatMoney(item.price, catalog.currency)} = ${formatMoney(item.price * item.qty, catalog.currency)}`
-    )
+    .map((item) => {
+      const extras = formatSelectedOptions(item.options as Parameters<typeof formatSelectedOptions>[0]);
+      return `${item.code} ${item.name}${extras ? ` (${extras})` : ""} — qty ${item.qty} × ${formatMoney(item.price, catalog.currency)} = ${formatMoney(item.price * item.qty, catalog.currency)}`;
+    })
     .join("\n");
 
   const textBody = `New ${catalog.name} order — ${reference}
 
-Shop name: ${shopName}
+${fulfillment ? `Type: ${fulfillmentLabel(fulfillment)}\n` : ""}${tableNo ? `Table: ${tableNo}\n` : ""}Shop name: ${shopName}
 Phone: ${phone}
 Location: ${location}
 ${mapsLink ? `Maps link: ${mapsLink}\n` : ""}${notes ? `Notes: ${notes}\n` : ""}
@@ -190,21 +289,24 @@ Total: ${formatMoney(total, catalog.currency)}
 `;
 
   const itemRowsHtml = items
-    .map(
-      (item) => `<tr>
+    .map((item) => {
+      const extras = formatSelectedOptions(item.options as Parameters<typeof formatSelectedOptions>[0]);
+      return `<tr>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.code}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.name}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.name}${extras ? `<br><span style="color:#6b7280;font-size:12px;">${extras}</span>` : ""}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center;">${item.qty}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatMoney(item.price, catalog.currency)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatMoney(item.price * item.qty, catalog.currency)}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
 
   const htmlBody = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:640px;">
       <h2 style="margin:0 0 4px;">New ${catalog.name} order</h2>
       <p style="margin:0 0 12px;color:#46505e;">Reference: <strong>${reference}</strong></p>
+      ${fulfillment ? `<p style="margin:0 0 4px;"><strong>Type:</strong> ${fulfillmentLabel(fulfillment)}</p>` : ""}
+      ${tableNo ? `<p style="margin:0 0 4px;"><strong>Table:</strong> ${tableNo}</p>` : ""}
       <p style="margin:0 0 4px;"><strong>Shop name:</strong> ${shopName}</p>
       <p style="margin:0 0 4px;"><strong>Phone:</strong> ${phone}</p>
       <p style="margin:0 0 4px;"><strong>Location:</strong> ${location}</p>

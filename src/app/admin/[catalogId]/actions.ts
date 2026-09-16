@@ -6,6 +6,7 @@ import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { ACCENT_COLORS, isTemplateKey } from "@/lib/catalog/templates";
 import { checkoutFieldsFromForm } from "@/lib/catalog/checkout-fields";
+import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
 import { getServiceClient } from "@/lib/supabase/service";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 
@@ -123,4 +124,55 @@ export async function updateCatalogLook(
 
   revalidateCatalog(catalogId, data.slug);
   return { saved: true };
+}
+
+export type OrderingState = { error?: string; saved?: boolean } | null;
+
+export async function updateCatalogOrdering(
+  catalogId: string,
+  _prevState: OrderingState,
+  formData: FormData,
+): Promise<OrderingState> {
+  await requireAccount();
+
+  const fulfillmentModes = parseFulfillmentModes(
+    safeJson(formData.get("fulfillment_modes")),
+  );
+  const checkoutForm = parseCheckoutForm(safeJson(formData.get("checkout_form")));
+
+  const supabase = await getServerSupabase();
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update({
+      fulfillment_modes: fulfillmentModes,
+      checkout_form: checkoutForm,
+    })
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateCatalogOrdering failed", error);
+    if (
+      error?.code === "42703" ||
+      error?.code === "PGRST204" ||
+      error?.message?.includes("checkout_form") ||
+      error?.message?.includes("fulfillment")
+    ) {
+      return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
+    }
+    return { error: "Could not save ordering. Try again." };
+  }
+
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
+}
+
+function safeJson(raw: FormDataEntryValue | null): unknown {
+  if (typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
 }

@@ -5,6 +5,7 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 
 const QUICK_MULTIPLES = [6, 12, 24];
@@ -193,11 +194,19 @@ function GridCard({
           )}
         </div>
 
-        {qty === 0 ? (
+        {hasItemOptions(item) ? (
+          <button
+            type="button"
+            onClick={() => onSelect(item)}
+            className="min-h-11 w-full rounded-[9px] border border-[var(--cat-accent)] bg-white py-2 text-sm font-semibold text-[var(--cat-accent)] transition hover:bg-slate-50 active:scale-[0.98]"
+          >
+            {qty > 0 ? `Added × ${qty} · Options` : "Choose options"}
+          </button>
+        ) : qty === 0 ? (
           <button
             type="button"
             onClick={() => increment(item.code)}
-            className="w-full rounded-[9px] border border-[var(--cat-accent)] bg-white py-2 text-sm font-semibold text-[var(--cat-accent)] transition hover:bg-slate-50 active:scale-[0.98]"
+            className="min-h-11 w-full rounded-[9px] border border-[var(--cat-accent)] bg-white py-2 text-sm font-semibold text-[var(--cat-accent)] transition hover:bg-slate-50 active:scale-[0.98]"
           >
             Add to order
           </button>
@@ -208,7 +217,7 @@ function GridCard({
                 type="button"
                 onClick={() => decrement(item.code)}
                 aria-label={`Remove one ${item.name}`}
-                className="flex-1 border-r border-[var(--cat-border)] py-2 text-base font-semibold text-[var(--cat-ink)] hover:bg-slate-50"
+                className="min-h-11 flex-1 border-r border-[var(--cat-border)] py-2 text-base font-semibold text-[var(--cat-ink)] hover:bg-slate-50"
               >
                 −
               </button>
@@ -219,7 +228,7 @@ function GridCard({
                 type="button"
                 onClick={() => increment(item.code)}
                 aria-label={`Add one more ${item.name}`}
-                className="flex-1 border-l border-[var(--cat-border)] py-2 text-base font-semibold text-[var(--cat-ink)] hover:bg-slate-50"
+                className="min-h-11 flex-1 border-l border-[var(--cat-border)] py-2 text-base font-semibold text-[var(--cat-ink)] hover:bg-slate-50"
               >
                 +
               </button>

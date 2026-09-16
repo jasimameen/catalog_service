@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
+import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
+import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 
 /** Sectioned list, no photos required — kitchens, services, weekly supply lists. */
@@ -15,6 +17,7 @@ export function MenuTemplate({
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
 }) {
+  const [selected, setSelected] = useState<StorefrontItem | null>(null);
   const { quantities, increment, decrement } = useCart();
 
   const sections = useMemo(() => {
@@ -66,8 +69,15 @@ export function MenuTemplate({
                     <button
                       key={item.code}
                       type="button"
-                      onClick={() => (qty > 0 ? decrement(item.code) : increment(item.code))}
-                      className="flex w-full items-baseline gap-2 border-b border-dotted border-[#ddd5c5] py-2.5 text-left"
+                      onClick={() => {
+                        if (hasItemOptions(item)) {
+                          setSelected(item);
+                          return;
+                        }
+                        if (qty > 0) decrement(item.code);
+                        else increment(item.code);
+                      }}
+                      className="flex min-h-11 w-full items-center gap-2 border-b border-dotted border-[#ddd5c5] py-2.5 text-left"
                     >
                       <span
                         className={`text-[15px] font-medium ${qty > 0 ? "text-[var(--cat-accent)]" : "text-[var(--cat-ink)]"}`}
@@ -90,6 +100,14 @@ export function MenuTemplate({
           Tap any line to add or remove it from your order.
         </p>
       </div>
+
+      {selected && (
+        <ProductDetailModal
+          item={selected}
+          currency={catalog.currency}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }

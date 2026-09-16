@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
-import type { OrderItemRow, OrderRow } from "@/lib/supabase/types";
+import type { OrderItemRow, OrderRow, SelectedOption } from "@/lib/supabase/types";
+import { formatSelectedOptions } from "@/lib/catalog/item-options";
+import { fulfillmentLabel } from "@/lib/catalog/checkout-form";
 
 function csvEscape(value: string | number): string {
   const str = String(value);
@@ -42,12 +44,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     "Reference",
     "Created at",
     "Status",
+    "Fulfillment",
+    "Table",
     "Shop",
     "Phone",
     "Location",
     "Notes",
     "Item code",
     "Item name",
+    "Options",
     "Unit price",
     "Qty",
     "Line total",
@@ -64,10 +69,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
           order.reference,
           order.created_at,
           order.status,
+          fulfillmentLabel(order.fulfillment),
+          order.table_no ?? "",
           order.shop_name,
           order.phone,
           order.location,
           order.notes ?? "",
+          "",
           "",
           "",
           "",
@@ -86,12 +94,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
           order.reference,
           order.created_at,
           order.status,
+          fulfillmentLabel(order.fulfillment),
+          order.table_no ?? "",
           order.shop_name,
           order.phone,
           order.location,
           order.notes ?? "",
           line.code,
           line.name,
+          formatSelectedOptions(Array.isArray(line.options_json) ? (line.options_json as SelectedOption[]) : []),
           line.price,
           line.qty,
           line.line_total,

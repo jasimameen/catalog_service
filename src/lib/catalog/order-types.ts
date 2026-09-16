@@ -1,6 +1,10 @@
+import type { OrderFulfillment, SelectedOption } from "@/lib/supabase/types";
+
 export interface OrderItemPayload {
   code: string;
   qty: number;
+  options?: SelectedOption[];
+  notes?: string;
 }
 
 export interface OrderPayload {
@@ -10,6 +14,11 @@ export interface OrderPayload {
   location: string;
   mapsLink?: string;
   notes?: string;
+  fulfillment?: OrderFulfillment | null;
+  tableNo?: string;
+  geoLat?: number | null;
+  geoLng?: number | null;
+  formValues?: Record<string, string>;
   items: OrderItemPayload[];
 }
 

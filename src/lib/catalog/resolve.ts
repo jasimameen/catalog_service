@@ -6,6 +6,8 @@ import { subdomainSlugFor } from "@/lib/tenant";
 import type { CatalogTemplateKey, StorefrontCatalog } from "./types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 import { parseCheckoutFields } from "./checkout-fields";
+import { parseFulfillmentModes, resolveCheckoutForm } from "./checkout-form";
+import { parseItemOptions } from "./item-options";
 import { STOREFRONT_CATALOG_CACHE_TAG } from "./storefront-cache";
 import { isTemplateKey } from "./templates";
 
@@ -57,6 +59,7 @@ async function fetchLiveById(
 }
 
 function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): StorefrontCatalog {
+  const checkoutFields = parseCheckoutFields(catalogRow.checkout_fields);
   return {
     id: catalogRow.id,
     name: catalogRow.name,
@@ -64,7 +67,9 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
     template: asTemplate(catalogRow.template),
     accent: catalogRow.accent,
     currency: catalogRow.currency,
-    checkoutFields: parseCheckoutFields(catalogRow.checkout_fields),
+    checkoutFields,
+    checkoutForm: resolveCheckoutForm(catalogRow.checkout_form, checkoutFields),
+    fulfillmentModes: parseFulfillmentModes(catalogRow.fulfillment_modes),
     logo: catalogRow.logo ?? "",
     tagline: catalogRow.tagline ?? "",
     about: catalogRow.about ?? "",
@@ -77,6 +82,7 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
       price: Number(row.price),
       pack: row.pack,
       image: row.image,
+      options: parseItemOptions(row.options),
     })),
   };
 }
@@ -133,7 +139,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host-v2"],
+  ["storefront-catalog-by-host-v3"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

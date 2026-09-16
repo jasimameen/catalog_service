@@ -6,6 +6,7 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
+import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 
 /** First item as a hero, remaining items in a simple grid. */
@@ -37,7 +38,7 @@ export function SpotlightTemplate({
               currency={catalog.currency}
               qty={quantities[hero.code] ?? 0}
               onSelect={setSelected}
-              onAdd={() => increment(hero.code)}
+              onAdd={() => (hasItemOptions(hero) ? setSelected(hero) : increment(hero.code))}
             />
             {rest.length > 0 ? (
               <div className="mt-8">
@@ -53,7 +54,7 @@ export function SpotlightTemplate({
                       qty={quantities[item.code] ?? 0}
                       eager={index < 4}
                       onSelect={setSelected}
-                      onAdd={() => increment(item.code)}
+                      onAdd={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
                     />
                   ))}
                 </div>
@@ -136,7 +137,7 @@ function HeroCard({
             onClick={onAdd}
             className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
           >
-            {qty > 0 ? `Added × ${qty}` : "Add to order"}
+            {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
           </button>
         </div>
       </div>
@@ -193,7 +194,7 @@ function SpotCard({
           onClick={onAdd}
           className="w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
         >
-          {qty > 0 ? `Added × ${qty}` : "Add"}
+          {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
         </button>
       </div>
     </div>

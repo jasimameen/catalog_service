@@ -19,9 +19,38 @@ export type CatalogTemplate =
 export type CatalogStatus = "draft" | "live";
 export type DomainKind = "subdomain" | "custom";
 export type DomainStatus = "pending" | "verified" | "error";
-export type OrderStatus = "new" | "confirmed" | "cancelled";
+export type OrderStatus = "new" | "preparing" | "ready" | "done" | "confirmed" | "cancelled";
+export type OrderFulfillment = "dine_in" | "pickup" | "delivery";
 export type LsStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type CheckoutFieldMode = "required" | "optional" | "hidden";
+export type CheckoutFormFieldType = "text" | "tel" | "textarea" | "select" | "number";
+export type ItemOptionType = "single" | "multi";
+
+export type ItemOptionValue = {
+  name: string;
+  price_delta: number;
+};
+
+export type ItemOptionGroup = {
+  name: string;
+  type: ItemOptionType;
+  required: boolean;
+  values: ItemOptionValue[];
+};
+
+export type SelectedOption = {
+  group: string;
+  values: ItemOptionValue[];
+};
+
+export type CheckoutFormField = {
+  id: string;
+  label: string;
+  type: CheckoutFormFieldType;
+  required: boolean;
+  options?: string[];
+  show_when?: OrderFulfillment[];
+};
 
 export type CheckoutFields = {
   shopName: CheckoutFieldMode;
@@ -65,6 +94,8 @@ export type CatalogRow = {
   currency: string;
   order_email: string | null;
   checkout_fields: CheckoutFields;
+  checkout_form?: CheckoutFormField[] | unknown;
+  fulfillment_modes?: OrderFulfillment[] | unknown;
   logo: string | null;
   tagline: string | null;
   about: string | null;
@@ -85,6 +116,7 @@ export type CatalogItemRow = {
   position: number;
   visible: boolean;
   barcode: string | null;
+  options?: ItemOptionGroup[] | unknown;
   created_at: string;
 };
 
@@ -110,6 +142,11 @@ export type OrderRow = {
   notes: string | null;
   subtotal: number;
   status: OrderStatus;
+  fulfillment?: OrderFulfillment | null;
+  table_no?: string | null;
+  geo_lat?: number | null;
+  geo_lng?: number | null;
+  form_values?: Record<string, string> | unknown;
   created_at: string;
 };
 
@@ -122,6 +159,8 @@ export type OrderItemRow = {
   price: number;
   qty: number;
   line_total: number;
+  options_json?: SelectedOption[] | unknown;
+  notes?: string | null;
 };
 
 export type CatalogViewRow = {
