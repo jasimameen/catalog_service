@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { AccountRow } from "@/lib/supabase/types";
-import { companyNameFromUser, provisionAccount, safeNextPath } from "./provision";
+import { accountDisplayName, companyNameFromUser, provisionAccount, safeNextPath } from "./provision";
 
 /** One auth.getUser() per request — shared by requireAccount and /new. */
 export const getSessionUser = cache(async (): Promise<User | null> => {
@@ -55,7 +55,9 @@ const loadRequiredAccount = cache(async (next?: string): Promise<AccountRow> => 
   }
 
   const account = await loadAccount(supabase, user.id);
-  if (account) return account;
+  if (account) {
+    return { ...account, name: accountDisplayName(account.name, user) };
+  }
 
   // Sign-up with "confirm email" on, or a dropped provision, leaves a
   // session with no account_members row. Create it here so /new and /admin
@@ -64,7 +66,7 @@ const loadRequiredAccount = cache(async (next?: string): Promise<AccountRow> => 
   const provisioned = await provisionAccount(user.id, companyNameFromUser(user));
   if (provisioned) {
     const created = await loadAccount(supabase, user.id);
-    if (created) return created;
+    if (created) return { ...created, name: accountDisplayName(created.name, user) };
   }
 
   throw new Error(

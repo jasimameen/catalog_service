@@ -8,6 +8,14 @@ export function companyNameFromUser(user: User, fallback = "My company"): string
   return fallback;
 }
 
+/** Company name from accounts, then sign-up metadata. Never returns blank. */
+export function accountDisplayName(accountName: string | null | undefined, user: User | null): string {
+  const name = typeof accountName === "string" ? accountName.trim() : "";
+  if (name) return name;
+  if (user) return companyNameFromUser(user);
+  return "My company";
+}
+
 /**
  * Creates the account + owner membership for a brand-new user. Uses the
  * service-role client since there's no INSERT policy on accounts /

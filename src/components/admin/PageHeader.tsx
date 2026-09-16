@@ -5,11 +5,15 @@ export function PageHeader({
   title,
   subtitle,
   account,
+  email,
 }: {
   title: string;
   subtitle: string;
   account: AccountRow;
+  email?: string;
 }) {
+  const label = account.name.trim() || email?.trim() || "Account";
+
   return (
     <header className="sticky top-0 z-[5] flex items-center justify-between gap-4 border-b border-[var(--cat-border)] bg-white/85 px-5 py-3.5 backdrop-blur-xl print:hidden sm:px-8">
       <div className="min-w-0">
@@ -18,10 +22,12 @@ export function PageHeader({
         </h1>
         <p className="m-0 mt-0.5 truncate text-xs text-[#86868b]">{subtitle}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2.5">
-        <span className="hidden text-xs text-[var(--cat-muted)] sm:inline">{account.name}</span>
+      <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+        <span className="hidden max-w-[220px] truncate text-xs text-[var(--cat-muted)] sm:inline">
+          {label}
+        </span>
         <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#f0f0f4] text-[11px] font-semibold text-[var(--cat-ink)]">
-          {initialsFor(account.name)}
+          {initialsFor(label)}
         </span>
       </div>
     </header>

@@ -1,4 +1,4 @@
-import { requireAccount } from "@/lib/auth/current-account";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { isBillingConfigured } from "@/lib/billing/config";
 import { MONTHLY_PRICE_LABEL, MONTHLY_PRICE_USD } from "@/lib/billing/plan";
 import { formatRenewsAt, isPaid, trialDaysLeft } from "@/lib/billing/status";
@@ -9,6 +9,8 @@ import { NotificationsForm, CompanyForm } from "./SettingsForms";
 
 export default async function SettingsPage() {
   const account = await requireAccount();
+  const user = await getSessionUser();
+  const email = user?.email ?? "";
   const paid = isPaid(account);
   const daysLeft = trialDaysLeft(account.trial_ends_at);
   const renews = formatRenewsAt(account.ls_renews_at);
@@ -31,7 +33,12 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Plan, notifications and company details" account={account} />
+      <PageHeader
+        title="Settings"
+        subtitle="Plan, notifications and company details"
+        account={account}
+        email={email}
+      />
       <div className="flex max-w-[680px] flex-col gap-[18px] p-4 pb-16 sm:p-8">
         <div className="rounded-2xl bg-[var(--cat-ink)] p-6 text-white">
           <p className="m-0 text-[13px] text-[#a1a1a6]">{eyebrow}</p>
@@ -51,10 +58,13 @@ export default async function SettingsPage() {
         </div>
 
         <NotificationsForm account={account} />
-        <CompanyForm account={account} />
+        <CompanyForm account={account} email={email} />
 
         <div className="rounded-2xl border border-[var(--cat-border)] p-[22px]">
           <h3 className="m-0 mb-3 text-[15px] font-semibold text-[var(--cat-ink)]">Account</h3>
+          {email ? (
+            <p className="m-0 mb-3 truncate text-[13px] text-[var(--cat-muted)]">{email}</p>
+          ) : null}
           <SignOutButton />
         </div>
       </div>
