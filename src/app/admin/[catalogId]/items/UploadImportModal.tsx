@@ -89,7 +89,8 @@ export function UploadImportModal({
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6">
         <h3 className="m-0 text-[16px] font-semibold text-[var(--cat-ink)]">Upload catalog</h3>
         <p className="mt-1.5 text-xs text-[var(--cat-muted)]">
-          CSV or Excel. Map your columns, then import. Name and price are required.{" "}
+          CSV or Excel. Map your columns, then import. Name and price are required. Map
+          Variant / Size to fold repeated dishes into one item with options.{" "}
           <a href="/catalog-import-template.csv" download className="text-[var(--cat-accent)]">
             Download template
           </a>
@@ -139,6 +140,9 @@ export function UploadImportModal({
                   <p key={i} className="m-0 truncate border-t border-[#f0f0f4] px-3 py-1.5 text-xs text-[var(--cat-ink)]">
                     {row.name}
                     {row.category ? ` · ${row.category}` : ""} · {row.price}
+                    {row.options?.[0]?.values.length
+                      ? ` · ${row.options[0].values.length} options`
+                      : ""}
                   </p>
                 ))}
               </div>

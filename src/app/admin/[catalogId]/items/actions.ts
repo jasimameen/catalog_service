@@ -7,6 +7,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { generateItemCode } from "@/app/admin/_lib/urls";
 import type { CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
+import { foldVariantRows, type MappedImportRow } from "@/lib/catalog/import-map";
 import { parseOptionsFromForm } from "@/lib/catalog/item-options";
 import { MERCHANDISING_SQL_HINT, parseItemImageFit } from "@/lib/catalog/merchandising";
 
@@ -427,16 +428,11 @@ export async function pasteImportItems(
   return { imported: rows.length };
 }
 
-export type MappedImportInput = {
-  name: string;
-  price: number;
-  description: string;
-  category: string;
-  pack: string;
-  image: string;
-  code: string;
-  barcode: string;
-};
+export type MappedImportInput = Pick<
+  MappedImportRow,
+  "name" | "price" | "description" | "category" | "pack" | "image" | "code" | "barcode"
+> &
+  Partial<Pick<MappedImportRow, "variant" | "variantGroup" | "options">>;
 
 export type FileImportResult = {
   error?: string;
@@ -462,8 +458,7 @@ export async function fileImportItems(
   }
 
   const skipReasons: string[] = [];
-  const valid: MappedImportInput[] = [];
-  const seenCodes = new Set<string>();
+  const valid: MappedImportRow[] = [];
 
   rows.forEach((raw, index) => {
     const name = String(raw?.name ?? "").trim().slice(0, 200);
@@ -477,11 +472,6 @@ export async function fileImportItems(
       skipReasons.push(`Row ${index + 2}: invalid price`);
       return;
     }
-    if (code && seenCodes.has(code.toLowerCase())) {
-      skipReasons.push(`Row ${index + 2}: duplicate code ${code}`);
-      return;
-    }
-    if (code) seenCodes.add(code.toLowerCase());
     valid.push({
       name,
       price: Math.round(price * 100) / 100,
@@ -491,11 +481,26 @@ export async function fileImportItems(
       image: String(raw?.image ?? "").trim().slice(0, 2000),
       code,
       barcode: String(raw?.barcode ?? "").trim().slice(0, 64),
+      variant: String(raw?.variant ?? "").trim().slice(0, 80),
+      variantGroup: String(raw?.variantGroup ?? "").trim().slice(0, 64),
+      options: parseOptionsFromForm(raw?.options),
     });
   });
 
   if (valid.length === 0) {
     return { error: "No valid rows found.", skipped: skipReasons.length, skipReasons: skipReasons.slice(0, 12) };
+  }
+
+  const folded = foldVariantRows(valid);
+  const seenCodes = new Set<string>();
+  const unique: MappedImportRow[] = [];
+  for (const row of folded) {
+    if (row.code && seenCodes.has(row.code.toLowerCase())) {
+      skipReasons.push(`Duplicate code ${row.code} after grouping variants`);
+      continue;
+    }
+    if (row.code) seenCodes.add(row.code.toLowerCase());
+    unique.push(row);
   }
 
   const supabase = await getServerSupabase();
@@ -507,8 +512,8 @@ export async function fileImportItems(
     (existing ?? []).map((row) => [String(row.code).toLowerCase(), String(row.code)]),
   );
 
-  const updates = valid.filter((row) => row.code && existingByCode.has(row.code.toLowerCase()));
-  const inserts = valid.filter((row) => !row.code || !existingByCode.has(row.code.toLowerCase()));
+  const updates = unique.filter((row) => row.code && existingByCode.has(row.code.toLowerCase()));
+  const inserts = unique.filter((row) => !row.code || !existingByCode.has(row.code.toLowerCase()));
 
   for (const row of updates) {
     const storedCode = existingByCode.get(row.code.toLowerCase());
@@ -522,11 +527,15 @@ export async function fileImportItems(
         pack: row.pack,
         image: row.image,
         barcode: row.barcode || null,
+        options: row.options,
       })
       .eq("catalog_id", catalogId)
       .eq("code", storedCode ?? row.code);
     if (error) {
       console.error("fileImportItems: update failed", error);
+      if (error.code === "42703" || error.message?.includes("options")) {
+        return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
+      }
       return { error: "Could not update existing items. Try again." };
     }
   }
@@ -547,6 +556,7 @@ export async function fileImportItems(
         pack: row.pack,
         image: row.image,
         barcode: row.barcode || null,
+        options: row.options,
         visible: true,
         position: start + index,
       };
@@ -555,6 +565,9 @@ export async function fileImportItems(
     const { error } = await supabase.from("catalog_items").insert(payload);
     if (error) {
       console.error("fileImportItems: insert failed", error);
+      if (error.code === "42703" || error.message?.includes("options")) {
+        return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
+      }
       return { error: "Could not import items. Try again." };
     }
   }

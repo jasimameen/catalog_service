@@ -1,5 +1,12 @@
 import type { ImportField, ImportFieldOrSkip, MappedImportRow } from "@/lib/catalog/import-map";
-import { guessField, parsePrice, IMPORT_ROW_LIMIT } from "@/lib/catalog/import-map";
+import {
+  emptyMappedRow,
+  foldVariantRows,
+  guessField,
+  normalizeHeader,
+  parsePrice,
+  IMPORT_ROW_LIMIT,
+} from "@/lib/catalog/import-map";
 
 export type ParsedSheet = {
   headers: string[];
@@ -70,12 +77,19 @@ async function parseExcel(file: File): Promise<ParsedSheet> {
 
 export function defaultMapping(headers: string[]): ImportFieldOrSkip[] {
   const used = new Set<ImportField>();
-  return headers.map((header) => {
-    const guess = guessField(header);
-    if (guess === "skip" || used.has(guess)) return "skip";
+  const mapping: ImportFieldOrSkip[] = headers.map(() => "skip");
+  const ranked = headers.map((header, index) => ({
+    index,
+    guess: guessField(header),
+    score: normalizeHeader(header).length,
+  }));
+  ranked.sort((a, b) => b.score - a.score);
+  for (const { index, guess } of ranked) {
+    if (guess === "skip" || used.has(guess)) continue;
     used.add(guess);
-    return guess;
-  });
+    mapping[index] = guess;
+  }
+  return mapping;
 }
 
 export function applyMapping(
@@ -86,16 +100,7 @@ export function applyMapping(
   const skipped: { row: number; reason: string }[] = [];
 
   rows.forEach((cells, index) => {
-    const draft: MappedImportRow = {
-      name: "",
-      price: 0,
-      description: "",
-      category: "",
-      pack: "",
-      image: "",
-      code: "",
-      barcode: "",
-    };
+    const draft = emptyMappedRow();
     let priceRaw: string | undefined;
     mapping.forEach((field, col) => {
       if (field === "skip") return;
@@ -111,6 +116,8 @@ export function applyMapping(
       else if (field === "image") draft.image = value.slice(0, 2000);
       else if (field === "code") draft.code = value.slice(0, 64);
       else if (field === "barcode") draft.barcode = value.slice(0, 64);
+      else if (field === "variant") draft.variant = value.slice(0, 80);
+      else if (field === "variantGroup") draft.variantGroup = value.slice(0, 64);
     });
 
     const rowNumber = index + 2;
@@ -127,5 +134,5 @@ export function applyMapping(
     ready.push(draft);
   });
 
-  return { ready, skipped };
+  return { ready: foldVariantRows(ready), skipped };
 }
