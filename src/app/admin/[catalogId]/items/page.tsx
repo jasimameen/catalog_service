@@ -25,7 +25,7 @@ export default async function ItemsPage({ params }: { params: Promise<{ catalogI
   return (
     <>
       <PageHeader title="Items" subtitle={`${catalog.name} · ${items.length} items`} account={account} />
-      <div className="p-4 pb-16 sm:p-8">
+      <div className="mx-auto w-full max-w-[1240px] p-4 pb-14">
         {error ? (
           <p className="mb-4 text-[13px] text-[#b2432b]">Could not load items. Refresh and try again.</p>
         ) : null}

@@ -1,6 +1,12 @@
-import type { ImportField, ImportFieldOrSkip, MappedImportRow } from "@/lib/catalog/import-map";
+import type {
+  ImportField,
+  ImportFieldDefaults,
+  ImportFieldMapping,
+  MappedImportRow,
+} from "@/lib/catalog/import-map";
 import {
   emptyMappedRow,
+  fillAutoCodesAndGroups,
   foldVariantRows,
   guessField,
   normalizeHeader,
@@ -75,9 +81,30 @@ async function parseExcel(file: File): Promise<ParsedSheet> {
   return { headers, rows };
 }
 
-export function defaultMapping(headers: string[]): ImportFieldOrSkip[] {
-  const used = new Set<ImportField>();
-  const mapping: ImportFieldOrSkip[] = headers.map(() => "skip");
+const FIELD_LIMITS: Record<Exclude<ImportField, "price">, number> = {
+  name: 200,
+  description: 2000,
+  category: 80,
+  pack: 80,
+  image: 2000,
+  code: 64,
+  barcode: 64,
+  variant: 80,
+  variantGroup: 64,
+};
+
+function pickCell(
+  cells: string[],
+  col: number | undefined,
+  fallback: string | undefined,
+  max: number,
+): string {
+  const mapped = col == null ? "" : (cells[col] ?? "").trim();
+  return (mapped || (fallback ?? "").trim()).slice(0, max);
+}
+
+export function defaultMapping(headers: string[]): ImportFieldMapping {
+  const mapping: ImportFieldMapping = {};
   const ranked = headers.map((header, index) => ({
     index,
     guess: guessField(header),
@@ -85,47 +112,43 @@ export function defaultMapping(headers: string[]): ImportFieldOrSkip[] {
   }));
   ranked.sort((a, b) => b.score - a.score);
   for (const { index, guess } of ranked) {
-    if (guess === "skip" || used.has(guess)) continue;
-    used.add(guess);
-    mapping[index] = guess;
+    if (guess === "skip" || mapping[guess] != null) continue;
+    mapping[guess] = index;
   }
   return mapping;
 }
 
 export function applyMapping(
   rows: string[][],
-  mapping: ImportFieldOrSkip[],
+  mapping: ImportFieldMapping,
+  defaults: ImportFieldDefaults = {},
 ): { ready: MappedImportRow[]; skipped: { row: number; reason: string }[] } {
   const ready: MappedImportRow[] = [];
   const skipped: { row: number; reason: string }[] = [];
 
   rows.forEach((cells, index) => {
     const draft = emptyMappedRow();
-    let priceRaw: string | undefined;
-    mapping.forEach((field, col) => {
-      if (field === "skip") return;
-      const value = (cells[col] ?? "").trim();
-      if (field === "price") {
-        priceRaw = value;
-        return;
-      }
-      if (field === "name") draft.name = value.slice(0, 200);
-      else if (field === "description") draft.description = value.slice(0, 2000);
-      else if (field === "category") draft.category = value.slice(0, 80);
-      else if (field === "pack") draft.pack = value.slice(0, 80);
-      else if (field === "image") draft.image = value.slice(0, 2000);
-      else if (field === "code") draft.code = value.slice(0, 64);
-      else if (field === "barcode") draft.barcode = value.slice(0, 64);
-      else if (field === "variant") draft.variant = value.slice(0, 80);
-      else if (field === "variantGroup") draft.variantGroup = value.slice(0, 64);
-    });
+    draft.name = pickCell(cells, mapping.name, undefined, FIELD_LIMITS.name);
+    draft.description = pickCell(
+      cells,
+      mapping.description,
+      defaults.description,
+      FIELD_LIMITS.description,
+    );
+    draft.category = pickCell(cells, mapping.category, defaults.category, FIELD_LIMITS.category);
+    draft.pack = pickCell(cells, mapping.pack, defaults.pack, FIELD_LIMITS.pack);
+    draft.image = pickCell(cells, mapping.image, defaults.image, FIELD_LIMITS.image);
+    draft.code = pickCell(cells, mapping.code, undefined, FIELD_LIMITS.code);
+    draft.barcode = pickCell(cells, mapping.barcode, defaults.barcode, FIELD_LIMITS.barcode);
+    draft.variant = pickCell(cells, mapping.variant, defaults.variant, FIELD_LIMITS.variant);
+    draft.variantGroup = pickCell(cells, mapping.variantGroup, undefined, FIELD_LIMITS.variantGroup);
 
     const rowNumber = index + 2;
     if (!draft.name) {
       skipped.push({ row: rowNumber, reason: "missing name" });
       return;
     }
-    const price = parsePrice(priceRaw ?? "");
+    const price = parsePrice(pickCell(cells, mapping.price, undefined, 40));
     if (price == null) {
       skipped.push({ row: rowNumber, reason: "invalid price" });
       return;
@@ -134,5 +157,5 @@ export function applyMapping(
     ready.push(draft);
   });
 
-  return { ready: foldVariantRows(ready), skipped };
+  return { ready: fillAutoCodesAndGroups(foldVariantRows(ready)), skipped };
 }

@@ -7,16 +7,18 @@ interface StepLookProps {
   template: CatalogTemplateKey;
   accent: string;
   catalogName: string;
+  liveUrl: string;
   onTemplate: (key: CatalogTemplateKey) => void;
   onAccent: (hex: string) => void;
   onCatalogName: (name: string) => void;
 }
 
-/** Step 2 — "Pick a look." Template cards, accent swatches, catalog name. */
+/** Step 1 — "Pick a look." Template cards, accent swatches, catalog name. */
 export function StepLook({
   template,
   accent,
   catalogName,
+  liveUrl,
   onTemplate,
   onAccent,
   onCatalogName,
@@ -81,6 +83,11 @@ export function StepLook({
         onChange={(e) => onCatalogName(e.target.value)}
         className="w-full max-w-[420px] rounded-xl border border-[#d2d2d7] px-3.5 py-3 text-base outline-none"
       />
+      {liveUrl ? (
+        <p className="mt-2.5 max-w-[420px] break-all text-[13px] text-[#6e6e73]">
+          {liveUrl}
+        </p>
+      ) : null}
     </div>
   );
 }

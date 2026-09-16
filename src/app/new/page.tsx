@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  * /auth/sign-in if there isn't one — requireAccount() does this; note
  * src/proxy.ts does not gate /new the way it gates /admin, so this is the
  * only auth check on this route) and hands it to the client-side wizard as
- * plain props. All wizard interactivity (step state, draft items, template/
- * accent selection, live preview) lives in BuilderClient.
+ * plain props. All wizard interactivity (step state, template/accent
+ * selection, live preview) lives in BuilderClient.
  */
 export default async function NewCatalogPage() {
   const account = await requireAccount({ next: "/new" });

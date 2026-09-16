@@ -7,6 +7,7 @@ import type { CatalogTemplateKey, StorefrontCatalog } from "./types";
 import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 import { parseCheckoutFields } from "./checkout-fields";
 import { parseFulfillmentModes, resolveCheckoutForm } from "./checkout-form";
+import { isComboItem, parseComboLines, resolveComboIncludes } from "./combos";
 import { parseItemOptions } from "./item-options";
 import { parseBanners, parseImageFit, parseItemImageFit } from "./merchandising";
 import { parseCoord, resolveLocations } from "./locations";
@@ -66,8 +67,20 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
   const checkoutFields = parseCheckoutFields(catalogRow.checkout_fields);
   const imageFit = parseImageFit(catalogRow.image_fit);
   const placeholder = (catalogRow.placeholder_image_url ?? "").trim();
-  const mappedItems = (items ?? []).map((row) => {
+  const catalogItems = items ?? [];
+  const mappedItems = catalogItems.map((row) => {
     const image = (row.image ?? "").trim() || placeholder;
+    const comboIncludes = isComboItem(row)
+      ? resolveComboIncludes(parseComboLines(row.combo_lines), catalogItems).map((line) => ({
+          id: line.item_id,
+          name: line.name,
+          qty: line.qty,
+          image: line.image,
+        }))
+      : [];
+    const cover = isComboItem(row)
+      ? (row.image ?? "").trim() || comboIncludes.find((line) => line.image)?.image || placeholder
+      : image;
     return {
       id: row.id,
       code: row.code,
@@ -76,11 +89,13 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
       description: row.description,
       price: Number(row.price),
       pack: row.pack,
-      image,
+      image: cover,
       options: parseItemOptions(row.options),
       featured: Boolean(row.featured),
       available: row.visible !== false,
       imageFit: parseItemImageFit(row.image_fit) ?? imageFit,
+      isCombo: isComboItem(row),
+      comboIncludes,
     };
   });
   return {
@@ -174,7 +189,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host-v6"],
+  ["storefront-catalog-by-host-v8"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

@@ -5,9 +5,13 @@ import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
+import { ComboBadge } from "@/components/storefront/ComboBadge";
+import { ComboIncludes } from "@/components/storefront/ComboIncludes";
+import { PausedNote } from "@/components/storefront/PausedNote";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { isAutoComboDescription } from "@/lib/catalog/combos";
 import { formatMoney } from "@/lib/catalog/currency";
-import { hasItemOptions } from "@/lib/catalog/item-options";
+import { hasItemOptions, optionsCue, variantValueNames } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
@@ -24,7 +28,6 @@ export function LookbookTemplate({
   featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
-  const { quantities, increment, acceptOrders } = useCart();
 
   return (
     <div>
@@ -46,59 +49,16 @@ export function LookbookTemplate({
         {catalog.items.length === 0 ? (
           <p className="mt-16 text-sm text-[var(--cat-muted)]">No items yet.</p>
         ) : (
-          <div className="mt-12 grid grid-cols-1 gap-10 sm:grid-cols-2">
-            {catalog.items.map((item, index) => {
-              const qty = quantities[item.code] ?? 0;
-              return (
-                <div key={item.code}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(item)}
-                    className="relative block aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-[var(--cat-photo-bg)]"
-                  >
-                    {item.image ? (
-                      // User-pasted https/data URLs are not in next/image remotePatterns.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        width={800}
-                        height={600}
-                        loading={index < 2 ? "eager" : "lazy"}
-                        decoding="async"
-                        className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
-                      />
-                    ) : null}
-                  </button>
-                  <h3 className="mt-5 text-xl font-semibold tracking-tight text-[var(--cat-ink)]">
-                    {item.name}
-                  </h3>
-                  {item.description && (
-                    <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[var(--cat-muted)]">
-                      {item.description}
-                    </p>
-                  )}
-                  <div className="mt-4 flex items-center gap-4">
-                    <span className="text-[17px] font-semibold text-[var(--cat-ink)]">
-                      {formatMoney(item.price, catalog.currency)}
-                    </span>
-                    {isItemAvailable(item) ? (
-                      acceptOrders ? (
-                        <button
-                          type="button"
-                          onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
-                          className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
-                        >
-                          {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-                        </button>
-                      ) : null
-                    ) : (
-                      <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mt-12 grid grid-cols-1 gap-10 @md:grid-cols-2">
+            {catalog.items.map((item, index) => (
+              <LookbookEntry
+                key={item.code}
+                item={item}
+                currency={catalog.currency}
+                eager={index < 2}
+                onSelect={setSelected}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -110,6 +70,110 @@ export function LookbookTemplate({
           onClose={() => setSelected(null)}
         />
       )}
+    </div>
+  );
+}
+
+function LookbookEntry({
+  item,
+  currency,
+  eager,
+  onSelect,
+}: {
+  item: StorefrontItem;
+  currency: string;
+  eager: boolean;
+  onSelect: (item: StorefrontItem) => void;
+}) {
+  const { quantities, increment, acceptOrders, pausedMessage } = useCart();
+  const qty = quantities[item.code] ?? 0;
+  const available = isItemAvailable(item);
+  const cue = item.isCombo ? null : optionsCue(item);
+  const names = item.isCombo ? [] : variantValueNames(item);
+  const showChips = names.length > 0 && names.length <= 8;
+  const description =
+    item.description && !(item.isCombo && isAutoComboDescription(item.description, item.comboIncludes))
+      ? item.description
+      : "";
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className={`relative block w-full overflow-hidden rounded-[14px] bg-[var(--cat-photo-bg)] ${
+          item.isCombo ? "aspect-[4/5] @md:aspect-[3/4]" : "aspect-[4/3]"
+        }`}
+      >
+        {item.image ? (
+          // User-pasted https/data URLs are not in next/image remotePatterns.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.image}
+            alt={item.name}
+            width={800}
+            height={item.isCombo ? 1000 : 600}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
+          />
+        ) : null}
+        {item.isCombo ? (
+          <span className="absolute left-3 top-3">
+            <ComboBadge />
+          </span>
+        ) : cue ? (
+          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--cat-accent)] shadow-sm">
+            {cue}
+          </span>
+        ) : null}
+      </button>
+
+      {item.isCombo ? (
+        <ComboIncludes lines={item.comboIncludes} layout="list" size="lg" className="mt-3" />
+      ) : null}
+
+      <h3 className="mt-5 text-xl font-semibold tracking-tight text-[var(--cat-ink)]">{item.name}</h3>
+
+      {showChips ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {names.map((name) => (
+            <span
+              key={name}
+              className="rounded-full bg-[#f4f5f7] px-2.5 py-1 text-[12px] font-medium text-[var(--cat-ink)]"
+            >
+              {name}
+            </span>
+          ))}
+        </div>
+      ) : cue ? (
+        <p className="mt-2 text-[12px] font-semibold text-[var(--cat-accent)]">{cue}</p>
+      ) : null}
+
+      {description ? (
+        <p className="mt-2 max-w-md text-[15px] leading-relaxed text-[var(--cat-muted)]">{description}</p>
+      ) : null}
+
+      <div className="mt-4">
+        <span className="text-[17px] font-semibold text-[var(--cat-ink)]">
+          {formatMoney(item.price, currency)}
+        </span>
+        <div className="mt-3">
+          {!acceptOrders ? (
+            <PausedNote message={pausedMessage} />
+          ) : !available ? (
+            <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => (hasItemOptions(item) ? onSelect(item) : increment(item.code))}
+              className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
+            >
+              {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

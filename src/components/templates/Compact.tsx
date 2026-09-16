@@ -5,7 +5,9 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
-import { hasItemOptions } from "@/lib/catalog/item-options";
+import { ComboBadge } from "@/components/storefront/ComboBadge";
+import { ComboIncludes } from "@/components/storefront/ComboIncludes";
+import { hasItemOptions, optionsCue } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
@@ -124,8 +126,11 @@ function CompactRow({
   acceptOrders: boolean;
   pausedMessage: string;
 }) {
+  const cue = item.isCombo ? null : optionsCue(item);
+  const meta = [item.code, item.pack].filter(Boolean).join(" · ");
+
   return (
-    <div className="flex items-center gap-2.5 border-b border-[var(--cat-border)] px-2.5 py-2 last:border-b-0">
+    <div className="flex flex-wrap items-center gap-2.5 border-b border-[var(--cat-border)] px-2.5 py-2 last:border-b-0 @md:flex-nowrap">
       <button
         type="button"
         onClick={() => onSelect(item)}
@@ -146,20 +151,34 @@ function CompactRow({
         ) : null}
       </button>
       <button type="button" onClick={() => onSelect(item)} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-[13px] font-semibold leading-tight text-[var(--cat-ink)]">
-          {item.name}
-        </p>
-        <p className="truncate text-[11px] text-[var(--cat-muted)]">
-          {item.code}
-          {item.pack ? ` · ${item.pack}` : ""}
-        </p>
+        <span className="flex min-w-0 items-center gap-1.5">
+          <p className="truncate text-[13px] font-semibold leading-tight text-[var(--cat-ink)]">
+            {item.name}
+          </p>
+          {item.isCombo ? <ComboBadge className="shrink-0" /> : null}
+        </span>
+        {item.isCombo ? (
+          <ComboIncludes lines={item.comboIncludes} layout="inline" className="mt-0.5" />
+        ) : (
+          <p className="truncate text-[11px] leading-4 text-[var(--cat-muted)]">
+            {meta}
+            {cue ? (
+              <span className="font-semibold text-[var(--cat-accent)]">
+                {meta ? " · " : ""}
+                {cue}
+              </span>
+            ) : null}
+          </p>
+        )}
       </button>
       <div className="shrink-0 text-right">
         <p className="text-[10px] uppercase tracking-wide text-[var(--cat-muted)]">{currency}</p>
         <p className="text-sm font-bold text-[var(--cat-ink)]">{item.price.toFixed(2)}</p>
       </div>
       {!acceptOrders ? (
-        <span className="max-w-[9rem] text-right text-[11px] text-[var(--cat-muted)]">{pausedMessage}</span>
+        <span className="max-w-[9rem] text-right text-[11px] leading-snug text-[var(--cat-muted)]">
+          {pausedMessage}
+        </span>
       ) : !isItemAvailable(item) ? (
         <span className="shrink-0 text-[11px] font-medium text-[var(--cat-muted)]">Unavailable</span>
       ) : optioned ? (

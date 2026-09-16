@@ -10,6 +10,7 @@ import {
   missingCustomFieldLabels,
   visibleCheckoutFields,
 } from "@/lib/catalog/checkout-form";
+import { formatComboIncludes } from "@/lib/catalog/combos";
 import { formatSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import { loadGuestAddress, mapsUrlFromCoords, saveGuestAddress } from "@/lib/catalog/guest-address";
 import type { CheckoutFields, CheckoutFormField, OrderFulfillment } from "@/lib/supabase/types";
@@ -270,6 +271,11 @@ export function CartPanel({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-[var(--cat-ink)]">{item.name}</p>
+                      {item.isCombo && item.comboIncludes.length > 0 ? (
+                        <p className="text-xs text-[var(--cat-muted)]">
+                          Includes {formatComboIncludes(item.comboIncludes)}
+                        </p>
+                      ) : null}
                       {extras ? <p className="text-xs text-[var(--cat-muted)]">{extras}</p> : null}
                       <p className="text-xs text-[var(--cat-muted)]">
                         {formatMoney(unit, currency)} each

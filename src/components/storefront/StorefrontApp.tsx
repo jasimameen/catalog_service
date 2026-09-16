@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { CartProvider } from "@/lib/catalog/cart-context";
 import { TEMPLATE_COMPONENTS } from "@/components/templates";
@@ -13,12 +14,16 @@ import { StorefrontFooter } from "./StorefrontFooter";
 import type { OrderResult } from "@/lib/catalog/order-types";
 import { formatMoney } from "@/lib/catalog/currency";
 import { storefrontCategories } from "@/lib/catalog/merchandising";
+import { isTemplateKey } from "@/lib/catalog/templates";
 
 export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [category, setCategory] = useState("");
-  const Template = TEMPLATE_COMPONENTS[catalog.template] ?? TEMPLATE_COMPONENTS.grid;
+  const searchParams = useSearchParams();
+  const forcedTemplate = searchParams.get("tpl");
+  const templateKey = forcedTemplate && isTemplateKey(forcedTemplate) ? forcedTemplate : catalog.template;
+  const Template = TEMPLATE_COMPONENTS[templateKey] ?? TEMPLATE_COMPONENTS.grid;
   const showChips = storefrontCategories(catalog.items).length >= 2;
   const viewCatalog = useMemo<StorefrontCatalog>(() => {
     if (!category) return catalog;
@@ -73,7 +78,7 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
           <StorefrontWatermark />
         </main>
       ) : (
-        <main>
+        <main className="@container">
           {catalog.showStorefrontAlert && catalog.storefrontAlert ? (
             <div className="bg-[var(--cat-ink)] px-4 py-2.5 text-center text-sm font-medium text-white">
               {catalog.storefrontAlert}

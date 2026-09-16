@@ -1,7 +1,7 @@
 export default function AdminLoading() {
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-[5] border-b border-[var(--cat-border)] bg-white/85 px-5 py-3.5 sm:px-8">
+      <div className="relative z-[5] border-b border-[var(--cat-border)] bg-white/85 py-3.5 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))] md:sticky md:top-0">
         <div className="h-5 w-36 animate-pulse rounded bg-[#f0f0f4]" />
         <div className="mt-2 h-3 w-48 animate-pulse rounded bg-[#f0f0f4]" />
       </div>

@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 
-const STEP_LABELS = ["Items", "Look", "Address"];
+const STEP_LABELS = ["Look", "Address", "Items"];
 
 interface TopBarProps {
   step: 1 | 2 | 3;
 }
 
-/** Top bar: back to /admin, 3 numbered step pills, cosmetic "Draft saved". */
+/** Top bar: back to /admin, Look → Address → optional Items upload. */
 export function TopBar({ step }: TopBarProps) {
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b border-[#e8e8ed] bg-white/85 px-4 backdrop-blur-xl sm:px-6">

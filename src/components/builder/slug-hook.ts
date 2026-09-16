@@ -5,27 +5,32 @@ import type { SlugAvailability } from "./StepAddress";
 interface CheckSlugResponse {
   available: boolean;
   reason?: "invalid" | "taken" | "error";
+  suggestions?: string[];
 }
 
 interface RemoteResult {
   slug: string;
   status: SlugAvailability;
+  suggestions: string[];
+}
+
+export interface SlugCheck {
+  availability: SlugAvailability;
+  suggestions: string[];
 }
 
 /**
  * Debounced availability check against src/app/new/api/check-slug, a small
  * route handler (rather than a Server Action) since this is a plain read
  * fired on every keystroke pause — no mutation, no need for the Server
- * Action response envelope.
+ * Action response envelope. Next.js serializes Server Actions per client,
+ * so a keystroke check must stay a route handler.
  *
  * "idle"/"invalid" are derived synchronously from the slug itself (no
- * network round trip needed), so they're computed directly during render
- * rather than via setState-in-an-effect. Only the genuinely async remote
- * lookup ("checking" -> "available"/"taken") goes through state, and every
- * setState for it happens inside a promise callback, never synchronously in
- * the effect body.
+ * network round trip needed). Only the genuinely async remote lookup
+ * ("checking" -> "available"/"taken") goes through state.
  */
-export function useSlugAvailability(rawSlug: string, active: boolean): SlugAvailability {
+export function useSlugAvailability(rawSlug: string, name: string, active: boolean): SlugCheck {
   const slug = normalizeSlug(rawSlug);
   const staticStatus: SlugAvailability | null =
     !active || !slug ? "idle" : !isValidSlug(slug) ? "invalid" : null;
@@ -38,10 +43,12 @@ export function useSlugAvailability(rawSlug: string, active: boolean): SlugAvail
 
     const thisRequest = ++requestId.current;
     const handle = setTimeout(() => {
-      fetch(`/new/api/check-slug?slug=${encodeURIComponent(slug)}`)
+      const params = new URLSearchParams({ slug });
+      if (name.trim()) params.set("name", name);
+      fetch(`/new/api/check-slug?${params.toString()}`)
         .then((res) => res.json() as Promise<CheckSlugResponse>)
         .then((data) => {
-          if (requestId.current !== thisRequest) return; // superseded by a newer keystroke
+          if (requestId.current !== thisRequest) return;
           const status: SlugAvailability =
             data.reason === "invalid"
               ? "invalid"
@@ -50,17 +57,25 @@ export function useSlugAvailability(rawSlug: string, active: boolean): SlugAvail
                 : data.available
                   ? "available"
                   : "taken";
-          setRemote({ slug, status });
+          setRemote({
+            slug,
+            status,
+            suggestions: status === "taken" ? (data.suggestions ?? []) : [],
+          });
         })
         .catch(() => {
-          if (requestId.current === thisRequest) setRemote({ slug, status: "idle" });
+          if (requestId.current === thisRequest) {
+            setRemote({ slug, status: "idle", suggestions: [] });
+          }
         });
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(handle);
-  }, [slug, staticStatus]);
+  }, [slug, name, staticStatus]);
 
-  if (staticStatus !== null) return staticStatus;
-  if (remote && remote.slug === slug) return remote.status;
-  return "checking";
+  if (staticStatus !== null) return { availability: staticStatus, suggestions: [] };
+  if (remote && remote.slug === slug) {
+    return { availability: remote.status, suggestions: remote.suggestions };
+  }
+  return { availability: "checking", suggestions: [] };
 }

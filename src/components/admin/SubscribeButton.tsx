@@ -37,7 +37,7 @@ export function SubscribeButton({
 
   const className =
     variant === "nav"
-      ? "block w-full rounded-lg border border-[#d2d2d7] bg-white py-1.5 text-center text-xs font-medium text-[var(--cat-ink)] disabled:cursor-not-allowed disabled:opacity-60"
+      ? "flex min-h-11 w-full items-center justify-center rounded-lg border border-[#d2d2d7] bg-white text-center text-xs font-medium text-[var(--cat-ink)] disabled:cursor-not-allowed disabled:opacity-60"
       : variant === "solid"
         ? "rounded-full bg-[var(--cat-ink)] px-5 py-2.5 text-[13px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
         : "rounded-full bg-white px-5 py-2.5 text-[13px] font-medium text-[var(--cat-ink)] disabled:cursor-not-allowed disabled:opacity-60";

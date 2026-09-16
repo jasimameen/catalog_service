@@ -6,10 +6,17 @@ import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { generateItemCode } from "@/app/admin/_lib/urls";
-import type { CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
-import { foldVariantRows, type MappedImportRow } from "@/lib/catalog/import-map";
+import type { CatalogItemRow, CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
+import { fillAutoCodesAndGroups, foldVariantRows, type MappedImportRow } from "@/lib/catalog/import-map";
 import { parseOptionsFromForm } from "@/lib/catalog/item-options";
 import { MERCHANDISING_SQL_HINT, parseItemImageFit } from "@/lib/catalog/merchandising";
+import {
+  COMBOS_SQL_HINT,
+  formatComboIncludes,
+  parseComboLines,
+  resolveComboIncludes,
+  type ComboLine,
+} from "@/lib/catalog/combos";
 import { pickPlaceholder, STOCK_PHOTOS } from "@/lib/catalog/placeholders";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
@@ -185,6 +192,148 @@ export async function addItem(
       }
     }
     return { error: "Could not add the item. Try again." };
+  }
+
+  revalidateItems(catalogId);
+  return { saved: true };
+}
+
+function isMissingComboColumn(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === "42703" ||
+    Boolean(error.message?.includes("is_combo")) ||
+    Boolean(error.message?.includes("combo_lines"))
+  );
+}
+
+export async function addCombo(
+  catalogId: string,
+  nameRaw: string,
+  priceRaw: string,
+  comboLines: ComboLine[],
+): Promise<{ error?: string; saved?: boolean }> {
+  return writeCombo(catalogId, null, nameRaw, priceRaw, comboLines);
+}
+
+export async function updateCombo(
+  catalogId: string,
+  itemId: string,
+  nameRaw: string,
+  priceRaw: string,
+  comboLines: ComboLine[],
+): Promise<{ error?: string; saved?: boolean }> {
+  return writeCombo(catalogId, itemId, nameRaw, priceRaw, comboLines);
+}
+
+async function writeCombo(
+  catalogId: string,
+  itemId: string | null,
+  nameRaw: string,
+  priceRaw: string,
+  comboLines: ComboLine[],
+): Promise<{ error?: string; saved?: boolean }> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+
+  const name = nameRaw.trim().slice(0, 200);
+  const price = Number(priceRaw);
+  const lines = parseComboLines(comboLines);
+  if (!name) return { error: "Name is required." };
+  if (!priceRaw.trim() || Number.isNaN(price) || price < 0) return { error: "Enter a valid price." };
+  if (lines.length === 0) return { error: "Pick at least one product." };
+
+  const supabase = await getServerSupabase();
+  const { data: productRows } = await supabase
+    .from("catalog_items")
+    .select("id, code, name, image, is_combo")
+    .eq("catalog_id", catalogId);
+  const products = ((productRows ?? []) as CatalogItemRow[]).filter((row) => row.id !== itemId);
+  const resolved = resolveComboIncludes(lines, products);
+  if (resolved.length === 0) return { error: "Pick at least one product." };
+  const cleanLines = resolved.map((row) => ({ item_id: row.item_id, qty: row.qty }));
+  const firstImage = resolved.find((row) => row.image)?.image ?? "";
+  const description = `Includes ${formatComboIncludes(resolved)}`;
+  const rounded = Math.round(price * 100) / 100;
+
+  if (itemId) {
+    const { data: current } = await supabase
+      .from("catalog_items")
+      .select("image")
+      .eq("id", itemId)
+      .eq("catalog_id", catalogId)
+      .maybeSingle();
+    const image = String(current?.image ?? "").trim() || firstImage;
+    const { data, error } = await supabase
+      .from("catalog_items")
+      .update({
+        name,
+        price: rounded,
+        description,
+        image,
+        is_combo: true,
+        combo_lines: cleanLines,
+        options: [],
+      })
+      .eq("id", itemId)
+      .eq("catalog_id", catalogId)
+      .select("id")
+      .maybeSingle();
+    if (isMissingComboColumn(error)) return { error: COMBOS_SQL_HINT };
+    if (error || !data) {
+      console.error("updateCombo: update failed", error);
+      return { error: "Could not save the combo. Try again." };
+    }
+    revalidateItems(catalogId);
+    return { saved: true };
+  }
+
+  const position = await nextPosition(supabase, catalogId);
+  const { error } = await supabase.from("catalog_items").insert({
+    catalog_id: catalogId,
+    code: generateItemCode(),
+    name,
+    price: rounded,
+    image: firstImage,
+    category: "Combos",
+    pack: "",
+    description,
+    barcode: null,
+    options: [],
+    featured: false,
+    visible: true,
+    position,
+    is_combo: true,
+    combo_lines: cleanLines,
+  });
+
+  if (isMissingComboColumn(error)) return { error: COMBOS_SQL_HINT };
+  if (error) {
+    console.error("addCombo: insert failed", error);
+    if (error.code === "23505") {
+      const retry = await supabase.from("catalog_items").insert({
+        catalog_id: catalogId,
+        code: generateItemCode(),
+        name,
+        price: rounded,
+        image: firstImage,
+        category: "Combos",
+        pack: "",
+        description,
+        barcode: null,
+        options: [],
+        featured: false,
+        visible: true,
+        position,
+        is_combo: true,
+        combo_lines: cleanLines,
+      });
+      if (!retry.error) {
+        revalidateItems(catalogId);
+        return { saved: true };
+      }
+    }
+    return { error: "Could not add the combo. Try again." };
   }
 
   revalidateItems(catalogId);
@@ -529,7 +678,7 @@ export async function fileImportItems(
     return { error: "No valid rows found.", skipped: skipReasons.length, skipReasons: skipReasons.slice(0, 12) };
   }
 
-  const folded = foldVariantRows(valid);
+  const folded = fillAutoCodesAndGroups(foldVariantRows(valid));
   const seenCodes = new Set<string>();
   const unique: MappedImportRow[] = [];
   for (const row of folded) {

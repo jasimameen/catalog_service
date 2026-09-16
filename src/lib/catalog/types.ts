@@ -23,6 +23,13 @@ export type CatalogTemplateKey =
   | "compact"
   | "spotlight";
 
+export interface StorefrontComboLine {
+  id: string;
+  name: string;
+  qty: number;
+  image: string;
+}
+
 export interface StorefrontItem {
   /** Stable key for React lists — the DB row id, or a draft-local id in the builder. */
   id: string;
@@ -40,6 +47,8 @@ export interface StorefrontItem {
   /** False when Admin turns Visible off — shown as Unavailable, not hidden. */
   available: boolean;
   imageFit: ImageFit;
+  isCombo: boolean;
+  comboIncludes: StorefrontComboLine[];
 }
 
 export interface StorefrontCatalog {

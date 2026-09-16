@@ -17,6 +17,31 @@ export type ImportField = (typeof IMPORT_FIELDS)[number];
 
 export type ImportFieldOrSkip = ImportField | "skip";
 
+/** Needed catalog field → column index in the dropped file. Missing = Ignore. */
+export type ImportFieldMapping = Partial<Record<ImportField, number>>;
+
+/** Fallback when a mapped cell is empty or the field is unmapped. */
+export type ImportFieldDefaults = Partial<Record<ImportField, string>>;
+
+export type ImportFieldMeta = {
+  required: boolean;
+  defaultable: boolean;
+  autoFill?: string;
+};
+
+export const IMPORT_FIELD_META: Record<ImportField, ImportFieldMeta> = {
+  name: { required: true, defaultable: false },
+  price: { required: true, defaultable: false },
+  description: { required: false, defaultable: true },
+  category: { required: false, defaultable: true },
+  pack: { required: false, defaultable: true },
+  image: { required: false, defaultable: true },
+  code: { required: false, defaultable: false, autoFill: "Filled automatically if empty" },
+  barcode: { required: false, defaultable: true },
+  variant: { required: false, defaultable: true },
+  variantGroup: { required: false, defaultable: false, autoFill: "Filled automatically if empty" },
+};
+
 export type MappedImportRow = {
   name: string;
   price: number;
@@ -213,6 +238,72 @@ export function foldVariantRows(rows: MappedImportRow[]): MappedImportRow[] {
   }
 
   return order.map((key) => mergeVariantGroup(groups.get(key)!));
+}
+
+function slugForSku(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return slug || "item";
+}
+
+function shortSuffix(name: string): string {
+  let hash = 2166136261;
+  const input = name.trim().toLowerCase();
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).slice(0, 4);
+}
+
+/** Stable SKU from a name slug + short suffix. Unique within `used`. */
+export function skuFromName(name: string, used: Set<string>): string {
+  const base = slugForSku(name);
+  const suffix = shortSuffix(name);
+  let candidate = `${base}-${suffix}`.slice(0, 64);
+  let n = 2;
+  while (used.has(candidate.toLowerCase())) {
+    candidate = `${base}-${suffix}-${n}`.slice(0, 64);
+    n += 1;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
+
+function groupIdFromName(name: string, used: Set<string>): string {
+  const base = `vg-${slugForSku(name)}`.slice(0, 56);
+  let candidate = base;
+  let n = 2;
+  while (used.has(candidate.toLowerCase())) {
+    candidate = `${base}-${n}`.slice(0, 64);
+    n += 1;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
+
+/** Fill missing SKUs and variant-group ids after rows are mapped / folded. */
+export function fillAutoCodesAndGroups(rows: MappedImportRow[]): MappedImportRow[] {
+  const usedCodes = new Set<string>();
+  const usedGroups = new Set<string>();
+  for (const row of rows) {
+    const code = row.code.trim();
+    if (code) usedCodes.add(code.toLowerCase());
+    const group = row.variantGroup.trim();
+    if (group) usedGroups.add(group.toLowerCase());
+  }
+  return rows.map((row) => {
+    const code = row.code.trim() || skuFromName(row.name, usedCodes);
+    const hasVariants = row.options.length > 0;
+    const variantGroup =
+      row.variantGroup.trim() || (hasVariants ? groupIdFromName(row.name, usedGroups) : "");
+    return { ...row, code, variantGroup };
+  });
 }
 
 export const IMPORT_ROW_LIMIT = 1000;

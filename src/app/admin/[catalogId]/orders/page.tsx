@@ -2,7 +2,9 @@ import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { parseFulfillmentModes } from "@/lib/catalog/checkout-form";
+import type { ItemThumb } from "@/lib/catalog/combos";
+import { parseFulfillmentModes, resolveCheckoutForm } from "@/lib/catalog/checkout-form";
+import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import {
   findDuplicateRefs,
   parseDefaultOrderStatus,
@@ -56,6 +58,17 @@ export default async function OrdersPage({
   }
   const initialFilter = parseStatusFilterParam(query.status, statuses);
   const showFulfillment = parseFulfillmentModes(catalog.fulfillment_modes).length > 0;
+  const checkoutForm = resolveCheckoutForm(catalog.checkout_form, parseCheckoutFields(catalog.checkout_fields));
+  const { data: thumbRows } = await supabase
+    .from("catalog_items")
+    .select("id, code, name, image")
+    .eq("catalog_id", catalogId);
+  const thumbs: ItemThumb[] = (thumbRows ?? []).map((row) => ({
+    id: String(row.id),
+    code: String(row.code ?? ""),
+    name: String(row.name ?? ""),
+    image: String(row.image ?? ""),
+  }));
 
   return (
     <>
@@ -64,25 +77,7 @@ export default async function OrdersPage({
         subtitle={`${catalog.name} · ${orders.length} ${orders.length === 1 ? "order" : "orders"}`}
         account={account}
       />
-      <div className="flex flex-col gap-4 p-4 pb-16 sm:p-8">
-        <div className="flex items-center justify-between gap-3">
-          <p className="m-0 text-[13px] text-[var(--cat-muted)]">
-            Mark each order status as it moves along.
-          </p>
-          <a
-            href={`/admin/${catalogId}/orders/export`}
-            className="min-h-11 rounded-lg border border-[#d2d2d7] bg-white px-3 text-xs font-medium leading-[44px] text-[var(--cat-ink)]"
-          >
-            Export CSV
-          </a>
-        </div>
-        <StatusSettings
-          key={`${defaultStatusId}:${statuses.map((row) => `${row.id}:${row.label}:${row.is_done}`).join("|")}`}
-          catalogId={catalogId}
-          initialStatuses={statuses}
-          initialDefaultId={defaultStatusId}
-          usedCounts={usedCounts}
-        />
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col px-4 pb-14 pt-4">
         <OrdersBoard
           catalogId={catalogId}
           currency={catalog.currency}
@@ -93,7 +88,17 @@ export default async function OrdersPage({
           initialItems={items}
           initialDuplicates={duplicates}
           initialEvents={events}
-        />
+          thumbs={thumbs}
+          checkoutForm={checkoutForm}
+        >
+          <StatusSettings
+            key={`${defaultStatusId}:${statuses.map((row) => `${row.id}:${row.label}:${row.is_done}`).join("|")}`}
+            catalogId={catalogId}
+            initialStatuses={statuses}
+            initialDefaultId={defaultStatusId}
+            usedCounts={usedCounts}
+          />
+        </OrdersBoard>
       </div>
     </>
   );

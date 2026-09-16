@@ -5,7 +5,10 @@ import type { SelectedOption } from "@/lib/supabase/types";
 import type { StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
+import { comboCoverImage, isAutoComboDescription } from "@/lib/catalog/combos";
 import { hasItemOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
+import { ComboBadge } from "./ComboBadge";
+import { ComboIncludesList } from "./ComboIncludesList";
 import { QuantityStepper } from "./QuantityStepper";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 import { PausedNote } from "./PausedNote";
@@ -61,6 +64,10 @@ export function ProductDetailModal({
   const unit = unitPriceWithOptions(item.price, selected);
   const existing = optioned ? lineFor(item.code, selected) : undefined;
   const qty = optioned ? (existing?.qty ?? 0) : (quantities[item.code] ?? 0);
+  const cover = item.isCombo ? comboCoverImage(item) : item.image;
+  const showDescription =
+    Boolean(item.description) &&
+    !(item.isCombo && isAutoComboDescription(item.description, item.comboIncludes));
 
   function toggleMulti(groupName: string, valueName: string) {
     setMultiPick((prev) => {
@@ -81,12 +88,12 @@ export function ProductDetailModal({
         className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[20px] bg-white shadow-2xl sm:max-h-[90vh] sm:flex-row sm:rounded-[16px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative aspect-[584/480] w-full shrink-0 bg-[var(--cat-photo-bg)] sm:aspect-auto sm:w-1/2">
-          {item.image ? (
+        <div className="relative aspect-[584/480] w-full shrink-0 overflow-hidden bg-[var(--cat-photo-bg)] sm:aspect-auto sm:w-1/2">
+          {cover ? (
             // User-pasted https/data URLs are not in next/image remotePatterns.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={item.image}
+              src={cover}
               alt={item.name}
               width={584}
               height={480}
@@ -110,15 +117,27 @@ export function ProductDetailModal({
 
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-5">
           <div>
-            <h2 className="font-catalog-display text-xl font-bold text-[var(--cat-ink)]">
-              {item.name}
-            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-catalog-display text-xl font-bold text-[var(--cat-ink)]">
+                {item.name}
+              </h2>
+              {item.isCombo ? <ComboBadge /> : null}
+            </div>
             {item.code && <p className="text-sm text-[var(--cat-muted)]">{item.code}</p>}
           </div>
 
-          {item.description && (
+          {showDescription && (
             <p className="text-sm leading-relaxed text-[var(--cat-muted)]">{item.description}</p>
           )}
+
+          {item.isCombo && item.comboIncludes.length > 0 ? (
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--cat-muted)]">
+                Includes
+              </p>
+              <ComboIncludesList lines={item.comboIncludes} size="md" layout="list" />
+            </div>
+          ) : null}
 
           {optioned
             ? item.options.map((group) => (
@@ -134,12 +153,6 @@ export function ProductDetailModal({
                         group.type === "single"
                           ? singlePick[group.name] === value.name
                           : (multiPick[group.name] ?? []).includes(value.name);
-                      const extra =
-                        value.price_delta === 0
-                          ? ""
-                          : value.price_delta > 0
-                            ? ` +${formatMoney(value.price_delta, currency)}`
-                            : ` ${formatMoney(value.price_delta, currency)}`;
                       return (
                         <button
                           key={value.name}
@@ -156,7 +169,6 @@ export function ProductDetailModal({
                           }`}
                         >
                           {value.name}
-                          {extra}
                         </button>
                       );
                     })}
@@ -170,6 +182,21 @@ export function ProductDetailModal({
               {currency}
             </p>
             <p className="text-2xl font-bold text-[var(--cat-ink)]">{unit.toFixed(2)}</p>
+            {selected.some((group) => group.values.some((value) => value.price_delta !== 0)) ? (
+              <p className="mt-1 text-xs text-[var(--cat-muted)]">
+                {selected
+                  .flatMap((group) => group.values)
+                  .filter((value) => value.price_delta !== 0)
+                  .map((value) => {
+                    const delta =
+                      value.price_delta > 0
+                        ? `+${formatMoney(value.price_delta, currency)}`
+                        : formatMoney(value.price_delta, currency);
+                    return `${value.name} ${delta}`;
+                  })
+                  .join(" · ")}
+              </p>
+            ) : null}
             {qty > 0 && (
               <p className="text-xs text-[var(--cat-muted)]">
                 × {qty} = {formatMoney(unit * qty, currency)}

@@ -6,7 +6,12 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { ComboBadge } from "@/components/storefront/ComboBadge";
+import { ComboIncludes } from "@/components/storefront/ComboIncludes";
+import { PausedNote } from "@/components/storefront/PausedNote";
+import { optionsCue } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { isItemAvailable } from "@/lib/catalog/merchandising";
 
 /** Table layout that prints and exports cleanly — trade pricing by email or on paper. */
 export function PriceListTemplate({
@@ -21,7 +26,7 @@ export function PriceListTemplate({
   featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
-  const { quantities } = useCart();
+  const { quantities, acceptOrders, pausedMessage } = useCart();
   const today = new Date();
   const monthLabel = today.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
@@ -49,10 +54,16 @@ export function PriceListTemplate({
           </div>
         </div>
 
-        <div className="grid grid-cols-[90px_minmax(0,2fr)_90px] gap-3 border-b border-[#d2d2d7] py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--cat-muted)] sm:grid-cols-[110px_minmax(0,2fr)_1fr_90px]">
+        {!acceptOrders ? (
+          <div className="mt-4 print:hidden">
+            <PausedNote message={pausedMessage} />
+          </div>
+        ) : null}
+
+        <div className="hidden grid-cols-[110px_minmax(0,2fr)_1fr_90px] gap-3 border-b border-[#d2d2d7] py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--cat-muted)] @md:grid">
           <span>Code</span>
           <span>Item</span>
-          <span className="hidden sm:block">Pack</span>
+          <span>Pack</span>
           <span className="text-right">Price</span>
         </div>
 
@@ -61,29 +72,54 @@ export function PriceListTemplate({
         ) : (
           catalog.items.map((item) => {
             const qty = quantities[item.code] ?? 0;
+            const available = isItemAvailable(item);
+            const cue = item.isCombo ? null : optionsCue(item);
             return (
-              <button
+              <div
                 key={item.code}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelected(item)}
-                className={`grid w-full grid-cols-[90px_minmax(0,2fr)_90px] items-baseline gap-3 border-b border-[#f0f0f4] py-2.5 text-left text-[13px] sm:grid-cols-[110px_minmax(0,2fr)_1fr_90px] ${
-                  item.available === false ? "opacity-55" : ""
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelected(item);
+                  }
+                }}
+                className={`grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-0.5 border-b border-[#f0f0f4] py-2.5 text-left text-[13px] @md:grid-cols-[110px_minmax(0,2fr)_1fr_90px] ${
+                  available ? "" : "opacity-55"
                 }`}
               >
-                <span className="text-[var(--cat-muted)]">{item.code}</span>
-                <span className="font-medium text-[var(--cat-ink)]">
-                  {item.name}
-                  {item.available === false ? (
-                    <span className="ml-1.5 text-[var(--cat-muted)]">Unavailable</span>
-                  ) : qty > 0 ? (
-                    <span className="ml-1.5 text-[var(--cat-accent)]">× {qty} in order</span>
+                <span className="col-start-1 row-start-2 text-[12px] text-[var(--cat-muted)] @md:row-start-1 @md:text-[13px]">
+                  <span className="@md:hidden">
+                    {item.code}
+                    {item.pack ? ` · ${item.pack}` : ""}
+                  </span>
+                  <span className="hidden @md:inline">{item.code}</span>
+                </span>
+                <span className="col-start-1 row-start-1 min-w-0 @md:col-start-2">
+                  <span className="flex flex-wrap items-center gap-1.5 font-medium text-[var(--cat-ink)]">
+                    {item.name}
+                    {item.isCombo ? <ComboBadge className="print:hidden" /> : null}
+                    {!available ? (
+                      <span className="text-[var(--cat-muted)]">Unavailable</span>
+                    ) : qty > 0 ? (
+                      <span className="text-[var(--cat-accent)] print:hidden">× {qty} in order</span>
+                    ) : null}
+                  </span>
+                  {item.isCombo ? (
+                    <ComboIncludes lines={item.comboIncludes} layout="list" size="sm" className="mt-1 @md:pl-3" />
+                  ) : cue ? (
+                    <span className="mt-0.5 block text-[12px] text-[var(--cat-accent)]">{cue}</span>
                   ) : null}
                 </span>
-                <span className="hidden text-[var(--cat-muted)] sm:block">{item.pack || "1 pc"}</span>
-                <span className="text-right font-semibold text-[var(--cat-ink)]">
+                <span className="hidden text-[var(--cat-muted)] @md:col-start-3 @md:row-start-1 @md:block">
+                  {item.pack || "1 pc"}
+                </span>
+                <span className="col-start-2 row-start-1 text-right font-semibold text-[var(--cat-ink)] @md:col-start-4">
                   {item.price.toFixed(2)}
                 </span>
-              </button>
+              </div>
             );
           })
         )}

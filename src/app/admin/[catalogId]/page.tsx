@@ -5,15 +5,18 @@ import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { catalogUrl } from "@/app/admin/_lib/urls";
 import { formatMoney } from "@/lib/catalog/currency";
 import { templateMeta } from "@/lib/catalog/templates";
+import { parseOrderStatuses } from "@/lib/catalog/order-statuses";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
 import { LookSettingsForm } from "./LookSettingsForm";
+import { LiveRecentOrders } from "./LiveRecentOrders";
 import { OrderingCard } from "@/components/admin/OrderingCard";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
 import { parseBanners, parseImageFit } from "@/lib/catalog/merchandising";
 import { locationsToText, parseCoord, parseLocations } from "@/lib/catalog/locations";
 import type { OrderRow } from "@/lib/supabase/types";
+import { dashBtnGhost, dashBtnPrimary, dashCard, dashKicker } from "@/components/admin/dashboard/styles";
 
 function startOfMonthIso(): string {
   const now = new Date();
@@ -79,6 +82,11 @@ export default async function CatalogDashboardPage({
   const itemCount = itemsCountRes.count ?? 0;
   const visibleItemCount = visibleItemsCountRes.count ?? 0;
   const recentOrders = (recentOrdersRes.data ?? []) as OrderRow[];
+  const extraFieldCount = parseCheckoutForm(catalog.checkout_form).length;
+  const acceptOrders = catalog.accept_orders !== false;
+  const showAlert = catalog.show_storefront_alert === true;
+  const isLive = catalog.status === "live";
+  const statuses = parseOrderStatuses(catalog.order_statuses);
 
   const imageByCode = new Map((catalogItemsRes.data ?? []).map((row) => [row.code, row.image]));
   const qtyByCode = new Map<string, { name: string; qty: number }>();
@@ -104,6 +112,7 @@ export default async function CatalogDashboardPage({
   const maxQty = topItems[0]?.qty ?? 1;
 
   const url = catalogUrl(catalog.slug);
+  const host = url.replace(/^https?:\/\//, "");
   const template = templateMeta(catalog.template);
 
   const stats = [
@@ -121,41 +130,158 @@ export default async function CatalogDashboardPage({
     <>
       <PageHeader
         title={catalog.name}
-        subtitle={`${catalog.status === "live" ? "Live" : "Draft"} · ${itemCount} items · ${template.name} template`}
+        subtitle={`${isLive ? "Live · public" : "Draft · not public"} · ${itemCount} items · ${template.name}`}
         account={account}
       />
-      <div className="flex flex-col gap-6 p-4 pb-16 sm:p-8">
+      <div className="flex w-full max-w-[1240px] min-w-0 flex-col gap-3.5 overflow-x-hidden px-4 pb-[max(3.5rem,calc(env(safe-area-inset-bottom)+2.5rem))] pt-4 sm:px-8">
         {loadFailed ? (
-          <p className="text-[13px] text-[#b2432b]">Could not load every dashboard figure. Refresh and try again.</p>
+          <p className="text-[13px] text-[#b42318]">
+            Could not load every dashboard figure. Refresh and try again.
+          </p>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--cat-border)] p-5">
-          <div>
-            <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">Live at</p>
-            <p className="m-0 mt-1.5 text-[18px] font-semibold tracking-tight text-[var(--cat-ink)]">
-              {url.replace(/^https?:\/\//, "")}
-            </p>
+
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex min-h-11 items-center rounded-full px-3 text-[13px] font-medium ${
+              isLive ? "bg-[#dff5e6] text-[#1e9e4a]" : "bg-[#fff3d6] text-[#8a5a00]"
+            }`}
+          >
+            <span
+              className={`mr-2 h-1.5 w-1.5 rounded-full ${isLive ? "bg-[#1e9e4a]" : "bg-[#c27c0e]"}`}
+            />
+            {isLive ? "Live" : "Draft"}
+          </span>
+          <span
+            className={`inline-flex min-h-11 items-center rounded-full px-3 text-[13px] ${
+              acceptOrders ? "bg-[#eef1f5] text-[#46505e]" : "bg-[#fff3d6] text-[#8a5a00]"
+            }`}
+          >
+            {acceptOrders ? "Taking orders" : "Orders paused"}
+          </span>
+          {showAlert ? (
+            <span className="inline-flex min-h-11 items-center rounded-full bg-[#eef4fd] px-3 text-[13px] text-[#0b5fce]">
+              Storefront alert on
+            </span>
+          ) : null}
+          <a
+            href="#look"
+            className="inline-flex min-h-11 items-center px-2 text-[13px] text-[#5a6472] no-underline hover:text-[#0b5fce]"
+          >
+            Look
+          </a>
+          <a
+            href="#ordering"
+            className="inline-flex min-h-11 items-center px-2 text-[13px] text-[#5a6472] no-underline hover:text-[#0b5fce]"
+          >
+            Ordering
+          </a>
+          <Link
+            href={`/admin/${catalogId}/orders`}
+            className="inline-flex min-h-11 items-center px-2 text-[13px] text-[#5a6472] no-underline hover:text-[#0b5fce]"
+          >
+            Inbox
+          </Link>
+        </div>
+
+        <section className={`${dashCard} flex flex-wrap items-center gap-3.5 px-4 py-4 sm:px-[18px]`}>
+          <div className="min-w-0 flex-1 basis-[240px]">
+            <p className={`m-0 ${dashKicker}`}>{isLive ? "Live at" : "Preview at"}</p>
+            <p className="m-0 mt-1 truncate font-mono text-[15px] text-[var(--cat-ink)]">{host}</p>
+            {!isLive ? (
+              <p className="m-0 mt-1 text-xs text-[#8a93a2]">
+                Draft catalogs stay off the public listing. This link still opens a preview.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            <CopyLinkButton url={url} />
-            <Link
-              href={`/admin/${catalogId}/share`}
-              className="rounded-full border border-[#d2d2d7] bg-white px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)]"
-            >
+            <CopyLinkButton url={url} className={dashBtnGhost} />
+            <Link href={`/admin/${catalogId}/share`} className={`${dashBtnGhost} no-underline`}>
               Print QR
             </Link>
             <a
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-medium text-white"
+              className={`${dashBtnPrimary} no-underline`}
             >
               View catalog
             </a>
           </div>
+        </section>
+
+        <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className={`${dashCard} px-[17px] py-[15px]`}>
+              <p className="m-0 text-xs text-[#5a6472]">{stat.label}</p>
+              <p className="m-0 mt-1.5 text-[26px] font-semibold tracking-tight text-[var(--cat-ink)] tabular-nums">
+                {stat.value}
+              </p>
+              <p className="m-0 mt-1 text-xs text-[#8a93a2]">{stat.note}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            <LiveRecentOrders
+              catalogId={catalogId}
+              currency={catalog.currency}
+              initialOrders={recentOrders}
+              statuses={statuses}
+            />
+          </div>
+
+          <section className={`${dashCard} min-w-0 flex-1`}>
+            <div className="border-b border-[#edf0f4] px-4 py-3.5 text-[15px] font-semibold tracking-tight sm:px-[18px]">
+              Most ordered items
+            </div>
+            <div className="flex flex-col px-4 pb-3.5 pt-1.5 sm:px-[18px]">
+              {topItems.length === 0 ? (
+                <p className="py-8 text-center text-[13px] leading-relaxed text-[#8a93a2]">
+                  No orders yet. Most-ordered items will rank here.
+                </p>
+              ) : (
+                topItems.map((item) => (
+                  <div key={item.code} className="flex items-center gap-3 py-2.5">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[9px] bg-[#eef1f5] text-[15px] font-semibold text-[#8a93a2]">
+                      {item.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided image URLs
+                        <img
+                          src={item.image}
+                          alt=""
+                          width={40}
+                          height={40}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        (item.name.trim()[0] ?? "?").toUpperCase()
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="m-0 truncate text-[14px] text-[var(--cat-ink)]">{item.name}</p>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#eef1f5]">
+                        <div
+                          className="h-full rounded-full bg-[#0b5fce]"
+                          style={{ width: `${Math.max(8, (item.qty / maxQty) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs tabular-nums text-[#5a6472]">
+                      {item.qty} units
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
         </div>
 
         <LookSettingsForm
           catalogId={catalogId}
+          catalogName={catalog.name}
+          extraFieldCount={extraFieldCount}
           template={catalog.template}
           accent={catalog.accent}
           checkoutFields={parseCheckoutFields(catalog.checkout_fields)}
@@ -184,99 +310,11 @@ export default async function CatalogDashboardPage({
           catalogId={catalogId}
           fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
           checkoutForm={parseCheckoutForm(catalog.checkout_form)}
-          acceptOrders={catalog.accept_orders !== false}
+          acceptOrders={acceptOrders}
           ordersPausedMessage={catalog.orders_paused_message ?? ""}
           storefrontAlert={catalog.storefront_alert ?? ""}
-          showStorefrontAlert={catalog.show_storefront_alert === true}
+          showStorefrontAlert={showAlert}
         />
-
-        <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div key={stat.label} className="rounded-2xl bg-[var(--cat-photo-bg)] p-5">
-              <p className="m-0 text-xs text-[var(--cat-muted)]">{stat.label}</p>
-              <p className="m-0 mt-2 text-[30px] font-semibold tracking-tight text-[var(--cat-ink)]">
-                {stat.value}
-              </p>
-              <p className="m-0 mt-1 text-xs text-[#86868b]">{stat.note}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid gap-[18px] lg:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--cat-border)] p-5">
-            <div className="flex items-baseline justify-between">
-              <h3 className="m-0 text-[15px] font-semibold text-[var(--cat-ink)]">Recent orders</h3>
-              <Link href={`/admin/${catalogId}/orders`} className="text-xs text-[var(--cat-accent)]">
-                Open inbox
-              </Link>
-            </div>
-            <div className="mt-3.5 flex flex-col">
-              {recentOrders.length === 0 ? (
-                <p className="py-3 text-[13px] text-[var(--cat-muted)]">
-                  No orders yet. They will show up here when a shop places one.
-                </p>
-              ) : (
-                recentOrders.map((order) => (
-                  <Link
-                    key={order.id}
-                    href={`/admin/${catalogId}/orders?order=${order.id}`}
-                    className="flex items-center justify-between gap-3 border-t border-[#f0f0f4] py-3 text-left first:border-t-0"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-medium text-[var(--cat-ink)]">
-                        {order.shop_name}
-                      </span>
-                      <span className="block text-xs text-[#86868b]">{order.reference}</span>
-                    </span>
-                    <span className="shrink-0 text-[13px] font-semibold text-[var(--cat-ink)]">
-                      {formatMoney(Number(order.subtotal), catalog.currency)}
-                    </span>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--cat-border)] p-5">
-            <h3 className="m-0 text-[15px] font-semibold text-[var(--cat-ink)]">Most ordered items</h3>
-            <div className="mt-3.5 flex flex-col gap-3">
-              {topItems.length === 0 ? (
-                <p className="text-[13px] text-[var(--cat-muted)]">
-                  No orders yet. Most-ordered items will rank here.
-                </p>
-              ) : (
-                topItems.map((item) => (
-                  <div key={item.code} className="flex items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[var(--cat-photo-bg)]">
-                      {item.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided image URLs
-                        <img
-                          src={item.image}
-                          alt=""
-                          width={40}
-                          height={40}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-contain"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="m-0 truncate text-[13px] font-medium text-[var(--cat-ink)]">{item.name}</p>
-                      <div className="mt-1.5 h-1 rounded-full bg-[#f0f0f4]">
-                        <div
-                          className="h-1 rounded-full bg-[var(--cat-accent)]"
-                          style={{ width: `${Math.max(6, (item.qty / maxQty) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-xs text-[var(--cat-muted)]">{item.qty} units</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
       </div>
     </>
   );

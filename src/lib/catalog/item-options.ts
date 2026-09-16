@@ -11,9 +11,19 @@ function asDelta(value: unknown): number {
 }
 
 export function parseItemOptions(raw: unknown): ItemOptionGroup[] {
-  if (!Array.isArray(raw)) return [];
+  let data = raw;
+  if (typeof data === "string") {
+    const text = data.trim();
+    if (!text || text === "[]" || text === "null") return [];
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(data)) return [];
   const groups: ItemOptionGroup[] = [];
-  for (const entry of raw) {
+  for (const entry of data) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
     const obj = entry as Record<string, unknown>;
     const name = asName(obj.name);
@@ -22,11 +32,19 @@ export function parseItemOptions(raw: unknown): ItemOptionGroup[] {
     const values: ItemOptionValue[] = [];
     if (Array.isArray(obj.values)) {
       for (const v of obj.values) {
+        if (typeof v === "string") {
+          const valueName = asName(v);
+          if (valueName) values.push({ name: valueName, price_delta: 0 });
+          continue;
+        }
         if (!v || typeof v !== "object" || Array.isArray(v)) continue;
         const row = v as Record<string, unknown>;
         const valueName = asName(row.name);
         if (!valueName) continue;
-        values.push({ name: valueName, price_delta: asDelta(row.price_delta) });
+        values.push({
+          name: valueName,
+          price_delta: asDelta(row.price_delta ?? row.priceDelta),
+        });
       }
     }
     groups.push({
@@ -41,6 +59,41 @@ export function parseItemOptions(raw: unknown): ItemOptionGroup[] {
 
 export function hasItemOptions(item: { options?: ItemOptionGroup[] | unknown } | null | undefined): boolean {
   return parseItemOptions(item?.options).some((group) => group.values.length > 0);
+}
+
+/** Admin table/card: "Yes · 3", "No", or "Combo". */
+export function variantColumnLabel(item: {
+  is_combo?: boolean | null;
+  options?: ItemOptionGroup[] | unknown;
+} | null | undefined): string {
+  if (item?.is_combo === true) return "Combo";
+  const groups = parseItemOptions(item?.options).filter((group) => group.values.length > 0);
+  if (groups.length === 0) return "No";
+  const count = groups.reduce((sum, group) => sum + group.values.length, 0);
+  return `Yes · ${count}`;
+}
+
+/** Admin list: "Size · S, M, L · Extras · Spicy". */
+export function formatOptionGroups(raw: unknown): string {
+  const groups = parseItemOptions(raw).filter((group) => group.values.length > 0);
+  if (groups.length === 0) return "";
+  return groups
+    .map((group) => `${group.name} · ${group.values.map((value) => value.name).join(", ")}`)
+    .join("  ·  ");
+}
+
+/** Search haystack so variant names keep folded items findable. */
+export function itemOptionSearchText(raw: unknown): string {
+  return formatOptionGroups(raw).toLowerCase();
+}
+
+/** Variant names only — never price deltas — for storefront cue chips. */
+export function variantValueNames(
+  item: { options?: ItemOptionGroup[] | unknown } | null | undefined,
+): string[] {
+  return parseItemOptions(item?.options)
+    .filter((group) => group.values.length > 0)
+    .flatMap((group) => group.values.map((value) => value.name));
 }
 
 /** Short storefront cue so variant items never look like a single SKU. */

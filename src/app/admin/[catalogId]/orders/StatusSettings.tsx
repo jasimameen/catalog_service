@@ -25,6 +25,7 @@ export function StatusSettings({
   usedCounts: Record<string, number>;
 }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [rows, setRows] = useState(initialStatuses);
   const [defaultId, setDefaultId] = useState(initialDefaultId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -144,142 +145,179 @@ export function StatusSettings({
   }
 
   return (
-    <details className="rounded-2xl border border-[var(--cat-border)] bg-white">
-      <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-semibold text-[var(--cat-ink)]">
-        Statuses
-      </summary>
-      <div className="flex flex-col gap-3 border-t border-[#f0f0f4] px-4 py-4">
-        <p className="m-0 text-[13px] text-[var(--cat-muted)]">
-          New orders start with the default status. Drag or use up/down to order.
-        </p>
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap gap-2">
-            {ORDER_STATUS_TEMPLATES.map((template) => (
-              <button
-                key={template.id}
-                type="button"
-                onClick={() => applyTemplate(template)}
-                className="min-h-11 rounded-full border border-[#d2d2d7] bg-white px-3 text-[13px] font-medium text-[var(--cat-ink)]"
-              >
-                {template.label}
-              </button>
-            ))}
+    <section className="overflow-hidden rounded-[14px] border border-[#e2e7ee] bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        className="flex min-h-[52px] w-full cursor-pointer items-center justify-between gap-3 px-4 text-left"
+      >
+        <span className="text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">Statuses</span>
+        <span className="flex items-center gap-2.5">
+          <span className="text-[12px] text-[#8a93a2]">
+            {rows.length} {rows.length === 1 ? "status" : "statuses"}
+          </span>
+          <span className="text-[12px] text-[#5a6472]">{open ? "Hide" : "Edit"}</span>
+        </span>
+      </button>
+
+      {open ? (
+        <div className="flex flex-col gap-[18px] border-t border-[#edf0f4] px-4 py-4">
+          <p className="m-0 text-[13px] leading-relaxed text-[#5a6472]">
+            New orders start with the default status. Drag or use up/down to order.
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#8a93a2]">Templates</div>
+            <div className="flex flex-wrap gap-2">
+              {ORDER_STATUS_TEMPLATES.map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => applyTemplate(template)}
+                  className="min-h-[38px] cursor-pointer rounded-full border border-[#e2e7ee] bg-[#fbfbfd] px-3.5 text-[13px] text-[var(--cat-ink)] hover:border-[var(--cat-accent)] hover:text-[var(--cat-accent)]"
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+            <p className="m-0 text-[12px] text-[#8a93a2]">Start from a common flow, then rename.</p>
           </div>
-          <p className="m-0 text-xs text-[var(--cat-muted)]">Start from a common flow, then rename.</p>
-        </div>
-        <label className="flex flex-col gap-1 text-[13px] font-medium text-[var(--cat-ink)] sm:max-w-xs">
-          Default for new orders
-          <select
-            value={defaultId}
-            onChange={(event) => setDefaultId(event.target.value)}
-            className="min-h-11 rounded-[10px] border border-[#d2d2d7] bg-white px-2.5 text-[13px] font-medium"
-          >
-            {rows.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          {rows.map((row, index) => {
-            const used = usedCounts[row.id] ?? 0;
-            const selected = selectedId === row.id;
-            return (
-              <li
-                key={row.id}
-                className={`grid gap-2 rounded-[12px] border p-3 sm:grid-cols-[1fr_auto] sm:items-center ${
-                  selected ? "border-[var(--cat-ink)] bg-[#f5f5f7]" : "border-[#f0f0f4]"
-                }`}
-              >
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_40px] sm:items-center">
+
+          <label className="flex max-w-[320px] flex-col gap-1.5 text-[13px] font-medium text-[var(--cat-ink)]">
+            Default for new orders
+            <select
+              value={defaultId}
+              onChange={(event) => setDefaultId(event.target.value)}
+              className="min-h-11 cursor-pointer rounded-[11px] border border-[#e2e7ee] bg-white px-2.5 text-[14px] font-normal"
+            >
+              {rows.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {rows.map((row, index) => {
+              const used = usedCounts[row.id] ?? 0;
+              const selected = selectedId === row.id;
+              const locked = used > 0;
+              return (
+                <li
+                  key={row.id}
+                  className="flex flex-wrap items-center gap-2 rounded-xl border p-2.5"
+                  style={{
+                    borderColor: selected ? "#c3d6f2" : "#e2e7ee",
+                    background: selected ? "#f7f9fc" : "#fff",
+                  }}
+                >
                   <input
                     ref={(el) => {
                       inputRefs.current[row.id] = el;
                     }}
                     value={row.label}
-                    onChange={(event) => update(index, { label: event.target.value })}
+                    maxLength={48}
+                    onChange={(event) => update(index, { label: event.target.value.slice(0, 48) })}
                     onFocus={() => setSelectedId(row.id)}
                     aria-label={`Label for ${row.id}`}
-                    className="min-h-11 rounded-[10px] border border-[#d2d2d7] px-3 text-[13px]"
+                    className="min-h-11 min-w-0 flex-1 basis-40 rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[14px]"
                   />
                   <input
                     type="color"
                     value={row.color ?? "#86868b"}
                     onChange={(event) => update(index, { color: event.target.value })}
-                    aria-label={`Color for ${row.label}`}
-                    className="h-11 w-full cursor-pointer rounded-[10px] border border-[#d2d2d7] bg-white p-1 sm:w-10"
+                    aria-label={`Colour for ${row.label}`}
+                    className="h-11 w-11 shrink-0 cursor-pointer rounded-[10px] border border-[#e2e7ee] bg-white p-[3px]"
                   />
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="flex min-h-11 items-center gap-2 text-[13px] text-[var(--cat-ink)]">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-[7px] rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[13px] text-[var(--cat-ink)]">
                     <input
                       type="checkbox"
                       checked={row.is_done}
                       onChange={(event) => update(index, { is_done: event.target.checked })}
+                      className="h-4 w-4 accent-[var(--cat-accent)]"
                     />
                     Done
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => move(index, -1)}
-                    disabled={index === 0}
-                    className="min-h-11 rounded-lg border border-[#d2d2d7] px-3 text-xs font-medium disabled:opacity-40"
-                  >
-                    Up
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(index, 1)}
-                    disabled={index === rows.length - 1}
-                    className="min-h-11 rounded-lg border border-[#d2d2d7] px-3 text-xs font-medium disabled:opacity-40"
-                  >
-                    Down
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeRow(index)}
-                    disabled={used > 0}
-                    title={used > 0 ? `Used by ${used} ${used === 1 ? "order" : "orders"}` : "Remove"}
-                    className="min-h-11 rounded-lg border border-[#d2d2d7] px-3 text-xs font-medium disabled:opacity-40"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => addStatus()}
-            className="min-h-11 rounded-lg border border-[#d2d2d7] bg-white px-3 text-xs font-medium"
-          >
-            Add status
-          </button>
-          {EXTRA_STATUS_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => addStatus(preset)}
-              className="min-h-11 rounded-full border border-[#d2d2d7] bg-white px-3 text-xs font-medium text-[var(--cat-ink)]"
-            >
-              {preset.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={save}
-            disabled={pending}
-            className="min-h-11 rounded-lg bg-[var(--cat-ink)] px-3 text-xs font-medium text-white disabled:opacity-60"
-          >
-            {pending ? "Saving…" : "Save statuses"}
-          </button>
-          {error ? <p className="m-0 text-[13px] text-[#b42318]">{error}</p> : null}
-          {message ? <p className="m-0 text-[13px] text-[var(--cat-muted)]">{message}</p> : null}
+                  <div className="flex flex-1 basis-auto justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => move(index, -1)}
+                      disabled={index === 0}
+                      title="Move up"
+                      className="h-11 w-11 cursor-pointer rounded-[10px] border border-[#e2e7ee] bg-white text-[15px] disabled:cursor-default disabled:opacity-40"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(index, 1)}
+                      disabled={index === rows.length - 1}
+                      title="Move down"
+                      className="h-11 w-11 cursor-pointer rounded-[10px] border border-[#e2e7ee] bg-white text-[15px] disabled:cursor-default disabled:opacity-40"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(index)}
+                      disabled={locked}
+                      title={locked ? `Used by ${used} ${used === 1 ? "order" : "orders"}` : "Remove status"}
+                      className="min-h-11 cursor-pointer rounded-[10px] border border-[#e2e7ee] bg-white px-3 text-[13px] disabled:cursor-default"
+                      style={{ color: locked ? "#b0b8c4" : "#b42318" }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {locked ? (
+                    <span className="basis-full text-[12px] text-[#8a93a2]">
+                      Used by {used} {used === 1 ? "order" : "orders"}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => addStatus()}
+                className="min-h-10 cursor-pointer rounded-[10px] border border-dashed border-[#c3ccd9] bg-white px-3.5 text-[13px] hover:border-[var(--cat-accent)] hover:text-[var(--cat-accent)]"
+              >
+                Add status
+              </button>
+              {EXTRA_STATUS_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => addStatus(preset)}
+                  className="inline-flex min-h-10 cursor-pointer items-center gap-[7px] rounded-full border border-[#e2e7ee] bg-[#fbfbfd] px-3 text-[13px] hover:border-[#c3ccd9]"
+                >
+                  {preset.color ? (
+                    <span className="h-2 w-2 rounded-full" style={{ background: preset.color }} />
+                  ) : null}
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={save}
+                disabled={pending}
+                className="min-h-11 cursor-pointer rounded-[11px] bg-[var(--cat-accent)] px-[18px] text-[14px] font-medium text-white hover:bg-[var(--cat-accent-dark)] disabled:opacity-60"
+              >
+                {pending ? "Saving…" : "Save statuses"}
+              </button>
+              {error ? <p className="m-0 text-[13px] text-[#b42318]">{error}</p> : null}
+              {message ? <p className="m-0 text-[13px] text-[#1e9e4a]">{message}</p> : null}
+            </div>
+          </div>
         </div>
-      </div>
-    </details>
+      ) : null}
+    </section>
   );
 }

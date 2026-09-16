@@ -11,8 +11,7 @@ export function PlaceholderPicker({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium text-[var(--cat-muted)]">Stock photo</p>
-      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+      <div className="flex flex-wrap gap-2">
         {STOCK_PHOTOS.map((photo) => {
           const selected = value.startsWith(photo.url.split("?")[0]!);
           return (
@@ -21,17 +20,17 @@ export function PlaceholderPicker({
               type="button"
               onClick={() => onSelect(selected ? "" : photo.url)}
               title={photo.label}
-              className={`overflow-hidden rounded-lg border ${
-                selected ? "border-[var(--cat-accent)] ring-2 ring-[var(--cat-accent)]/30" : "border-[#e8e8ed]"
+              className={`h-[54px] w-[54px] overflow-hidden rounded-[10px] border-2 ${
+                selected ? "border-[#0b5fce]" : "border-transparent"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element -- curated Unsplash thumbs */}
-              <img src={photo.thumb} alt={photo.label} className="aspect-square w-full object-cover" />
+              <img src={photo.thumb} alt={photo.label} className="h-full w-full object-cover" />
             </button>
           );
         })}
       </div>
-      <p className="m-0 mt-1 text-[11px] text-[#86868b]">Photos via Unsplash. Click again to clear.</p>
+      <p className="m-0 mt-2 text-[12px] text-[#8a93a2]">Photos via Unsplash. Click again to clear.</p>
     </div>
   );
 }

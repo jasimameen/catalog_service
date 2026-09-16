@@ -11,6 +11,13 @@ import {
   resolveCheckoutForm,
   visibleCheckoutFields,
 } from "@/lib/catalog/checkout-form";
+import {
+  formatComboIncludes,
+  isComboItem,
+  parseComboLines,
+  resolveComboIncludes,
+  type ComboSnapshot,
+} from "@/lib/catalog/combos";
 import { formatSelectedOptions, parseItemOptions, resolveSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import type { OrderPayload } from "@/lib/catalog/order-types";
 import { resolveIncomingOrderStatus } from "@/lib/catalog/order-statuses";
@@ -148,6 +155,7 @@ export async function POST(request: Request) {
     qty: number;
     options: ReturnType<typeof resolveSelectedOptions>["options"];
     notes: string;
+    combo: ComboSnapshot[];
   }[] = [];
 
   for (const entry of requestedItems) {
@@ -160,6 +168,14 @@ export async function POST(request: Request) {
       return Response.json({ error: resolved.error }, { status: 400 });
     }
     const price = unitPriceWithOptions(Number(item.price), resolved.options);
+    const combo = isComboItem(item)
+      ? resolveComboIncludes(parseComboLines(item.combo_lines), catalogItems).map((row) => ({
+          item_id: row.item_id,
+          code: row.code,
+          name: row.name,
+          qty: row.qty,
+        }))
+      : [];
     items.push({
       code: item.code,
       category: item.category,
@@ -168,6 +184,7 @@ export async function POST(request: Request) {
       qty,
       options: resolved.options,
       notes: clean(entry.notes, 200),
+      combo,
     });
   }
 
@@ -224,13 +241,18 @@ export async function POST(request: Request) {
       line_total: item.price * item.qty,
       options_json: item.options,
       notes: item.notes || null,
+      combo_json: item.combo,
     })),
   );
 
   if (itemsError) {
     console.error("Catalog order: failed to save order items", itemsError);
     await supabase.from("orders").delete().eq("id", orderRow.id);
-    return Response.json({ error: "Could not save your order. Please try again." }, { status: 500 });
+    const hint =
+      itemsError.code === "42703" || itemsError.message?.includes("combo_json")
+        ? " Run supabase/combos.sql in the Supabase SQL editor."
+        : "";
+    return Response.json({ error: `Could not save your order. Please try again.${hint}` }, { status: 500 });
   }
 
   await supabase.from("order_status_events").insert({
@@ -275,7 +297,7 @@ export async function POST(request: Request) {
 
 async function sendOrderEmail(args: {
   catalog: CatalogRow;
-  items: { code: string; name: string; price: number; qty: number; options: { group: string; values: { name: string }[] }[] }[];
+  items: { code: string; name: string; price: number; qty: number; options: { group: string; values: { name: string }[] }[]; combo: ComboSnapshot[] }[];
   total: number;
   reference: string;
   shopName: string;
@@ -300,7 +322,8 @@ async function sendOrderEmail(args: {
   const itemRows = items
     .map((item) => {
       const extras = formatSelectedOptions(item.options as Parameters<typeof formatSelectedOptions>[0]);
-      return `${item.code} ${item.name}${extras ? ` (${extras})` : ""} — qty ${item.qty} × ${formatMoney(item.price, catalog.currency)} = ${formatMoney(item.price * item.qty, catalog.currency)}`;
+      const includes = item.combo.length > 0 ? ` [Includes ${formatComboIncludes(item.combo)}]` : "";
+      return `${item.code} ${item.name}${extras ? ` (${extras})` : ""}${includes} — qty ${item.qty} × ${formatMoney(item.price, catalog.currency)} = ${formatMoney(item.price * item.qty, catalog.currency)}`;
     })
     .join("\n");
 
@@ -321,9 +344,10 @@ Track: ${trackUrl}
   const itemRowsHtml = items
     .map((item) => {
       const extras = formatSelectedOptions(item.options as Parameters<typeof formatSelectedOptions>[0]);
+      const includes = item.combo.length > 0 ? `Includes ${formatComboIncludes(item.combo)}` : "";
       return `<tr>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.code}</td>
-        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.name}${extras ? `<br><span style="color:#6b7280;font-size:12px;">${extras}</span>` : ""}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;">${item.name}${extras ? `<br><span style="color:#6b7280;font-size:12px;">${extras}</span>` : ""}${includes ? `<br><span style="color:#6b7280;font-size:12px;">${includes}</span>` : ""}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center;">${item.qty}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatMoney(item.price, catalog.currency)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:right;">${formatMoney(item.price * item.qty, catalog.currency)}</td>

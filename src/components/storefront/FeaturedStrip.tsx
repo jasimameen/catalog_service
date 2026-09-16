@@ -6,6 +6,9 @@ import { formatMoney } from "@/lib/catalog/currency";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { useCart } from "@/lib/catalog/cart-context";
+import { comboCoverImage } from "@/lib/catalog/combos";
+import { ComboBadge } from "./ComboBadge";
+import { ComboIncludesList } from "./ComboIncludesList";
 import { ProductDetailModal } from "./ProductDetailModal";
 
 export function FeaturedStrip({ catalog }: { catalog: StorefrontCatalog }) {
@@ -71,25 +74,33 @@ function FeaturedBanner({
 }) {
   const available = isItemAvailable(item);
   const { acceptOrders, pausedMessage } = useCart();
+  const cover = comboCoverImage(item);
   return (
     <article className="mt-2 flex items-center gap-3 rounded-[14px] border border-[var(--cat-border)] bg-white p-2 sm:gap-4 sm:p-2.5">
       <button
         type="button"
         onClick={() => onSelect(item)}
-        className="relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-[10px] bg-[var(--cat-photo-bg)] sm:h-24 sm:w-24"
+        className={`relative shrink-0 cursor-pointer overflow-hidden rounded-[10px] bg-[var(--cat-photo-bg)] ${
+          item.isCombo ? "h-20 w-28 sm:h-24 sm:w-36" : "h-20 w-20 sm:h-24 sm:w-24"
+        }`}
         aria-label={`View details for ${item.name}`}
       >
-        {item.image ? (
+        {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.image}
+            src={cover}
             alt=""
-            width={96}
-            height={96}
+            width={item.isCombo ? 144 : 96}
+            height={item.isCombo ? 96 : 96}
             loading="lazy"
             decoding="async"
             className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
+        ) : null}
+        {item.isCombo ? (
+          <span className="absolute left-1.5 top-1.5">
+            <ComboBadge />
+          </span>
         ) : null}
       </button>
       <div className="min-w-0 flex-1">
@@ -101,6 +112,9 @@ function FeaturedBanner({
           <p className="truncate text-[14px] font-semibold text-[var(--cat-ink)]" title={item.name}>
             {item.name}
           </p>
+          {item.isCombo ? (
+            <ComboIncludesList lines={item.comboIncludes} className="mt-1" />
+          ) : null}
           <p className="mt-0.5 text-[14px] font-bold text-[var(--cat-ink)]">
             {formatMoney(item.price, currency)}
           </p>
@@ -140,25 +154,33 @@ function FeaturedCard({
 }) {
   const available = isItemAvailable(item);
   const { acceptOrders, pausedMessage } = useCart();
+  const cover = comboCoverImage(item);
   return (
     <article className="flex w-[148px] shrink-0 snap-start flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-white sm:w-[168px]">
       <button
         type="button"
         onClick={() => onSelect(item)}
-        className="relative aspect-square w-full cursor-pointer bg-[var(--cat-photo-bg)]"
+        className={`relative w-full cursor-pointer overflow-hidden bg-[var(--cat-photo-bg)] ${
+          item.isCombo ? "aspect-[16/10]" : "aspect-square"
+        }`}
         aria-label={`View details for ${item.name}`}
       >
-        {item.image ? (
+        {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.image}
+            src={cover}
             alt=""
             width={168}
-            height={168}
+            height={item.isCombo ? 105 : 168}
             loading="lazy"
             decoding="async"
             className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
+        ) : null}
+        {item.isCombo ? (
+          <span className="absolute left-1.5 top-1.5">
+            <ComboBadge />
+          </span>
         ) : null}
         {!available ? (
           <span className="absolute inset-x-2 bottom-2 rounded-full bg-black/65 px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide text-white">
@@ -170,6 +192,7 @@ function FeaturedCard({
         <p className="truncate text-[13px] font-semibold text-[var(--cat-ink)]" title={item.name}>
           {item.name}
         </p>
+        {item.isCombo ? <ComboIncludesList lines={item.comboIncludes} className="mt-1" /> : null}
         <p className="mt-1 text-[13px] font-bold text-[var(--cat-ink)]">
           {formatMoney(item.price, currency)}
         </p>

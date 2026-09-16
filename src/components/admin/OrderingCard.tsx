@@ -10,6 +10,18 @@ import {
   restaurantPresetFields,
 } from "@/lib/catalog/checkout-form";
 import { updateCatalogOrdering, type OrderingState } from "@/app/admin/[catalogId]/actions";
+import { useDashboardSection } from "@/components/admin/dashboard/useDashboardSection";
+import {
+  dashBtnGhost,
+  dashBtnPrimary,
+  dashCard,
+  dashHint,
+  dashInput,
+  dashKicker,
+  dashLabel,
+  dashSection,
+  dashTextarea,
+} from "@/components/admin/dashboard/styles";
 
 export function OrderingCard({
   catalogId,
@@ -28,8 +40,11 @@ export function OrderingCard({
   storefrontAlert: string;
   showStorefrontAlert: boolean;
 }) {
+  const [open, setOpen] = useDashboardSection("ordering");
   const [modes, setModes] = useState<OrderFulfillment[]>(fulfillmentModes);
   const [fields, setFields] = useState<CheckoutFormField[]>(checkoutForm);
+  const [taking, setTaking] = useState(acceptOrders);
+  const [alertOn, setAlertOn] = useState(showStorefrontAlert);
   const [state, formAction, pending] = useActionState<OrderingState, FormData>(
     updateCatalogOrdering.bind(null, catalogId),
     null,
@@ -61,214 +76,278 @@ export function OrderingCard({
   }
 
   return (
-    <div id="ordering" className="rounded-2xl border border-[var(--cat-border)] p-5">
-      <h3 className="m-0 text-[15px] font-semibold text-[var(--cat-ink)]">Ordering</h3>
-      <p className="m-0 mt-1 text-[13px] text-[var(--cat-muted)]">
-        Restaurant order types and the fields guests fill in. Trade catalogs can leave this empty.
-      </p>
-
-      <form action={formAction} className="mt-4 flex flex-col gap-5">
-        <input type="hidden" name="fulfillment_modes" value={JSON.stringify(modes)} />
-        <input type="hidden" name="checkout_form" value={JSON.stringify(fields)} />
-
-        <label className="flex items-start gap-2.5 rounded-[12px] border border-[#e8e8ed] px-3 py-2.5 text-[13px] text-[var(--cat-ink)]">
-          <input type="checkbox" name="acceptOrders" value="1" defaultChecked={acceptOrders} className="mt-0.5" />
-          <span>
-            Take orders
-            <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">
-              Off hides cart and add-to-cart. Browsing and search still work.
-            </span>
+    <section id="ordering" className={dashCard}>
+      <button
+        type="button"
+        className="flex min-h-11 w-full items-start justify-between gap-3 px-4 py-4 text-left md:hidden"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="min-w-0">
+          <span className="block text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">
+            Ordering
           </span>
-        </label>
-        <label className="flex flex-col gap-1 text-[13px] font-medium text-[var(--cat-ink)]">
-          Message when orders are paused
-          <textarea
-            name="ordersPausedMessage"
-            defaultValue={ordersPausedMessage}
-            rows={2}
-            maxLength={280}
-            placeholder="We are not taking orders right now."
-            className="min-h-11 rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] font-normal"
-          />
-        </label>
-        <label className="flex items-start gap-2.5 rounded-[12px] border border-[#e8e8ed] px-3 py-2.5 text-[13px] text-[var(--cat-ink)]">
-          <input
-            type="checkbox"
-            name="showStorefrontAlert"
-            value="1"
-            defaultChecked={showStorefrontAlert}
-            className="mt-0.5"
-          />
-          <span>
-            Show storefront alert
-            <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">
-              A short banner at the top, even while taking orders.
-            </span>
+          <span className="mt-1 block text-[13px] leading-snug text-[#5a6472]">
+            Restaurant order types and the fields guests fill in. Trade catalogs can leave this
+            empty.
           </span>
-        </label>
-        <label className="flex flex-col gap-1 text-[13px] font-medium text-[var(--cat-ink)]">
-          Alert text
-          <textarea
-            name="storefrontAlert"
-            defaultValue={storefrontAlert}
-            rows={2}
-            maxLength={280}
-            placeholder="Kitchen is running 20 minutes behind tonight."
-            className="min-h-11 rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] font-normal"
-          />
-        </label>
+        </span>
+        <span className="mt-0.5 shrink-0 text-[13px] text-[#0b5fce]">{open ? "Hide" : "Show"}</span>
+      </button>
+      <div className="hidden border-b border-[#edf0f4] px-4 py-4 md:block">
+        <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Ordering</p>
+        <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
+          Restaurant order types and the fields guests fill in. Trade catalogs can leave this empty.
+        </p>
+      </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
-            Fulfillment
-          </p>
-          <button
-            type="button"
-            onClick={applyRestaurantPreset}
-            className="min-h-11 rounded-[10px] border border-[#d2d2d7] bg-white px-3 text-[13px] font-medium text-[var(--cat-ink)]"
-          >
-            Restaurant preset
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {FULFILLMENTS.map((mode) => (
-            <button
-              key={mode.value}
-              type="button"
-              onClick={() => toggleMode(mode.value)}
-              className={`min-h-11 rounded-full border px-4 text-[13px] font-medium ${
-                modes.includes(mode.value)
-                  ? "border-[var(--cat-accent)] bg-[var(--cat-accent)] text-white"
-                  : "border-[#d2d2d7] bg-white text-[var(--cat-ink)]"
-              }`}
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
+      <div className={open ? "block" : "hidden md:block"}>
+        <form action={formAction} className="flex flex-col">
+          <input type="hidden" name="fulfillment_modes" value={JSON.stringify(modes)} />
+          <input type="hidden" name="checkout_form" value={JSON.stringify(fields)} />
 
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="m-0 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
-              Checkout fields
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                setFields((prev) => [
-                  ...prev,
-                  { id: newFormFieldId(), label: "New field", type: "text", required: false },
-                ])
-              }
-              className="min-h-11 text-[13px] font-medium text-[var(--cat-accent)]"
-            >
-              Add field
-            </button>
-          </div>
-          {fields.length === 0 ? (
-            <p className="m-0 text-xs text-[#86868b]">
-              Empty uses the Look order-form settings (shop name, phone, address).
-            </p>
-          ) : (
+          <div className="flex flex-col gap-[22px] px-4 pb-2">
             <div className="flex flex-col gap-2.5">
-              {fields.map((field, index) => (
-                <div key={field.id} className="rounded-[12px] border border-[#e8e8ed] p-3">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_auto]">
-                    <input
-                      value={field.label}
-                      onChange={(e) => updateField(index, { label: e.target.value })}
-                      className="min-h-11 rounded-[10px] border border-[#d2d2d7] px-3 text-[13px] outline-none focus:border-[var(--cat-accent)]"
-                    />
-                    <select
-                      value={field.type}
-                      onChange={(e) =>
-                        updateField(index, { type: e.target.value as CheckoutFormField["type"] })
-                      }
-                      className="min-h-11 rounded-[10px] border border-[#d2d2d7] bg-white px-3 text-[13px]"
+              <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[14px] text-[var(--cat-ink)]">
+                <input
+                  type="checkbox"
+                  name="acceptOrders"
+                  value="1"
+                  checked={taking}
+                  onChange={(e) => setTaking(e.target.checked)}
+                  className="h-[17px] w-[17px] accent-[#0b5fce]"
+                />
+                Take orders
+              </label>
+              <p className={`m-0 -mt-1 ${dashHint}`}>
+                Off hides cart and add-to-cart. Browsing and search still work.
+              </p>
+              {!taking ? (
+                <p className="m-0 rounded-[11px] border border-[#f3e4c4] bg-[#fff8e8] px-3 py-2 text-[13px] text-[#7a5a12]">
+                  Guests can browse, but they cannot place an order until you turn this back on.
+                </p>
+              ) : null}
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Message when orders are paused</span>
+                <textarea
+                  name="ordersPausedMessage"
+                  defaultValue={ordersPausedMessage}
+                  rows={2}
+                  maxLength={280}
+                  placeholder="We are not taking orders right now."
+                  className={dashTextarea}
+                />
+              </label>
+              <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[14px] text-[var(--cat-ink)]">
+                <input
+                  type="checkbox"
+                  name="showStorefrontAlert"
+                  value="1"
+                  checked={alertOn}
+                  onChange={(e) => setAlertOn(e.target.checked)}
+                  className="h-[17px] w-[17px] accent-[#0b5fce]"
+                />
+                Show storefront alert
+              </label>
+              <p className={`m-0 -mt-1 ${dashHint}`}>
+                A short banner at the top, even while taking orders.
+              </p>
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Alert text</span>
+                <input
+                  name="storefrontAlert"
+                  defaultValue={storefrontAlert}
+                  maxLength={280}
+                  placeholder="Kitchen is running 20 minutes behind tonight."
+                  className={dashInput}
+                />
+              </label>
+            </div>
+
+            <div className={dashSection}>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className={`m-0 min-w-0 flex-1 ${dashKicker}`}>Fulfillment</p>
+                <button
+                  type="button"
+                  onClick={applyRestaurantPreset}
+                  className="min-h-10 rounded-full border border-[#e2e7ee] bg-[#fbfbfd] px-3.5 text-[13px] hover:border-[#0b5fce] hover:text-[#0b5fce]"
+                >
+                  Restaurant preset
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {FULFILLMENTS.map((mode) => {
+                  const on = modes.includes(mode.value);
+                  return (
+                    <button
+                      key={mode.value}
+                      type="button"
+                      onClick={() => toggleMode(mode.value)}
+                      className={`min-h-11 rounded-full border px-4 text-[13px] font-medium ${
+                        on
+                          ? "border-[#101720] bg-[#101720] text-white"
+                          : "border-[#e2e7ee] bg-white text-[#46505e]"
+                      }`}
                     >
-                      {FORM_FIELD_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => moveField(index, -1)} className="min-h-11 min-w-11" aria-label="Move up">
-                        ↑
-                      </button>
-                      <button type="button" onClick={() => moveField(index, 1)} className="min-h-11 min-w-11" aria-label="Move down">
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
-                        className="min-h-11 min-w-11 text-[#b2432b]"
-                        aria-label="Remove field"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--cat-muted)]">
-                    <label className="flex min-h-11 items-center gap-1.5">
+                      {mode.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {modes.length === 0 ? (
+                <p className={`m-0 ${dashHint}`}>
+                  None selected — guests will not be asked for dine-in, pickup, or delivery.
+                </p>
+              ) : null}
+            </div>
+
+            <div className={dashSection}>
+              <p className={dashKicker}>Order form</p>
+              <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
+                Required fields must be filled. Hidden fields are not shown to the shop. Empty uses
+                the Look order-form settings (shop name, phone, address).
+              </p>
+              <div className="flex flex-col gap-2.5 rounded-xl border border-[#e2e7ee] bg-[#fbfbfd] p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                <p className="m-0 min-w-0 text-[13px] leading-snug text-[#46505e]">
+                  Built-in shop name, phone, address, maps, and notes are set in Look.
+                </p>
+                <a href="#look" className={`${dashBtnGhost} shrink-0 no-underline`}>
+                  Edit in Look
+                </a>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <p className="m-0 min-w-0 flex-1 text-[13px] font-medium text-[#46505e]">
+                  Extra fields
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFields((prev) => [
+                      ...prev,
+                      { id: newFormFieldId(), label: "New field", type: "text", required: false },
+                    ])
+                  }
+                  className="min-h-10 rounded-[10px] border border-dashed border-[#c3ccd9] bg-white px-3.5 text-[13px] hover:border-[#0b5fce] hover:text-[#0b5fce]"
+                >
+                  Add field
+                </button>
+              </div>
+              {fields.length === 0 ? (
+                <p className={`m-0 ${dashHint}`}>
+                  Empty uses the Look order-form settings (shop name, phone, address).
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {fields.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className="flex flex-wrap items-center gap-2.5 rounded-xl border border-[#e2e7ee] bg-[#fbfbfd] p-2.5"
+                    >
                       <input
-                        type="checkbox"
-                        checked={field.required}
-                        onChange={(e) => updateField(index, { required: e.target.checked })}
+                        value={field.label}
+                        onChange={(e) => updateField(index, { label: e.target.value })}
+                        className={`${dashInput} flex-1 basis-[160px] bg-white text-[14px]`}
                       />
-                      Required
-                    </label>
-                    <label className="flex min-h-11 items-center gap-1.5">
-                      Show when
                       <select
-                        value={field.show_when?.[0] ?? ""}
+                        value={field.type}
                         onChange={(e) =>
-                          updateField(index, {
-                            show_when: e.target.value
-                              ? [e.target.value as OrderFulfillment]
-                              : undefined,
-                          })
+                          updateField(index, { type: e.target.value as CheckoutFormField["type"] })
                         }
-                        className="rounded-[8px] border border-[#d2d2d7] bg-white px-2 py-1"
+                        className="min-h-11 min-w-0 flex-[0_1_130px] rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[13px]"
                       >
-                        <option value="">Always</option>
-                        {FULFILLMENTS.map((mode) => (
-                          <option key={mode.value} value={mode.value}>
-                            {mode.label}
+                        {FORM_FIELD_TYPES.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
                           </option>
                         ))}
                       </select>
-                    </label>
-                  </div>
-                  {field.type === "select" ? (
-                    <input
-                      value={(field.options ?? []).join(", ")}
-                      onChange={(e) =>
-                        updateField(index, {
-                          options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-                        })
-                      }
-                      placeholder="Choice A, Choice B"
-                      className="mt-2 min-h-11 w-full rounded-[10px] border border-[#d2d2d7] px-3 text-[13px] outline-none"
-                    />
-                  ) : null}
+                      <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[13px]">
+                        <input
+                          type="checkbox"
+                          checked={field.required}
+                          onChange={(e) => updateField(index, { required: e.target.checked })}
+                          className="h-4 w-4 accent-[#0b5fce]"
+                        />
+                        Required
+                      </label>
+                      <label className="inline-flex min-h-11 min-w-0 flex-[0_1_190px] items-center gap-2">
+                        <span className="shrink-0 text-xs text-[#5a6472]">Show when</span>
+                        <select
+                          value={field.show_when?.[0] ?? ""}
+                          onChange={(e) =>
+                            updateField(index, {
+                              show_when: e.target.value
+                                ? [e.target.value as OrderFulfillment]
+                                : undefined,
+                            })
+                          }
+                          className="min-h-11 min-w-0 flex-1 rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[13px]"
+                        >
+                          <option value="">Always</option>
+                          {FULFILLMENTS.map((mode) => (
+                            <option key={mode.value} value={mode.value}>
+                              {mode.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => moveField(index, -1)}
+                          className="h-11 w-11 rounded-[10px] border border-[#e2e7ee] bg-white"
+                          aria-label="Move up"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveField(index, 1)}
+                          className="h-11 w-11 rounded-[10px] border border-[#e2e7ee] bg-white"
+                          aria-label="Move down"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFields((prev) => prev.filter((_, i) => i !== index))}
+                          className="h-11 w-11 rounded-[10px] border border-[#e2e7ee] bg-white text-[#b42318]"
+                          aria-label="Remove field"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {field.type === "select" ? (
+                        <input
+                          value={(field.options ?? []).join(", ")}
+                          onChange={(e) =>
+                            updateField(index, {
+                              options: e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                          placeholder="Choice A, Choice B"
+                          className={`${dashInput} flex-[1_1_100%] bg-white text-[14px]`}
+                        />
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {state?.error ? <p className="m-0 text-xs text-[#b2432b]">{state.error}</p> : null}
-        {state?.saved ? <p className="m-0 text-xs text-[#1e9e4a]">Saved.</p> : null}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="min-h-11 self-start rounded-[10px] bg-[var(--cat-ink)] px-4 text-[13px] font-medium text-white disabled:opacity-50"
-        >
-          {pending ? "Saving…" : "Save ordering"}
-        </button>
-      </form>
-    </div>
+          <div className="sticky bottom-0 z-[1] mt-4 flex flex-wrap items-center gap-3 border-t border-[#edf0f4] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <button type="submit" disabled={pending} className={dashBtnPrimary}>
+              {pending ? "Saving…" : "Save ordering"}
+            </button>
+            {state?.error ? <p className="m-0 text-[13px] text-[#b42318]">{state.error}</p> : null}
+            {state?.saved ? <p className="m-0 text-[13px] text-[#1e9e4a]">Saved.</p> : null}
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }

@@ -145,7 +145,7 @@ export default async function CatalogsPage() {
             <span className="text-[28px] font-light text-[var(--cat-ink)]">+</span>
             <span className="text-[13px] font-medium text-[var(--cat-ink)]">New catalog</span>
             <span className="text-xs">
-              {canPublish ? "Three steps, about five minutes" : "Subscribe to publish a new catalog"}
+              {canPublish ? "Look and address — items later" : "Subscribe to publish a new catalog"}
             </span>
           </Link>
         </div>

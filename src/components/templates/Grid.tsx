@@ -5,7 +5,10 @@ import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { comboCoverImage, isAutoComboDescription } from "@/lib/catalog/combos";
 import { hasItemOptions, optionsCue } from "@/lib/catalog/item-options";
+import { ComboBadge } from "@/components/storefront/ComboBadge";
+import { ComboIncludesList } from "@/components/storefront/ComboIncludesList";
 import { BrandHeader } from "./BrandHeader";
 import { HeaderContact } from "@/components/storefront/HeaderContact";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
@@ -45,19 +48,26 @@ export function GridTemplate({
         item.name.toLowerCase().includes(q) ||
         item.code.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q)
+        item.description.toLowerCase().includes(q) ||
+        item.comboIncludes.some((line) => line.name.toLowerCase().includes(q))
       );
     });
 
     const order: string[] = [];
     const grouped = new Map<string, StorefrontItem[]>();
     for (const item of matches) {
-      const group = item.category.trim() || "All items";
+      const raw = item.category.trim();
+      const group = item.isCombo && (!raw || raw.toLowerCase() === "combos") ? "Combos" : raw || "All items";
       if (!grouped.has(group)) {
         grouped.set(group, []);
         order.push(group);
       }
       grouped.get(group)!.push(item);
+    }
+    const combosIdx = order.indexOf("Combos");
+    if (combosIdx > 0) {
+      order.splice(combosIdx, 1);
+      order.unshift("Combos");
     }
     return order.map((group) => ({ group, items: grouped.get(group)! }));
   }, [catalog.items, query]);
@@ -117,7 +127,13 @@ export function GridTemplate({
                       <span className="text-sm text-[var(--cat-muted)]">{items.length} items</span>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  <div
+                    className={
+                      group === "Combos"
+                        ? "grid grid-cols-1 gap-3 @md:grid-cols-2"
+                        : "grid grid-cols-2 gap-3 @md:grid-cols-3 @5xl:grid-cols-4"
+                    }
+                  >
                     {items.map((item, itemIndex) => (
                       <GridCard
                         key={item.code}
@@ -125,6 +141,7 @@ export function GridTemplate({
                         currency={catalog.currency}
                         eager={priorCount + itemIndex < 8}
                         onSelect={setSelected}
+                        mixedSection={group !== "Combos"}
                       />
                     ))}
                   </div>
@@ -151,54 +168,72 @@ function GridCard({
   currency,
   eager,
   onSelect,
+  mixedSection,
 }: {
   item: StorefrontItem;
   currency: string;
   eager?: boolean;
   onSelect: (item: StorefrontItem) => void;
+  mixedSection?: boolean;
 }) {
   const { quantities, increment, decrement, setQuantity, acceptOrders, pausedMessage } = useCart();
   const qty = quantities[item.code] ?? 0;
-  const cue = optionsCue(item);
+  const cue = item.isCombo ? null : optionsCue(item);
+  const cover = item.isCombo ? comboCoverImage(item) : item.image;
+  const showDescription =
+    Boolean(item.description) &&
+    !(item.isCombo && isAutoComboDescription(item.description, item.comboIncludes));
+  const bannerCombo = item.isCombo && mixedSection;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm">
+    <div
+      className={`flex min-w-0 flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm ${
+        bannerCombo ? "col-span-2 @md:col-span-1 @5xl:col-span-2" : ""
+      }`}
+    >
       <button
         type="button"
         onClick={() => onSelect(item)}
-        className="relative aspect-[584/480] w-full bg-[var(--cat-photo-bg)]"
+        className={`relative w-full max-w-full overflow-hidden bg-[var(--cat-photo-bg)] ${
+          item.isCombo ? "aspect-[16/10]" : "aspect-[584/480]"
+        }`}
         aria-label={`View details for ${item.name}`}
       >
-        {item.image ? (
+        {cover ? (
           // User-pasted https/data URLs are not in next/image remotePatterns.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.image}
+            src={cover}
             alt={item.name}
-            width={584}
-            height={480}
+            width={item.isCombo ? 640 : 584}
+            height={item.isCombo ? 400 : 480}
             loading={eager ? "eager" : "lazy"}
             decoding="async"
             className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
-        {cue ? (
+        {item.isCombo ? (
+          <span className="absolute left-2 top-2">
+            <ComboBadge />
+          </span>
+        ) : cue ? (
           <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--cat-accent)] shadow-sm">
             {cue}
           </span>
         ) : null}
       </button>
-      <div className="flex flex-1 flex-col gap-2 p-3">
-        <button type="button" onClick={() => onSelect(item)} className="text-left">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-3">
+        <button type="button" onClick={() => onSelect(item)} className="min-w-0 text-left">
           <p className="text-[15px] font-semibold leading-tight text-[var(--cat-ink)]">
             {item.name}
           </p>
           {item.code && <p className="text-xs text-[var(--cat-muted)]">{item.code}</p>}
-          {cue ? (
+          {!item.isCombo && cue ? (
             <p className="mt-0.5 text-[11px] font-semibold text-[var(--cat-accent)]">{cue}</p>
           ) : null}
         </button>
-        {item.description && (
+        {item.isCombo ? <ComboIncludesList lines={item.comboIncludes} /> : null}
+        {showDescription && (
           <p className="kl-line-clamp-2 text-xs text-[var(--cat-muted)]">{item.description}</p>
         )}
 

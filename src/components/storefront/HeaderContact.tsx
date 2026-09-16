@@ -12,7 +12,7 @@ export function HeaderContact({ catalog }: { catalog: StorefrontCatalog }) {
   const hoursLine = hours.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)[0] ?? hours;
 
   return (
-    <div className="hidden min-w-0 max-w-[220px] text-right text-[11px] leading-snug text-[var(--cat-muted)] sm:block">
+    <div className="hidden min-w-0 max-w-[220px] text-right text-[11px] leading-snug text-[var(--cat-muted)] @md:block">
       {hoursLine ? <p className="m-0 truncate font-medium text-[var(--cat-ink)]">{hoursLine}</p> : null}
       {phone ? (
         tel ? (

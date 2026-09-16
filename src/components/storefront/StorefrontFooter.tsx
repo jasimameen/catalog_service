@@ -33,7 +33,7 @@ export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
     <footer className="border-t border-[var(--cat-border)] bg-[#fbfbfd] px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-6xl">
         {hasInfo ? (
-          <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-8 grid grid-cols-1 gap-6 @md:grid-cols-2 @5xl:grid-cols-4">
             {hasContact ? (
               <div>
                 <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--cat-muted)]">

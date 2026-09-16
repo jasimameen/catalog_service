@@ -147,6 +147,8 @@ export type CatalogItemRow = {
   options?: ItemOptionGroup[] | unknown;
   featured?: boolean;
   image_fit?: ImageFit | string | null;
+  is_combo?: boolean;
+  combo_lines?: { item_id: string; qty: number }[] | unknown;
   created_at: string;
 };
 
@@ -201,6 +203,7 @@ export type OrderItemRow = {
   line_total: number;
   options_json?: SelectedOption[] | unknown;
   notes?: string | null;
+  combo_json?: { item_id?: string; code?: string; name: string; qty: number }[] | unknown;
 };
 
 export type CatalogViewRow = {

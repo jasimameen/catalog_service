@@ -5,9 +5,13 @@ import { CatalogSlots } from "./CatalogSlots";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
 import { CartButton } from "@/components/storefront/CartButton";
+import { ComboBadge } from "@/components/storefront/ComboBadge";
+import { ComboIncludes } from "@/components/storefront/ComboIncludes";
+import { PausedNote } from "@/components/storefront/PausedNote";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
+import { isAutoComboDescription } from "@/lib/catalog/combos";
 import { formatMoney } from "@/lib/catalog/currency";
-import { hasItemOptions } from "@/lib/catalog/item-options";
+import { hasItemOptions, optionsCue, variantValueNames } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
@@ -53,7 +57,7 @@ export function SpotlightTemplate({
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--cat-muted)]">
                   More items
                 </p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 @md:grid-cols-3 @5xl:grid-cols-4">
                   {rest.map((item, index) => (
                     <SpotCard
                       key={item.code}
@@ -83,6 +87,12 @@ export function SpotlightTemplate({
   );
 }
 
+function itemDescription(item: StorefrontItem): string {
+  if (!item.description) return "";
+  if (item.isCombo && isAutoComboDescription(item.description, item.comboIncludes)) return "";
+  return item.description;
+}
+
 function HeroCard({
   item,
   currency,
@@ -96,13 +106,21 @@ function HeroCard({
   onSelect: (item: StorefrontItem) => void;
   onAdd: () => void;
 }) {
-  const { acceptOrders } = useCart();
+  const { acceptOrders, pausedMessage } = useCart();
+  const available = isItemAvailable(item);
+  const cue = item.isCombo ? null : optionsCue(item);
+  const names = item.isCombo ? [] : variantValueNames(item);
+  const showChips = names.length > 0 && names.length <= 8;
+  const description = itemDescription(item);
+
   return (
-    <div className="overflow-hidden rounded-[18px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm sm:grid sm:grid-cols-2">
+    <div className="overflow-hidden rounded-[18px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm @md:grid @md:grid-cols-2">
       <button
         type="button"
         onClick={() => onSelect(item)}
-        className="relative aspect-[4/3] w-full bg-[var(--cat-photo-bg)] sm:aspect-auto sm:min-h-[320px]"
+        className={`relative aspect-[4/3] w-full bg-[var(--cat-photo-bg)] @md:aspect-auto @md:h-full ${
+          item.isCombo ? "@md:min-h-[400px]" : "@md:min-h-[320px]"
+        }`}
         aria-label={`View details for ${item.name}`}
       >
         {item.image ? (
@@ -116,6 +134,15 @@ function HeroCard({
             decoding="async"
             className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
+        ) : null}
+        {item.isCombo ? (
+          <span className="absolute left-3 top-3">
+            <ComboBadge />
+          </span>
+        ) : cue ? (
+          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--cat-accent)] shadow-sm">
+            {cue}
+          </span>
         ) : null}
       </button>
       <div className="flex flex-col justify-center px-5 py-6 sm:px-8">
@@ -131,30 +158,48 @@ function HeroCard({
         <h1 className="mt-2 text-[clamp(26px,4vw,38px)] font-semibold leading-[1.08] tracking-tight text-[var(--cat-ink)]">
           {item.name}
         </h1>
-        {item.description ? (
-          <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[var(--cat-muted)]">
-            {item.description}
-          </p>
+        {item.isCombo ? (
+          <ComboIncludes lines={item.comboIncludes} layout="list" size="lg" className="mt-3" />
+        ) : null}
+        {showChips ? (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {names.map((name) => (
+              <span
+                key={name}
+                className="rounded-full border border-[var(--cat-border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--cat-ink)]"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        ) : cue ? (
+          <p className="mt-3 text-[12px] font-semibold text-[var(--cat-accent)]">{cue}</p>
+        ) : null}
+        {description ? (
+          <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[var(--cat-muted)]">{description}</p>
         ) : null}
         {item.code ? <p className="mt-2 text-xs text-[var(--cat-muted)]">{item.code}</p> : null}
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <span className="text-[22px] font-semibold text-[var(--cat-ink)]">
             {formatMoney(item.price, currency)}
           </span>
-          {isItemAvailable(item) ? (
-            acceptOrders ? (
-              <button
-                type="button"
-                onClick={onAdd}
-                className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
-              >
-                {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-              </button>
-            ) : null
-          ) : (
+          {acceptOrders && available ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="min-h-11 rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
+            >
+              {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+            </button>
+          ) : available ? null : (
             <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
           )}
         </div>
+        {!acceptOrders ? (
+          <div className="mt-4">
+            <PausedNote message={pausedMessage} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -175,7 +220,12 @@ function SpotCard({
   onSelect: (item: StorefrontItem) => void;
   onAdd: () => void;
 }) {
-  const { acceptOrders } = useCart();
+  const { acceptOrders, pausedMessage } = useCart();
+  const available = isItemAvailable(item);
+  const cue = item.isCombo ? null : optionsCue(item);
+  const names = item.isCombo ? [] : variantValueNames(item);
+  const showChips = names.length > 0 && names.length <= 4;
+
   return (
     <div className="flex flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-[var(--cat-surface)]">
       <button
@@ -196,25 +246,47 @@ function SpotCard({
             className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
+        {item.isCombo ? (
+          <span className="absolute left-2 top-2">
+            <ComboBadge />
+          </span>
+        ) : cue ? (
+          <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--cat-accent)] shadow-sm">
+            {cue}
+          </span>
+        ) : null}
       </button>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <button type="button" onClick={() => onSelect(item)} className="text-left">
           <p className="text-[14px] font-semibold leading-tight text-[var(--cat-ink)]">{item.name}</p>
           {item.code ? <p className="text-xs text-[var(--cat-muted)]">{item.code}</p> : null}
         </button>
-        <p className="mt-auto text-sm font-bold text-[var(--cat-ink)]">
-          {formatMoney(item.price, currency)}
-        </p>
-        {isItemAvailable(item) ? (
-          acceptOrders ? (
-            <button
-              type="button"
-              onClick={onAdd}
-              className="w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
-            >
-              {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
-            </button>
-          ) : null
+        {item.isCombo ? <ComboIncludes lines={item.comboIncludes} /> : null}
+        {showChips ? (
+          <div className="flex flex-wrap gap-1">
+            {names.map((name) => (
+              <span
+                key={name}
+                className="rounded-full bg-[#f4f5f7] px-2 py-0.5 text-[10px] font-medium text-[var(--cat-ink)]"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        ) : cue ? (
+          <p className="text-[11px] font-semibold text-[var(--cat-accent)]">{cue}</p>
+        ) : null}
+        <p className="mt-auto text-sm font-bold text-[var(--cat-ink)]">{formatMoney(item.price, currency)}</p>
+        {!acceptOrders ? (
+          <PausedNote message={pausedMessage} />
+        ) : available ? (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="min-h-11 w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
+          >
+            {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
+          </button>
         ) : (
           <p className="text-center text-xs font-medium text-[var(--cat-muted)]">Unavailable</p>
         )}

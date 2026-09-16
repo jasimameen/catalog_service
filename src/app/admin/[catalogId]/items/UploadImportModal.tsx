@@ -4,25 +4,39 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   IMPORT_FIELD_LABELS,
+  IMPORT_FIELD_META,
   IMPORT_FIELDS,
-  type ImportFieldOrSkip,
+  type ImportField,
+  type ImportFieldDefaults,
+  type ImportFieldMapping,
 } from "@/lib/catalog/import-map";
 import { applyMapping, defaultMapping, parseCatalogFile, type ParsedSheet } from "./parse-sheet";
 import { fileImportItems, type FileImportMode } from "./actions";
-
-const FIELD_OPTIONS: ImportFieldOrSkip[] = ["skip", ...IMPORT_FIELDS];
+import {
+  AdminSheet,
+  AdminSheetBody,
+  AdminSheetFooter,
+  AdminSheetHeader,
+  btnGhost,
+  btnPrimary,
+  fieldInput,
+} from "./sheet";
 
 export function UploadImportModal({
   catalogId,
   onClose,
+  refreshOnSuccess = true,
 }: {
   catalogId: string;
   onClose: () => void;
+  /** Items page needs a refresh; the create wizard must not remount. */
+  refreshOnSuccess?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
-  const [mapping, setMapping] = useState<ImportFieldOrSkip[]>([]);
+  const [mapping, setMapping] = useState<ImportFieldMapping>({});
+  const [defaults, setDefaults] = useState<ImportFieldDefaults>({});
   const [fileError, setFileError] = useState<string | null>(null);
   const [mode, setMode] = useState<FileImportMode>("upsert");
   const [confirmReplace, setConfirmReplace] = useState(false);
@@ -38,11 +52,11 @@ export function UploadImportModal({
 
   const mapped = useMemo(() => {
     if (!sheet) return null;
-    return applyMapping(sheet.rows, mapping);
-  }, [sheet, mapping]);
+    return applyMapping(sheet.rows, mapping, defaults);
+  }, [sheet, mapping, defaults]);
 
-  const nameMapped = mapping.includes("name");
-  const priceMapped = mapping.includes("price");
+  const nameMapped = mapping.name != null;
+  const priceMapped = mapping.price != null;
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -53,20 +67,36 @@ export function UploadImportModal({
       const parsed = await parseCatalogFile(file);
       setSheet(parsed);
       setMapping(defaultMapping(parsed.headers));
+      setDefaults({});
     } catch (err) {
       setSheet(null);
       setFileError(err instanceof Error ? err.message : "Could not read that file.");
     }
   }
 
-  function setColumn(index: number, value: ImportFieldOrSkip) {
+  function setField(field: ImportField, headerIndex: number | undefined) {
     setMapping((prev) => {
-      const next = [...prev];
-      if (value !== "skip") {
-        const already = next.indexOf(value);
-        if (already >= 0 && already !== index) next[already] = "skip";
+      const next: ImportFieldMapping = { ...prev };
+      if (headerIndex == null || !Number.isInteger(headerIndex)) {
+        delete next[field];
+        return next;
       }
-      next[index] = value;
+      for (const other of IMPORT_FIELDS) {
+        if (other !== field && next[other] === headerIndex) delete next[other];
+      }
+      next[field] = headerIndex;
+      return next;
+    });
+  }
+
+  function setDefault(field: ImportField, value: string) {
+    setDefaults((prev) => {
+      const next: ImportFieldDefaults = { ...prev };
+      if (!value.trim()) {
+        delete next[field];
+        return next;
+      }
+      next[field] = value;
       return next;
     });
   }
@@ -83,7 +113,7 @@ export function UploadImportModal({
         fillPlaceholders,
         placeholderKeyword,
       });
-      if (!next.error) router.refresh();
+      if (!next.error && refreshOnSuccess) router.refresh();
       setConfirmReplace(false);
       setResult({
         error: next.error,
@@ -99,116 +129,158 @@ export function UploadImportModal({
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-4">
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6">
-        <h3 className="m-0 text-[16px] font-semibold text-[var(--cat-ink)]">Upload catalog</h3>
-        <p className="mt-1.5 text-xs text-[var(--cat-muted)]">
-          CSV or Excel. Map your columns, then import. Name and price are required. Groups and
-          variants are combined from Variant / Variant Group columns — same SKU or group id
-          becomes one item with options.{" "}
-          <a href="/catalog-import-template.csv" download className="text-[var(--cat-accent)]">
+    <AdminSheet onClose={onClose} maxWidth="max-w-[720px]" labelledBy="upload-sheet-title">
+      <AdminSheetHeader
+        id="upload-sheet-title"
+        title="Upload catalog"
+        helper="CSV or Excel. Match each needed field to a column from your file. Name and price are required. Missing SKUs are generated from the name. Variant rows with the same SKU or name become one item."
+        onClose={onClose}
+      />
+      <AdminSheetBody>
+        <div className="flex flex-wrap gap-3.5 text-[13px]">
+          <a href="/catalog-import-template.csv" download className="text-[#0b5fce] hover:text-[#0a4aa0]">
             Download template
           </a>
-        </p>
+          <span className="text-[#c3ccd9]">·</span>
+          <a href="/catalog-dummy.csv" download className="text-[#0b5fce] hover:text-[#0a4aa0]">
+            Dummy CSV
+          </a>
+        </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="flex flex-wrap gap-2">
           {(
             [
-              { value: "upsert", label: "Upsert", hint: "Update matching SKUs. Rows without SKU are added." },
+              { value: "upsert", label: "Upsert", hint: "Update matching SKUs. Empty SKUs are generated from the name." },
               { value: "replace", label: "Replace all", hint: "Deletes every current item, then imports this file." },
             ] as const
-          ).map((opt) => (
-            <label
-              key={opt.value}
-              className={`cursor-pointer rounded-[10px] border px-3 py-2 has-[:checked]:border-[var(--cat-accent)] ${
-                mode === opt.value ? "border-[var(--cat-accent)]" : "border-[#e8e8ed]"
-              }`}
-            >
-              <input
-                type="radio"
-                name="importMode"
-                value={opt.value}
-                checked={mode === opt.value}
-                onChange={() => {
+          ).map((opt) => {
+            const selected = mode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
                   setMode(opt.value);
                   setConfirmReplace(false);
                 }}
-                className="sr-only"
-              />
-              <span className="block text-[13px] font-semibold text-[var(--cat-ink)]">{opt.label}</span>
-              <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">{opt.hint}</span>
-            </label>
-          ))}
+                className={`min-w-0 flex-1 basis-[230px] rounded-xl border px-3.5 py-3 text-left ${
+                  selected ? "border-[#9dc0ef] bg-[#eef4fd]" : "border-[#e2e7ee] bg-[#fbfbfd]"
+                }`}
+              >
+                <span className="block text-[14px] font-medium text-[#101720]">{opt.label}</span>
+                <span className="mt-1 block text-[12px] leading-snug text-[#5a6472]">{opt.hint}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <label className="mt-4 block">
-          <span className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">File</span>
+        {confirmReplace ? (
+          <div className="rounded-xl border border-[#f0d3cd] bg-[#fdf1ef] px-3.5 py-2.5 text-[13px] leading-snug text-[#8c2f21]">
+            Replace all deletes every current item. Press Import again to confirm.
+          </div>
+        ) : null}
+
+        <input
+          type="file"
+          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(e) => void onFile(e.target.files?.[0])}
+          className="text-[13px] text-[#101720]"
+        />
+        {fileError ? <p className="m-0 text-[13px] text-[#b42318]">{fileError}</p> : null}
+
+        <label className="flex min-h-11 items-center gap-2.5 text-[14px] text-[#101720]">
           <input
-            type="file"
-            accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={(e) => void onFile(e.target.files?.[0])}
-            className="w-full text-[13px] text-[var(--cat-ink)]"
+            type="checkbox"
+            checked={fillPlaceholders}
+            onChange={(e) => setFillPlaceholders(e.target.checked)}
+            className="h-[17px] w-[17px] accent-[#0b5fce]"
           />
+          Fill missing images with placeholders
         </label>
-        {fileError ? <p className="m-0 mt-2 text-xs text-[#b2432b]">{fileError}</p> : null}
+        <p className="-mt-2 text-[12px] text-[#8a93a2]">
+          Uses a small set of Unsplash photos. Optional keyword picks a matching style.
+        </p>
+        {fillPlaceholders ? (
+          <input
+            value={placeholderKeyword}
+            onChange={(e) => setPlaceholderKeyword(e.target.value)}
+            placeholder="Keyword — coffee, food, product…"
+            maxLength={40}
+            className={`${fieldInput} max-w-xs`}
+          />
+        ) : null}
 
         {sheet ? (
-          <div className="mt-4 flex flex-col gap-3">
-            <label className="flex items-start gap-2 text-[13px] text-[var(--cat-ink)]">
-              <input
-                type="checkbox"
-                checked={fillPlaceholders}
-                onChange={(e) => setFillPlaceholders(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                Fill missing images with placeholders
-                <span className="mt-0.5 block text-[11px] text-[var(--cat-muted)]">
-                  Uses a small set of Unsplash photos. Optional keyword picks a matching style.
-                </span>
-              </span>
-            </label>
-            {fillPlaceholders ? (
-              <input
-                value={placeholderKeyword}
-                onChange={(e) => setPlaceholderKeyword(e.target.value)}
-                placeholder="Keyword — coffee, food, product…"
-                maxLength={40}
-                className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
-              />
-            ) : null}
-
-            <p className="m-0 text-xs text-[var(--cat-muted)]">
-              {sheet.rows.length} rows · map each column
-            </p>
-            <div className="flex flex-col gap-2">
-              {sheet.headers.map((header, index) => (
-                <label key={`${header}-${index}`} className="grid grid-cols-[1fr_160px] items-center gap-2">
-                  <span className="truncate text-[13px] text-[var(--cat-ink)]">{header}</span>
-                  <select
-                    value={mapping[index] ?? "skip"}
-                    onChange={(e) => setColumn(index, e.target.value as ImportFieldOrSkip)}
-                    className="rounded-[10px] border border-[#d2d2d7] px-2 py-1.5 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          <>
+            <div className="overflow-hidden rounded-xl border border-[#e2e7ee]">
+              <div className="hidden gap-2.5 bg-[#fbfbfd] px-3.5 py-2.5 text-[11px] uppercase tracking-[0.07em] text-[#8a93a2] sm:flex">
+                <div className="min-w-0 flex-1 basis-[150px]">Needed</div>
+                <div className="min-w-0 flex-1 basis-[170px]">Your column</div>
+                <div className="w-24 shrink-0">Default</div>
+              </div>
+              {IMPORT_FIELDS.map((field) => {
+                const meta = IMPORT_FIELD_META[field];
+                return (
+                  <div
+                    key={field}
+                    className="flex flex-col gap-2.5 border-t border-[#f1f4f8] px-3.5 py-2.5 first:border-t-0 sm:flex-row sm:items-center sm:first:border-t"
                   >
-                    {FIELD_OPTIONS.map((field) => (
-                      <option key={field} value={field}>
+                    <div className="min-w-0 flex-1 basis-[150px]">
+                      <p className="m-0 text-[13px] font-medium text-[#101720]">
                         {IMPORT_FIELD_LABELS[field]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
+                      </p>
+                      <p className={`m-0 text-[11px] ${meta.required ? "text-[#b42318]" : "text-[#8a93a2]"}`}>
+                        {meta.required ? "* Required" : meta.autoFill ? meta.autoFill : "Optional"}
+                      </p>
+                    </div>
+                    <select
+                      value={mapping[field] == null ? "" : String(mapping[field])}
+                      onChange={(e) =>
+                        setField(field, e.target.value === "" ? undefined : Number(e.target.value))
+                      }
+                      className="min-h-10 min-w-0 flex-1 basis-[170px] rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[13px] outline-none focus:border-[#0b5fce]"
+                    >
+                      <option value="">Ignore</option>
+                      {sheet.headers.map((header, index) => (
+                        <option
+                          key={`${header}-${index}`}
+                          value={index}
+                          disabled={
+                            Object.entries(mapping).some(
+                              ([other, mappedIndex]) => other !== field && mappedIndex === index,
+                            )
+                          }
+                        >
+                          {header}
+                        </option>
+                      ))}
+                    </select>
+                    {meta.defaultable ? (
+                      <input
+                        value={defaults[field] ?? ""}
+                        onChange={(e) => setDefault(field, e.target.value)}
+                        placeholder="If empty"
+                        className="min-h-10 w-full rounded-[10px] border border-[#e2e7ee] bg-white px-2.5 text-[13px] outline-none focus:border-[#0b5fce] sm:w-24 sm:shrink-0"
+                      />
+                    ) : (
+                      <span className="hidden w-24 shrink-0 text-[12px] text-[#8a93a2] sm:block">—</span>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="px-3.5 py-2 text-[12px] text-[#8a93a2]">
+                {sheet.rows.length} rows · needed fields on the left, your file columns on the right
+              </div>
             </div>
 
             {mapped && mapped.ready.length > 0 ? (
-              <div className="overflow-hidden rounded-[10px] border border-[#ececf0]">
-                <p className="m-0 bg-[#fbfbfd] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
-                  Preview
-                </p>
+              <div className="flex flex-col gap-1.5">
+                <p className="m-0 text-[11px] uppercase tracking-[0.08em] text-[#8a93a2]">Preview</p>
                 {mapped.ready.slice(0, 4).map((row, i) => (
-                  <p key={i} className="m-0 truncate border-t border-[#f0f0f4] px-3 py-1.5 text-xs text-[var(--cat-ink)]">
+                  <p key={i} className="m-0 font-mono text-[12px] text-[#46505e]">
                     {row.name}
-                    {row.category ? ` · ${row.category}` : ""} · {row.price}
+                    {row.category ? ` · ${row.category}` : " · —"} · {row.price}
+                    {row.code ? ` · ${row.code}` : ""}
                     {row.options?.[0]?.values.length
                       ? ` · ${row.options[0].values.length} options`
                       : ""}
@@ -218,49 +290,38 @@ export function UploadImportModal({
             ) : null}
 
             {!nameMapped || !priceMapped ? (
-              <p className="m-0 text-xs text-[#b2432b]">Map both Name and Price to import.</p>
+              <p className="m-0 text-[13px] text-[#b42318]">Map both Name and Price to import.</p>
             ) : null}
-          </div>
+          </>
         ) : null}
 
-        {confirmReplace ? (
-          <p className="m-0 mt-3 rounded-[10px] bg-[#fff4f1] px-3 py-2 text-xs text-[#b2432b]">
-            Replace all deletes every current item. Press Import again to confirm.
-          </p>
-        ) : null}
-
-        {result?.error ? <p className="m-0 mt-3 text-xs text-[#b2432b]">{result.error}</p> : null}
+        {result?.error ? <p className="m-0 text-[13px] text-[#b42318]">{result.error}</p> : null}
         {result && !result.error ? (
-          <p className="m-0 mt-3 text-xs text-[#1e9e4a]">
+          <p className="m-0 text-[13px] text-[#1e9e4a]">
             Imported {result.imported ?? 0}, updated {result.updated ?? 0}, skipped {result.skipped ?? 0}.
           </p>
         ) : null}
         {result?.skipReasons?.length ? (
-          <ul className="m-0 mt-2 list-disc pl-4 text-xs text-[var(--cat-muted)]">
+          <ul className="m-0 list-disc pl-4 text-[12px] text-[#5a6472]">
             {result.skipReasons.map((reason) => (
               <li key={reason}>{reason}</li>
             ))}
           </ul>
         ) : null}
-
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            disabled={pending || !mapped || mapped.ready.length === 0 || !nameMapped || !priceMapped}
-            onClick={importRows}
-            className="flex-1 rounded-[10px] bg-[var(--cat-accent)] py-2.5 text-[13px] font-medium text-white disabled:opacity-50"
-          >
-            {pending ? "Importing…" : confirmReplace ? "Yes, replace all" : "Import"}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-[10px] border border-[#d2d2d7] bg-white py-2.5 text-[13px] font-medium text-[var(--cat-ink)]"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      </AdminSheetBody>
+      <AdminSheetFooter>
+        <button type="button" onClick={onClose} className={btnGhost}>
+          Close
+        </button>
+        <button
+          type="button"
+          disabled={pending || !mapped || mapped.ready.length === 0 || !nameMapped || !priceMapped}
+          onClick={importRows}
+          className={btnPrimary}
+        >
+          {pending ? "Importing…" : confirmReplace ? "Yes, replace all" : "Import"}
+        </button>
+      </AdminSheetFooter>
+    </AdminSheet>
   );
 }

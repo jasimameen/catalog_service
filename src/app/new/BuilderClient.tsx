@@ -1,18 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { templateMeta } from "@/lib/catalog/templates";
 import type { CatalogTemplateKey } from "@/lib/catalog/types";
-import { normalizeSlug } from "@/lib/catalog/slug";
+import { normalizeSlug, slugFromName } from "@/lib/catalog/slug";
 import { TopBar } from "@/components/builder/TopBar";
-import { StepItems } from "@/components/builder/StepItems";
 import { StepLook } from "@/components/builder/StepLook";
 import { StepAddress } from "@/components/builder/StepAddress";
 import { PublishedScreen } from "@/components/builder/PublishedScreen";
 import { TemplatePreview } from "@/components/builder/TemplatePreview";
 import { useSlugAvailability } from "@/components/builder/slug-hook";
-import { approxImageBytes, MAX_IMAGE_BYTES } from "@/components/builder/image-size";
-import type { DraftItem } from "@/components/builder/types";
 import { publishCatalog } from "./actions";
 
 interface BuilderAccount {
@@ -29,66 +26,67 @@ interface BuilderClientProps {
   rootDomain: string;
 }
 
-let nextTempId = 0;
-
 /**
- * The whole 3-step wizard. No draft is persisted to Supabase mid-flow —
- * "Draft saved" in the top bar is cosmetic, matching the task spec: the
- * entire draft (items, template, accent, name, subdomain) lives in this
- * component's React state until the user hits "Publish catalog" on Step 3,
- * which calls the publishCatalog Server Action (src/app/new/actions.ts).
+ * 2-step create wizard (Look → Address), then publish. Items are optional
+ * and happen after the catalog exists, via spreadsheet upload.
  */
 export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, rootDomain }: BuilderClientProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [items, setItems] = useState<DraftItem[]>([]);
+  const [step, setStep] = useState<1 | 2>(1);
   const [template, setTemplate] = useState<CatalogTemplateKey>("grid");
   const [accent, setAccent] = useState("#0b5fce");
-  const [catalogName, setCatalogName] = useState(`${account.name}'s catalog`);
-  const [subdomain, setSubdomain] = useState(
-    () => normalizeSlug(account.name).slice(0, 30) || "catalog"
-  );
+  const [catalogName, setCatalogName] = useState(account.name);
+  const [subdomain, setSubdomain] = useState(() => slugFromName(account.name) || "catalog");
+  const [slugDirty, setSlugDirty] = useState(false);
   const [orderEmail, setOrderEmail] = useState(ownerEmail);
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
   const [publishError, setPublishError] = useState<string | null>(null);
   const [published, setPublished] = useState<{ catalogId: string; slug: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const availability = useSlugAvailability(subdomain, step === 3);
+  const { availability, suggestions } = useSlugAvailability(subdomain, catalogName, true);
 
   const protocol = rootDomain.startsWith("localhost") ? "http" : "https";
-  const liveUrl = `${protocol}://${normalizeSlug(subdomain) || subdomain}.${rootDomain}`;
+  const slugPreview = normalizeSlug(subdomain);
+  const liveUrl = slugPreview ? `${protocol}://${slugPreview}.${rootDomain}` : "";
 
-  const oversizedPhotoCount = useMemo(
-    () => items.filter((it) => it.image && approxImageBytes(it.image) > MAX_IMAGE_BYTES).length,
-    [items]
-  );
-
-  function addItem(item: { name: string; price: number; image: string }) {
-    setItems((prev) => [...prev, { tempId: `draft-${nextTempId++}`, ...item }]);
+  function handleCatalogName(next: string) {
+    const wasEmpty = catalogName.trim() === "";
+    setCatalogName(next);
+    setPublishError(null);
+    if (!slugDirty || wasEmpty) {
+      if (wasEmpty) setSlugDirty(false);
+      setSubdomain(slugFromName(next));
+    }
   }
 
-  function removeItem(tempId: string) {
-    setItems((prev) => prev.filter((it) => it.tempId !== tempId));
+  function handleSubdomain(value: string) {
+    const next = normalizeSlug(value);
+    setPublishError(null);
+    if (next === "") {
+      setSlugDirty(false);
+      setSubdomain(slugFromName(catalogName));
+      return;
+    }
+    setSlugDirty(true);
+    setSubdomain(next);
+  }
+
+  function applySuggestion(slug: string) {
+    setSlugDirty(true);
+    setSubdomain(slug);
+    setPublishError(null);
   }
 
   function goNext() {
     setPublishError(null);
     if (step === 1) {
-      if (items.length === 0) {
-        setPublishError("Add at least one item before continuing.");
-        return;
-      }
       setStep(2);
-      return;
-    }
-    if (step === 2) {
-      setStep(3);
       return;
     }
     if (availability === "taken" || availability === "invalid") {
       setPublishError(
         availability === "taken"
-          ? "That address is taken — try another."
+          ? "This address is taken — pick a suggestion or try another."
           : "Pick an address using lowercase letters, numbers and dashes."
       );
       return;
@@ -98,19 +96,11 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
 
   function goBack() {
     setPublishError(null);
-    if (step > 1) setStep((s) => (s === 3 ? 2 : 1));
+    if (step === 2) setStep(1);
   }
 
   function handlePublish() {
     setPublishError(null);
-
-    // Photos over the size cap are dropped here rather than at the server —
-    // the user sees exactly which items keep their photo before it's final.
-    const preparedItems = items.map((it) => ({
-      name: it.name,
-      price: it.price,
-      image: it.image && approxImageBytes(it.image) <= MAX_IMAGE_BYTES ? it.image : "",
-    }));
 
     startTransition(async () => {
       const result = await publishCatalog({
@@ -119,14 +109,14 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
         accent,
         slug: subdomain,
         orderEmail,
-        items: preparedItems,
+        items: [],
       });
 
       if (result.ok) {
         setPublished({ catalogId: result.catalogId, slug: result.slug });
       } else {
         setPublishError(result.error);
-        if (result.field === "slug") setStep(3);
+        if (result.field === "slug") setStep(2);
       }
     });
   }
@@ -141,25 +131,21 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
     );
   }
 
-  const stepMeta: Record<1 | 2 | 3, { nextLabel: string; helper: string }> = {
-    1: { nextLabel: "Continue", helper: `${items.length} items added` },
-    2: { nextLabel: "Continue", helper: "You can change this later" },
-    3: { nextLabel: isPending ? "Publishing…" : "Publish catalog", helper: "Live in a few seconds" },
+  const stepMeta: Record<1 | 2, { nextLabel: string; helper: string }> = {
+    1: { nextLabel: "Continue", helper: "You can change this later" },
+    2: { nextLabel: isPending ? "Publishing…" : "Publish catalog", helper: "Items are optional — upload next" },
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-[#fbfbfd] text-[#1d1d1f]">
       <TopBar step={step} />
 
-      <div className="mx-auto flex-1 md:grid md:w-full md:grid-cols-2">
+      <div className="mx-auto min-h-0 flex-1 md:grid md:w-full md:grid-cols-2 md:items-stretch">
         <div
           className={`px-4 pb-14 pt-8 sm:px-6 sm:pt-10 md:max-w-[640px] md:px-8 ${
             mobileView === "preview" ? "hidden md:block" : ""
           }`}
         >
-          {/* Mobile-only Edit/Preview toggle — the design's phone mock replaces
-              this with a separate screen; a tab pair covers the same need
-              (see mobile) without building fake phone-bezel chrome. */}
           <div className="mb-5 flex gap-2 md:hidden">
             <ViewTab label="Edit" active={mobileView === "edit"} onClick={() => setMobileView("edit")} />
             <ViewTab
@@ -170,47 +156,34 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
           </div>
 
           {step === 1 && (
-            <StepItems items={items} currency={account.currency} onAdd={addItem} onRemove={removeItem} />
-          )}
-          {step === 2 && (
             <StepLook
               template={template}
               accent={accent}
               catalogName={catalogName}
+              liveUrl={liveUrl}
               onTemplate={setTemplate}
               onAccent={setAccent}
-              onCatalogName={setCatalogName}
+              onCatalogName={handleCatalogName}
             />
           )}
-          {step === 3 && (
+          {step === 2 && (
             <StepAddress
               subdomain={subdomain}
               rootDomain={rootDomain}
+              liveUrl={liveUrl}
               availability={availability}
-              onSubdomain={(value) => setSubdomain(normalizeSlug(value))}
+              suggestions={suggestions}
+              onSubdomain={handleSubdomain}
+              onSlugFocus={() => setSlugDirty(true)}
+              onSuggestion={applySuggestion}
               orderEmail={orderEmail}
               onOrderEmail={setOrderEmail}
-              itemCount={items.length}
               templateName={templateMeta(template).name}
               trialDaysLeft={trialDaysLeft}
               planLabel={planLabel}
               errorMessage={publishError}
             />
           )}
-
-          {step === 3 && oversizedPhotoCount > 0 ? (
-            <p className="mt-4 text-[13px] text-[#86868b]">
-              {oversizedPhotoCount} {oversizedPhotoCount === 1 ? "photo is" : "photos are"} too
-              large to save and won&apos;t be included — the {oversizedPhotoCount === 1 ? "item" : "items"} will
-              still publish without {oversizedPhotoCount === 1 ? "it" : "them"}.
-            </p>
-          ) : null}
-
-          {step === 1 && publishError ? (
-            <p className="mt-4 rounded-lg bg-[#fdecea] px-3.5 py-2.5 text-[13px] text-[#b2432b]">
-              {publishError}
-            </p>
-          ) : null}
 
           <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             {step > 1 && (
@@ -227,7 +200,7 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
               onClick={goNext}
               disabled={
                 isPending ||
-                (step === 3 && (availability === "taken" || availability === "invalid"))
+                (step === 2 && (availability === "taken" || availability === "invalid"))
               }
               className="w-full rounded-full bg-[#0b5fce] px-7 py-3 text-[15px] font-medium text-white disabled:opacity-60 sm:w-auto"
             >
@@ -238,7 +211,7 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
         </div>
 
         <div
-          className={`flex items-start justify-center border-t border-[#e8e8ed] bg-[#f5f5f7] px-4 pb-14 pt-7 sm:px-6 md:border-l md:border-t-0 ${
+          className={`flex min-h-[min(72vh,780px)] flex-col border-t border-[#e8e8ed] bg-[#f5f5f7] p-4 sm:p-5 md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:min-h-0 md:border-l md:border-t-0 ${
             mobileView === "edit" ? "hidden md:flex" : "flex"
           }`}
         >
@@ -247,7 +220,6 @@ export function BuilderClient({ account, trialDaysLeft, planLabel, ownerEmail, r
             accent={accent}
             catalogName={catalogName}
             currency={account.currency}
-            items={items}
             liveUrl={liveUrl}
           />
         </div>

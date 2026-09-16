@@ -41,6 +41,7 @@ export const metadata: Metadata = {
 
 export const viewport = {
   themeColor: "#0b5fce",
+  viewportFit: "cover" as const,
 };
 
 // NOTE: this layout wraps the marketing site, /admin and /auth. Tenant

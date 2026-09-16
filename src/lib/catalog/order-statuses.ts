@@ -333,3 +333,14 @@ export function formatOrderDateTime(iso: string): string {
     minute: "2-digit",
   });
 }
+
+export type StatusIconKind = "clock" | "package" | "check" | "truck";
+
+/** Pick a calm receipt icon from the status id or label. */
+export function statusIconKind(id: string, label = ""): StatusIconKind {
+  const hay = `${id} ${label}`.toLowerCase();
+  if (/(deliver|ship|truck|out_for|gone)/.test(hay)) return "truck";
+  if (/(done|complete|collect|ready|confirm)/.test(hay)) return "check";
+  if (/(new|schedul|pending|hold|wait|receiv)/.test(hay)) return "clock";
+  return "package";
+}

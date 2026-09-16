@@ -1,0 +1,9 @@
+name,sku,price,category,variant,variant group,description
+Espresso,CF-ESP,12.00,Coffee,Regular,CF-ESP,Single shot
+Espresso,CF-ESP,16.00,Coffee,Large,CF-ESP,Single shot
+Iced Latte,CF-LAT,18.00,Coffee,Regular,CF-LAT,Milk coffee over ice
+Iced Latte,CF-LAT,22.00,Coffee,Large,CF-LAT,Milk coffee over ice
+Chicken Shawarma,FD-SHW,28.00,Mains,Regular,FD-SHW,Wrapped with garlic sauce
+Chicken Shawarma,FD-SHW,35.00,Mains,Large,FD-SHW,Wrapped with garlic sauce
+Hummus Plate,FD-HUM,18.00,Sides,,,Chickpeas tahini and olive oil
+Sparkling Water,DR-SPK,8.00,Drinks,,,330ml bottle

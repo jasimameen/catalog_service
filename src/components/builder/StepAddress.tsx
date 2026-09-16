@@ -5,26 +5,32 @@ export type SlugAvailability = "idle" | "checking" | "available" | "taken" | "in
 interface StepAddressProps {
   subdomain: string;
   rootDomain: string;
+  liveUrl: string;
   availability: SlugAvailability;
+  suggestions: string[];
   onSubdomain: (value: string) => void;
+  onSlugFocus: () => void;
+  onSuggestion: (slug: string) => void;
   orderEmail: string;
   onOrderEmail: (value: string) => void;
-  itemCount: number;
   templateName: string;
   trialDaysLeft: number;
   planLabel?: string;
   errorMessage: string | null;
 }
 
-/** Step 3 — "Where should it live?" Subdomain + availability, order email, summary. */
+/** Step 2 — "Where should it live?" Subdomain + availability, order email, summary. */
 export function StepAddress({
   subdomain,
   rootDomain,
+  liveUrl,
   availability,
+  suggestions,
   onSubdomain,
+  onSlugFocus,
+  onSuggestion,
   orderEmail,
   onOrderEmail,
-  itemCount,
   templateName,
   trialDaysLeft,
   planLabel,
@@ -43,11 +49,35 @@ export function StepAddress({
         <input
           value={subdomain}
           onChange={(e) => onSubdomain(e.target.value)}
-          className="w-full rounded-xl border border-[#d2d2d7] px-3.5 py-3 text-[17px] font-semibold tracking-[-0.01em] outline-none sm:w-[200px]"
+          onFocus={onSlugFocus}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="url"
+          aria-label="Catalog address"
+          className="w-full min-h-12 rounded-xl border border-[#d2d2d7] px-3.5 py-3 text-[17px] font-semibold tracking-[-0.01em] outline-none sm:w-[200px]"
         />
         <span className="text-[17px] text-[#6e6e73]">.{rootDomain}</span>
       </div>
+      <p className="mt-2 break-all text-[13px] text-[#6e6e73]">{liveUrl}</p>
       <AvailabilityNote availability={availability} />
+      {availability === "taken" && suggestions.length > 0 ? (
+        <div className="mt-3">
+          <p className="text-[13px] text-[#6e6e73]">Try one of these</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {suggestions.map((alt) => (
+              <button
+                key={alt}
+                type="button"
+                onClick={() => onSuggestion(alt)}
+                className="min-h-11 rounded-full border border-[#d2d2d7] bg-white px-3.5 text-[13px] font-medium text-[#1d1d1f]"
+              >
+                {alt}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-8 rounded-2xl bg-[#f5f5f7] p-5">
         <p className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
@@ -69,7 +99,7 @@ export function StepAddress({
 
       <div className="mt-6 flex flex-col gap-2">
         {[
-          { label: "Items", value: String(itemCount) },
+          { label: "Items", value: "Upload after publish" },
           { label: "Template", value: templateName },
           { label: "Plan", value: planLabel ?? `Trial · ${trialDaysLeft} days left` },
         ].map((row) => (
@@ -100,7 +130,7 @@ function AvailabilityNote({ availability }: { availability: SlugAvailability }) 
     return <p className="mt-2.5 text-[13px] text-[#1e9e4a]">Available</p>;
   }
   if (availability === "taken") {
-    return <p className="mt-2.5 text-[13px] text-[#b2432b]">That address is taken</p>;
+    return <p className="mt-2.5 text-[13px] text-[#b2432b]">This address is taken</p>;
   }
   if (availability === "invalid") {
     return (
