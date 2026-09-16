@@ -8,6 +8,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { generateItemCode } from "@/app/admin/_lib/urls";
 import type { CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
 import { parseOptionsFromForm } from "@/lib/catalog/item-options";
+import { MERCHANDISING_SQL_HINT, parseItemImageFit } from "@/lib/catalog/merchandising";
 
 const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
 const PHOTO_EXT: Record<string, string> = {
@@ -131,6 +132,8 @@ export async function addItem(
   const rounded = Math.round(price * 100) / 100;
 
   const options = parseOptionsFromForm(formData.get("options"));
+  const featured = formData.get("featured") === "1";
+  const imageFit = parseItemImageFit(formData.get("imageFit"));
 
   const { error } = await supabase.from("catalog_items").insert({
     catalog_id: catalogId,
@@ -143,12 +146,17 @@ export async function addItem(
     description,
     barcode,
     options,
+    featured,
+    image_fit: imageFit,
     visible: true,
     position,
   });
 
     if (error) {
     console.error("addItem: insert failed", error);
+    if (error.message?.includes("featured") || error.message?.includes("image_fit")) {
+      return { error: MERCHANDISING_SQL_HINT };
+    }
     if (error.code === "42703" || error.message?.includes("options")) {
       return { error: "Run supabase/restaurant.sql in the Supabase SQL editor, then try again." };
     }
@@ -164,6 +172,8 @@ export async function addItem(
         description,
         barcode,
         options,
+        featured,
+        image_fit: imageFit,
         visible: true,
         position,
       });
@@ -234,6 +244,121 @@ export async function updateItemOptions(
 
   revalidateItems(catalogId);
   return { saved: true };
+}
+
+export async function toggleItemFeatured(
+  catalogId: string,
+  itemId: string,
+  featured: boolean,
+): Promise<{ error?: string }> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+
+  const supabase = await getServerSupabase();
+  const { data, error } = await supabase
+    .from("catalog_items")
+    .update({ featured })
+    .eq("id", itemId)
+    .eq("catalog_id", catalogId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("toggleItemFeatured: update failed", error);
+    if (error?.code === "42703" || error?.message?.includes("featured")) {
+      return { error: MERCHANDISING_SQL_HINT };
+    }
+    return { error: "Could not update featured. Try again." };
+  }
+
+  revalidateItems(catalogId);
+  return {};
+}
+
+export type UpdateItemState = { error?: string; saved?: boolean } | null;
+
+export async function updateItem(
+  catalogId: string,
+  itemId: string,
+  _prevState: UpdateItemState,
+  formData: FormData,
+): Promise<UpdateItemState> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+
+  const name = String(formData.get("name") ?? "").trim().slice(0, 200);
+  const priceRaw = String(formData.get("price") ?? "").trim();
+  const photo = formData.get("photo");
+  let image = String(formData.get("image") ?? "").trim();
+  if (photo instanceof File && photo.size > 0) {
+    const uploaded = await uploadItemPhoto(catalogId, photo);
+    if (uploaded.error || !uploaded.url) return { error: uploaded.error ?? "Could not upload the photo." };
+    image = uploaded.url;
+  }
+  const category = String(formData.get("category") ?? "").trim().slice(0, 80);
+  const pack = String(formData.get("pack") ?? "").trim().slice(0, 80);
+  const description = String(formData.get("description") ?? "").trim().slice(0, 2000);
+  const barcodeRaw = String(formData.get("barcode") ?? "").trim().slice(0, 64);
+  const barcode = barcodeRaw || null;
+  const featured = formData.get("featured") === "1";
+  const imageFit = parseItemImageFit(formData.get("imageFit"));
+
+  const price = Number(priceRaw);
+  if (!name) return { error: "Name is required." };
+  if (!priceRaw || Number.isNaN(price) || price < 0) return { error: "Enter a valid price." };
+
+  const supabase = await getServerSupabase();
+  const { data, error } = await supabase
+    .from("catalog_items")
+    .update({
+      name,
+      price: Math.round(price * 100) / 100,
+      image,
+      category,
+      pack,
+      description,
+      barcode,
+      featured,
+      image_fit: imageFit,
+    })
+    .eq("id", itemId)
+    .eq("catalog_id", catalogId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateItem: update failed", error);
+    if (error?.code === "42703" || error?.message?.includes("featured") || error?.message?.includes("image_fit")) {
+      return { error: MERCHANDISING_SQL_HINT };
+    }
+    return { error: "Could not save the item. Try again." };
+  }
+
+  revalidateItems(catalogId);
+  return { saved: true };
+}
+
+export async function deleteItem(
+  catalogId: string,
+  itemId: string,
+): Promise<{ error?: string; deleted?: boolean }> {
+  const catalog = await ownedCatalog(catalogId);
+  if (!catalog) return { error: "Catalog not found." };
+
+  const supabase = await getServerSupabase();
+  const { error } = await supabase
+    .from("catalog_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("catalog_id", catalogId);
+
+  if (error) {
+    console.error("deleteItem: delete failed", error);
+    return { error: "Could not delete the item. Try again." };
+  }
+
+  revalidateItems(catalogId);
+  return { deleted: true };
 }
 
 export type PasteImportState = { error?: string; imported?: number } | null;

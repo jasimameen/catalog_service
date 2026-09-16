@@ -11,6 +11,7 @@ import { LookSettingsForm } from "./LookSettingsForm";
 import { OrderingCard } from "@/components/admin/OrderingCard";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
+import { parseBanners, parseImageFit } from "@/lib/catalog/merchandising";
 import type { OrderRow } from "@/lib/supabase/types";
 
 function startOfMonthIso(): string {
@@ -160,6 +161,13 @@ export default async function CatalogDashboardPage({
           logo={catalog.logo ?? ""}
           tagline={catalog.tagline ?? ""}
           about={catalog.about ?? ""}
+          banners={parseBanners(catalog.banners)}
+          imageFit={parseImageFit(catalog.image_fit)}
+          phone={catalog.phone ?? ""}
+          address={catalog.address ?? ""}
+          hours={catalog.hours ?? ""}
+          whatsapp={catalog.whatsapp ?? ""}
+          instagram={catalog.instagram ?? ""}
         />
 
         <OrderingCard

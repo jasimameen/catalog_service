@@ -146,15 +146,19 @@ export function CartProvider({
   }, [lineMap, hydrated, catalogId]);
 
   const setQuantity = useCallback((code: string, qty: number) => {
+    const item = items.find((p) => p.code === code);
+    if (item && item.available === false) return;
     setLineMap((prev) => writeLine(prev, code, [], qty));
-  }, []);
+  }, [items]);
 
   const increment = useCallback((code: string) => {
+    const item = items.find((p) => p.code === code);
+    if (item && item.available === false) return;
     setLineMap((prev) => {
       const current = prev[code]?.qty ?? 0;
       return writeLine(prev, code, prev[code]?.options ?? [], current + 1);
     });
-  }, []);
+  }, [items]);
 
   const decrement = useCallback((code: string) => {
     setLineMap((prev) => {
@@ -164,21 +168,25 @@ export function CartProvider({
   }, []);
 
   const addLine = useCallback((code: string, options: SelectedOption[], qty = 1) => {
+    const item = items.find((p) => p.code === code);
+    if (item && item.available === false) return;
     const add = Math.max(1, Math.floor(qty));
     setLineMap((prev) => {
       const key = lineKey(code, normalizeOptions(options));
       const current = prev[key]?.qty ?? 0;
       return writeLine(prev, code, options, current + add);
     });
-  }, []);
+  }, [items]);
 
   const incrementLine = useCallback((key: string) => {
     setLineMap((prev) => {
       const line = prev[key];
       if (!line) return prev;
+      const item = items.find((p) => p.code === line.code);
+      if (item && item.available === false) return prev;
       return writeLine(prev, line.code, line.options, line.qty + 1);
     });
-  }, []);
+  }, [items]);
 
   const decrementLine = useCallback((key: string) => {
     setLineMap((prev) => {

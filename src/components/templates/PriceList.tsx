@@ -59,14 +59,18 @@ export function PriceListTemplate({
                 key={item.code}
                 type="button"
                 onClick={() => setSelected(item)}
-                className="grid w-full grid-cols-[90px_minmax(0,2fr)_90px] items-baseline gap-3 border-b border-[#f0f0f4] py-2.5 text-left text-[13px] sm:grid-cols-[110px_minmax(0,2fr)_1fr_90px]"
+                className={`grid w-full grid-cols-[90px_minmax(0,2fr)_90px] items-baseline gap-3 border-b border-[#f0f0f4] py-2.5 text-left text-[13px] sm:grid-cols-[110px_minmax(0,2fr)_1fr_90px] ${
+                  item.available === false ? "opacity-55" : ""
+                }`}
               >
                 <span className="text-[var(--cat-muted)]">{item.code}</span>
                 <span className="font-medium text-[var(--cat-ink)]">
                   {item.name}
-                  {qty > 0 && (
+                  {item.available === false ? (
+                    <span className="ml-1.5 text-[var(--cat-muted)]">Unavailable</span>
+                  ) : qty > 0 ? (
                     <span className="ml-1.5 text-[var(--cat-accent)]">× {qty} in order</span>
-                  )}
+                  ) : null}
                 </span>
                 <span className="hidden text-[var(--cat-muted)] sm:block">{item.pack || "1 pc"}</span>
                 <span className="text-right font-semibold text-[var(--cat-ink)]">

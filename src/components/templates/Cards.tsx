@@ -8,6 +8,7 @@ import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
 /** Large editorial image cards — one or two across. */
 export function CardsTemplate({
@@ -34,15 +35,18 @@ export function CardsTemplate({
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
             {catalog.items.map((item, index) => {
               const qty = quantities[item.code] ?? 0;
+              const available = isItemAvailable(item);
               return (
                 <article
                   key={item.code}
-                  className="overflow-hidden rounded-[18px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm"
+                  className={`overflow-hidden rounded-[18px] border border-[var(--cat-border)] bg-[var(--cat-surface)] shadow-sm ${
+                    available ? "" : "opacity-70"
+                  }`}
                 >
                   <button
                     type="button"
                     onClick={() => setSelected(item)}
-                    className="relative block aspect-[16/10] w-full bg-[var(--cat-photo-bg)]"
+                    className="relative block aspect-[4/3] w-full bg-[var(--cat-photo-bg)]"
                     aria-label={`View details for ${item.name}`}
                   >
                     {item.image ? (
@@ -51,11 +55,16 @@ export function CardsTemplate({
                         src={item.image}
                         alt={item.name}
                         width={960}
-                        height={600}
+                        height={720}
                         loading={index < 2 ? "eager" : "lazy"}
                         decoding="async"
-                        className="absolute inset-0 h-full w-full object-contain"
+                        className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
                       />
+                    ) : null}
+                    {!available ? (
+                      <span className="absolute inset-x-3 bottom-3 rounded-full bg-black/65 px-3 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-white">
+                        Unavailable
+                      </span>
                     ) : null}
                   </button>
                   <div className="px-5 pb-5 pt-4">
@@ -76,13 +85,17 @@ export function CardsTemplate({
                       <span className="text-[18px] font-semibold text-[var(--cat-ink)]">
                         {formatMoney(item.price, catalog.currency)}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
-                        className="min-h-11 rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
-                      >
-                        {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-                      </button>
+                      {available ? (
+                        <button
+                          type="button"
+                          onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
+                          className="min-h-11 rounded-full bg-[var(--cat-accent)] px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
+                        >
+                          {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+                        </button>
+                      ) : (
+                        <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
+                      )}
                     </div>
                   </div>
                 </article>

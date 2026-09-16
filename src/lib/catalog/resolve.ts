@@ -8,6 +8,7 @@ import type { CatalogItemRow, CatalogRow } from "@/lib/supabase/types";
 import { parseCheckoutFields } from "./checkout-fields";
 import { parseFulfillmentModes, resolveCheckoutForm } from "./checkout-form";
 import { parseItemOptions } from "./item-options";
+import { parseBanners, parseImageFit, parseItemImageFit } from "./merchandising";
 import { STOREFRONT_CATALOG_CACHE_TAG } from "./storefront-cache";
 import { isTemplateKey } from "./templates";
 
@@ -60,6 +61,7 @@ async function fetchLiveById(
 
 function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): StorefrontCatalog {
   const checkoutFields = parseCheckoutFields(catalogRow.checkout_fields);
+  const imageFit = parseImageFit(catalogRow.image_fit);
   return {
     id: catalogRow.id,
     name: catalogRow.name,
@@ -73,6 +75,13 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
     logo: catalogRow.logo ?? "",
     tagline: catalogRow.tagline ?? "",
     about: catalogRow.about ?? "",
+    banners: parseBanners(catalogRow.banners),
+    imageFit,
+    phone: catalogRow.phone ?? "",
+    address: catalogRow.address ?? "",
+    hours: catalogRow.hours ?? "",
+    whatsapp: catalogRow.whatsapp ?? "",
+    instagram: catalogRow.instagram ?? "",
     items: (items ?? []).map((row) => ({
       id: row.id,
       code: row.code,
@@ -83,6 +92,9 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
       pack: row.pack,
       image: row.image,
       options: parseItemOptions(row.options),
+      featured: Boolean(row.featured),
+      available: row.visible !== false,
+      imageFit: parseItemImageFit(row.image_fit) ?? imageFit,
     })),
   };
 }
@@ -131,7 +143,6 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
     .from("catalog_items")
     .select("*")
     .eq("catalog_id", catalogRow.id)
-    .eq("visible", true)
     .order("position", { ascending: true });
 
   return toStorefront(catalogRow, (items as CatalogItemRow[] | null) ?? []);
@@ -139,7 +150,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host-v3"],
+  ["storefront-catalog-by-host-v4"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

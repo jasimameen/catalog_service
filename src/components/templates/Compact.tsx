@@ -7,6 +7,7 @@ import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
 /** Dense rows for long trade lists — code, name, price, stepper. */
 export function CompactTemplate({
@@ -127,7 +128,7 @@ function CompactRow({
             height={44}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-contain"
+            className={`h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
       </button>
@@ -144,7 +145,9 @@ function CompactRow({
         <p className="text-[10px] uppercase tracking-wide text-[var(--cat-muted)]">{currency}</p>
         <p className="text-sm font-bold text-[var(--cat-ink)]">{item.price.toFixed(2)}</p>
       </div>
-      {optioned ? (
+      {!isItemAvailable(item) ? (
+        <span className="shrink-0 text-[11px] font-medium text-[var(--cat-muted)]">Unavailable</span>
+      ) : optioned ? (
         <button
           type="button"
           onClick={onIncrement}

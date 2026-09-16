@@ -1,18 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { CartProvider } from "@/lib/catalog/cart-context";
 import { TEMPLATE_COMPONENTS } from "@/components/templates";
 import { CartPanel } from "./CartPanel";
 import { StorefrontWatermark } from "./StorefrontWatermark";
+import { StorefrontHero } from "./StorefrontHero";
+import { FeaturedStrip } from "./FeaturedStrip";
+import { CategoryChips } from "./CategoryChips";
+import { StorefrontFooter } from "./StorefrontFooter";
 import type { OrderResult } from "@/lib/catalog/order-types";
 import { formatMoney } from "@/lib/catalog/currency";
 
 export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [order, setOrder] = useState<OrderResult | null>(null);
+  const [category, setCategory] = useState("");
   const Template = TEMPLATE_COMPONENTS[catalog.template] ?? TEMPLATE_COMPONENTS.grid;
+  const viewCatalog = useMemo<StorefrontCatalog>(() => {
+    if (!category) return catalog;
+    return {
+      ...catalog,
+      items: catalog.items.filter((item) => item.category.trim() === category),
+    };
+  }, [catalog, category]);
 
   return (
     <CartProvider catalogId={catalog.id} items={catalog.items}>
@@ -48,8 +60,11 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
         </main>
       ) : (
         <main>
-          <Template catalog={catalog} onOpenCart={() => setCartOpen(true)} />
-          <StorefrontWatermark />
+          <StorefrontHero banners={catalog.banners} />
+          <FeaturedStrip catalog={catalog} />
+          <CategoryChips items={catalog.items} selected={category} onSelect={setCategory} />
+          <Template catalog={viewCatalog} onOpenCart={() => setCartOpen(true)} />
+          <StorefrontFooter catalog={catalog} />
           <CartPanel
             catalogId={catalog.id}
             currency={catalog.currency}

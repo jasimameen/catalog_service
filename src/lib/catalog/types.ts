@@ -5,8 +5,10 @@
 // static seed data.
 
 import type {
+  CatalogBanner,
   CheckoutFields,
   CheckoutFormField,
+  ImageFit,
   ItemOptionGroup,
   OrderFulfillment,
 } from "@/lib/supabase/types";
@@ -33,6 +35,10 @@ export interface StorefrontItem {
   image: string;
   /** Empty = trade-catalog behavior (no size/extras picker). */
   options: ItemOptionGroup[];
+  featured: boolean;
+  /** False when Admin turns Visible off — shown as Unavailable, not hidden. */
+  available: boolean;
+  imageFit: ImageFit;
 }
 
 export interface StorefrontCatalog {
@@ -49,5 +55,12 @@ export interface StorefrontCatalog {
   logo: string;
   tagline: string;
   about: string;
+  banners: CatalogBanner[];
+  imageFit: ImageFit;
+  phone: string;
+  address: string;
+  hours: string;
+  whatsapp: string;
+  instagram: string;
   items: StorefrontItem[];
 }

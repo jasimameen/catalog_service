@@ -7,6 +7,7 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import { QuantityStepper } from "./QuantityStepper";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
 const QUICK_MULTIPLES = [6, 12, 24];
 
@@ -89,7 +90,7 @@ export function ProductDetailModal({
               width={584}
               height={480}
               decoding="async"
-              className="absolute inset-0 h-full w-full object-contain"
+              className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-[var(--cat-muted)]">
@@ -176,7 +177,11 @@ export function ProductDetailModal({
           </div>
 
           <div className="mt-auto space-y-2 pt-2">
-            {optioned ? (
+            {!isItemAvailable(item) ? (
+              <p className="min-h-11 rounded-[9px] bg-slate-100 py-2.5 text-center text-sm font-semibold text-[var(--cat-muted)]">
+                Unavailable
+              </p>
+            ) : optioned ? (
               <>
                 {existing ? (
                   <QuantityStepper

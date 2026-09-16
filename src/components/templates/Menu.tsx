@@ -8,8 +8,9 @@ import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
-/** Sectioned list, no photos required — kitchens, services, weekly supply lists. */
+/** Sectioned food menu — photos use cover by default. */
 export function MenuTemplate({
   catalog,
   onOpenCart,
@@ -65,11 +66,13 @@ export function MenuTemplate({
                 </p>
                 {items.map((item) => {
                   const qty = quantities[item.code] ?? 0;
+                  const available = isItemAvailable(item);
                   return (
                     <button
                       key={item.code}
                       type="button"
                       onClick={() => {
+                        if (!available) return;
                         if (hasItemOptions(item)) {
                           setSelected(item);
                           return;
@@ -77,15 +80,44 @@ export function MenuTemplate({
                         if (qty > 0) decrement(item.code);
                         else increment(item.code);
                       }}
-                      className="flex min-h-11 w-full items-center gap-2 border-b border-dotted border-[#ddd5c5] py-2.5 text-left"
+                      className={`flex min-h-14 w-full items-center gap-3 border-b border-dotted border-[#ddd5c5] py-2.5 text-left ${
+                        available ? "" : "opacity-55"
+                      }`}
                     >
-                      <span
-                        className={`text-[15px] font-medium ${qty > 0 ? "text-[var(--cat-accent)]" : "text-[var(--cat-ink)]"}`}
-                      >
-                        {item.name}
-                        {qty > 0 && <span className="ml-1 text-[13px]">× {qty}</span>}
+                      <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#f3eee4]">
+                        {item.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.image}
+                            alt=""
+                            width={56}
+                            height={56}
+                            loading="lazy"
+                            decoding="async"
+                            className={`h-full w-full ${imageFitClass(item.imageFit)}`}
+                          />
+                        ) : null}
                       </span>
-                      <span className="flex-1" />
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className={`block truncate text-[15px] font-medium ${
+                            qty > 0 ? "text-[var(--cat-accent)]" : "text-[var(--cat-ink)]"
+                          }`}
+                        >
+                          {item.name}
+                          {qty > 0 && <span className="ml-1 text-[13px]">× {qty}</span>}
+                        </span>
+                        {item.description ? (
+                          <span className="mt-0.5 block truncate text-[12px] text-[#8a8171]">
+                            {item.description}
+                          </span>
+                        ) : null}
+                        {!available ? (
+                          <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-wide text-[#8a8171]">
+                            Unavailable
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="text-[15px] font-semibold text-[var(--cat-ink)]">
                         {formatMoney(item.price, catalog.currency)}
                       </span>

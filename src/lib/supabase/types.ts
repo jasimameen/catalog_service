@@ -25,6 +25,12 @@ export type LsStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type CheckoutFieldMode = "required" | "optional" | "hidden";
 export type CheckoutFormFieldType = "text" | "tel" | "textarea" | "select" | "number";
 export type ItemOptionType = "single" | "multi";
+export type ImageFit = "cover" | "contain";
+
+export type CatalogBanner = {
+  image: string;
+  alt: string;
+};
 
 export type ItemOptionValue = {
   name: string;
@@ -99,6 +105,13 @@ export type CatalogRow = {
   logo: string | null;
   tagline: string | null;
   about: string | null;
+  banners?: CatalogBanner[] | unknown;
+  image_fit?: ImageFit | string | null;
+  phone?: string | null;
+  address?: string | null;
+  hours?: string | null;
+  whatsapp?: string | null;
+  instagram?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -117,6 +130,8 @@ export type CatalogItemRow = {
   visible: boolean;
   barcode: string | null;
   options?: ItemOptionGroup[] | unknown;
+  featured?: boolean;
+  image_fit?: ImageFit | string | null;
   created_at: string;
 };
 

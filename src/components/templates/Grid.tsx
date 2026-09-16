@@ -7,6 +7,7 @@ import { CartButton } from "@/components/storefront/CartButton";
 import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
 const QUICK_MULTIPLES = [6, 12, 24];
 
@@ -165,7 +166,7 @@ function GridCard({
             height={480}
             loading={eager ? "eager" : "lazy"}
             decoding="async"
-            className="absolute inset-0 h-full w-full object-contain"
+            className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
       </button>
@@ -194,7 +195,11 @@ function GridCard({
           )}
         </div>
 
-        {hasItemOptions(item) ? (
+        {!isItemAvailable(item) ? (
+          <p className="min-h-11 rounded-[9px] bg-slate-100 py-2 text-center text-sm font-semibold text-[var(--cat-muted)]">
+            Unavailable
+          </p>
+        ) : hasItemOptions(item) ? (
           <button
             type="button"
             onClick={() => onSelect(item)}

@@ -8,6 +8,7 @@ import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
 /** Large imagery, generous spacing, for a short, considered list. */
 export function LookbookTemplate({
@@ -58,7 +59,7 @@ export function LookbookTemplate({
                         height={600}
                         loading={index < 2 ? "eager" : "lazy"}
                         decoding="async"
-                        className="absolute inset-0 h-full w-full object-contain"
+                        className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
                       />
                     ) : null}
                   </button>
@@ -74,13 +75,17 @@ export function LookbookTemplate({
                     <span className="text-[17px] font-semibold text-[var(--cat-ink)]">
                       {formatMoney(item.price, catalog.currency)}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
-                      className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
-                    >
-                      {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-                    </button>
+                    {isItemAvailable(item) ? (
+                      <button
+                        type="button"
+                        onClick={() => (hasItemOptions(item) ? setSelected(item) : increment(item.code))}
+                        className="min-h-11 rounded-full border border-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-[var(--cat-ink)] hover:bg-slate-50"
+                      >
+                        {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+                      </button>
+                    ) : (
+                      <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
+                    )}
                   </div>
                 </div>
               );

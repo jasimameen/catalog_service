@@ -9,6 +9,12 @@ import { checkoutFieldsFromForm } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
 import { getServiceClient } from "@/lib/supabase/service";
 import type { CatalogTemplate } from "@/lib/supabase/types";
+import {
+  MAX_BANNERS,
+  MERCHANDISING_SQL_HINT,
+  parseBannersFromForm,
+  parseImageFit,
+} from "@/lib/catalog/merchandising";
 
 export type LookState = { error?: string; saved?: boolean } | null;
 
@@ -92,6 +98,24 @@ export async function updateCatalogLook(
     logo = uploaded.url;
   }
 
+  const banners = parseBannersFromForm(formData.get("banners"));
+  for (const file of formData.getAll("bannerFiles")) {
+    if (!(file instanceof File) || file.size === 0) continue;
+    if (banners.length >= MAX_BANNERS) break;
+    const uploaded = await uploadLogo(catalogId, file);
+    if (uploaded.error || !uploaded.url) {
+      return { error: uploaded.error ?? "Could not upload the banner." };
+    }
+    banners.push({ image: uploaded.url, alt: "" });
+  }
+
+  const imageFit = parseImageFit(formData.get("imageFit"));
+  const phone = String(formData.get("companyPhone") ?? "").trim().slice(0, 40);
+  const address = String(formData.get("companyAddress") ?? "").trim().slice(0, 200);
+  const hours = String(formData.get("companyHours") ?? "").trim().slice(0, 200);
+  const whatsapp = String(formData.get("companyWhatsapp") ?? "").trim().slice(0, 40);
+  const instagram = String(formData.get("companyInstagram") ?? "").trim().slice(0, 80);
+
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from("catalogs")
@@ -102,6 +126,13 @@ export async function updateCatalogLook(
       logo: logo || null,
       tagline: tagline || null,
       about: about || null,
+      banners,
+      image_fit: imageFit,
+      phone: phone || null,
+      address: address || null,
+      hours: hours || null,
+      whatsapp: whatsapp || null,
+      instagram: instagram || null,
     })
     .eq("id", catalogId)
     .select("slug")
@@ -111,8 +142,16 @@ export async function updateCatalogLook(
     console.error("updateCatalogLook failed", error);
     if (
       error?.code === "42703" ||
-      error?.code === "23514" ||
       error?.code === "PGRST204" ||
+      error?.message?.includes("banners") ||
+      error?.message?.includes("image_fit") ||
+      error?.message?.includes("whatsapp") ||
+      error?.message?.includes("instagram")
+    ) {
+      return { error: MERCHANDISING_SQL_HINT };
+    }
+    if (
+      error?.code === "23514" ||
       error?.message?.includes("logo") ||
       error?.message?.includes("tagline") ||
       error?.message?.includes("about")

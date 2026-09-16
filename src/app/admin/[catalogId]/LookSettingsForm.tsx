@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useActionState } from "react";
 import { TEMPLATES, ACCENT_COLORS } from "@/lib/catalog/templates";
 import { CHECKOUT_FIELD_KEYS, CHECKOUT_FIELD_LABELS } from "@/lib/catalog/checkout-fields";
-import type { CatalogTemplate, CheckoutFields } from "@/lib/supabase/types";
+import type { CatalogBanner, CatalogTemplate, CheckoutFields, ImageFit } from "@/lib/supabase/types";
+import { MAX_BANNERS } from "@/lib/catalog/merchandising";
 import { updateCatalogLook, type LookState } from "./actions";
 
 const PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
@@ -32,6 +33,13 @@ export function LookSettingsForm({
   logo,
   tagline,
   about,
+  banners: initialBanners,
+  imageFit,
+  phone,
+  address,
+  hours,
+  whatsapp,
+  instagram,
 }: {
   catalogId: string;
   template: CatalogTemplate;
@@ -40,6 +48,13 @@ export function LookSettingsForm({
   logo: string;
   tagline: string;
   about: string;
+  banners: CatalogBanner[];
+  imageFit: ImageFit;
+  phone: string;
+  address: string;
+  hours: string;
+  whatsapp: string;
+  instagram: string;
 }) {
   const [state, formAction, pending] = useActionState<LookState, FormData>(
     updateCatalogLook.bind(null, catalogId),
@@ -47,6 +62,8 @@ export function LookSettingsForm({
   );
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [banners, setBanners] = useState<CatalogBanner[]>(initialBanners);
+  const [bannerError, setBannerError] = useState<string | null>(null);
   const accents = ACCENT_COLORS.includes(accent) ? ACCENT_COLORS : [...ACCENT_COLORS, accent];
   const shownLogo = logoPreview ?? logo;
 
@@ -132,6 +149,158 @@ export function LookSettingsForm({
             placeholder="A short line about your shop"
             className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
           />
+        </div>
+
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
+            Hero banners
+          </p>
+          <p className="mb-3 text-xs text-[var(--cat-muted)]">
+            Shown at the top of the storefront. First image is the hero. Up to {MAX_BANNERS}.
+          </p>
+          <input type="hidden" name="banners" value={JSON.stringify(banners)} />
+          {banners.length > 0 ? (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {banners.map((banner, index) => (
+                <div key={`${banner.image}-${index}`} className="relative h-16 w-24 overflow-hidden rounded-lg bg-[var(--cat-photo-bg)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- merchant banner URL */}
+                  <img src={banner.image} alt="" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setBanners((prev) => prev.filter((_, i) => i !== index))}
+                    className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-[10px] font-medium text-white"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {banners.length < MAX_BANNERS ? (
+            <input
+              name="bannerFiles"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                for (const file of files) {
+                  if (file.size > MAX_LOGO_BYTES) {
+                    setBannerError("Each banner must be 4MB or smaller.");
+                    e.target.value = "";
+                    return;
+                  }
+                  if (file.type && !PHOTO_TYPES.has(file.type)) {
+                    setBannerError("Use JPEG, PNG, WebP, or GIF banners.");
+                    e.target.value = "";
+                    return;
+                  }
+                }
+                setBannerError(null);
+              }}
+              className="min-w-0 w-full text-[13px] text-[var(--cat-ink)] file:mr-2 file:rounded-lg file:border-0 file:bg-[#f5f5f7] file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-[var(--cat-ink)]"
+            />
+          ) : (
+            <p className="text-xs text-[var(--cat-muted)]">Maximum banners added.</p>
+          )}
+          {bannerError ? <p className="m-0 mt-1 text-xs text-[#b2432b]">{bannerError}</p> : null}
+        </div>
+
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
+            Photo fit
+          </p>
+          <p className="mb-3 text-xs text-[var(--cat-muted)]">
+            Default for item photos. Cover fills the frame (best for food). Contain shows the whole photo.
+          </p>
+          <div className="flex gap-2">
+            {(["cover", "contain"] as const).map((fit) => (
+              <label
+                key={fit}
+                className="cursor-pointer rounded-[10px] border border-[#e8e8ed] px-3 py-2 text-[13px] font-medium capitalize has-[:checked]:border-[var(--cat-accent)]"
+              >
+                <input
+                  type="radio"
+                  name="imageFit"
+                  value={fit}
+                  defaultChecked={imageFit === fit}
+                  className="sr-only"
+                />
+                {fit}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#86868b]">
+            Footer
+          </p>
+          <p className="mb-3 text-xs text-[var(--cat-muted)]">
+            Shown under the menu. WhatsApp appears only if you add a number.
+          </p>
+          <label htmlFor="companyPhone" className="mb-1 block text-xs text-[#86868b]">
+            Phone
+          </label>
+          <input
+            id="companyPhone"
+            name="companyPhone"
+            defaultValue={phone}
+            maxLength={40}
+            placeholder="+974 3300 0000"
+            className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          <label htmlFor="companyAddress" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
+            Address
+          </label>
+          <input
+            id="companyAddress"
+            name="companyAddress"
+            defaultValue={address}
+            maxLength={200}
+            placeholder="Lusail, Doha"
+            className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          <label htmlFor="companyHours" className="mb-1 mt-3.5 block text-xs text-[#86868b]">
+            Hours
+          </label>
+          <textarea
+            id="companyHours"
+            name="companyHours"
+            defaultValue={hours}
+            maxLength={200}
+            rows={2}
+            placeholder="Daily 7:00 – 02:00"
+            className="w-full resize-none rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+          />
+          <div className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="companyWhatsapp" className="mb-1 block text-xs text-[#86868b]">
+                WhatsApp
+              </label>
+              <input
+                id="companyWhatsapp"
+                name="companyWhatsapp"
+                defaultValue={whatsapp}
+                maxLength={40}
+                placeholder="97433000000"
+                className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+              />
+            </div>
+            <div>
+              <label htmlFor="companyInstagram" className="mb-1 block text-xs text-[#86868b]">
+                Instagram
+              </label>
+              <input
+                id="companyInstagram"
+                name="companyInstagram"
+                defaultValue={instagram}
+                maxLength={80}
+                placeholder="@teaday"
+                className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
+              />
+            </div>
+          </div>
         </div>
 
         <div>

@@ -8,6 +8,7 @@ import { ProductDetailModal } from "@/components/storefront/ProductDetailModal";
 import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
+import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 
 /** First item as a hero, remaining items in a simple grid. */
 export function SpotlightTemplate({
@@ -105,7 +106,7 @@ function HeroCard({
             height={700}
             loading="eager"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-contain"
+            className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
       </button>
@@ -132,13 +133,17 @@ function HeroCard({
           <span className="text-[22px] font-semibold text-[var(--cat-ink)]">
             {formatMoney(item.price, currency)}
           </span>
-          <button
-            type="button"
-            onClick={onAdd}
-            className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
-          >
-            {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
-          </button>
+          {isItemAvailable(item) ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              className="rounded-full bg-[var(--cat-accent)] px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-90"
+            >
+              {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Choose options" : "Add to order"}
+            </button>
+          ) : (
+            <span className="text-[13px] font-medium text-[var(--cat-muted)]">Unavailable</span>
+          )}
         </div>
       </div>
     </div>
@@ -177,7 +182,7 @@ function SpotCard({
             height={480}
             loading={eager ? "eager" : "lazy"}
             decoding="async"
-            className="absolute inset-0 h-full w-full object-contain"
+            className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
           />
         ) : null}
       </button>
@@ -189,13 +194,17 @@ function SpotCard({
         <p className="mt-auto text-sm font-bold text-[var(--cat-ink)]">
           {formatMoney(item.price, currency)}
         </p>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
-        >
-          {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
-        </button>
+        {isItemAvailable(item) ? (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="w-full rounded-[9px] border border-[var(--cat-accent)] py-1.5 text-xs font-semibold text-[var(--cat-accent)] hover:bg-slate-50"
+          >
+            {qty > 0 ? `Added × ${qty}` : hasItemOptions(item) ? "Options" : "Add"}
+          </button>
+        ) : (
+          <p className="text-center text-xs font-medium text-[var(--cat-muted)]">Unavailable</p>
+        )}
       </div>
     </div>
   );
