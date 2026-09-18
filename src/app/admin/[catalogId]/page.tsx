@@ -10,13 +10,18 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
 import { LookSettingsForm } from "./LookSettingsForm";
 import { LiveRecentOrders } from "./LiveRecentOrders";
+import { LiveRecentReservations } from "./LiveRecentReservations";
 import { OrderingCard } from "@/components/admin/OrderingCard";
+import { FloorPlanCard } from "@/components/admin/FloorPlanCard";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
+import { parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { parseBanners, parseImageFit } from "@/lib/catalog/merchandising";
 import { locationsToText, parseCoord, parseLocations } from "@/lib/catalog/locations";
-import type { OrderRow } from "@/lib/supabase/types";
+import type { OrderRow, ReservationRow } from "@/lib/supabase/types";
 import { dashBtnGhost, dashBtnPrimary, dashCard, dashKicker } from "@/components/admin/dashboard/styles";
+
+export const dynamic = "force-dynamic";
 
 function startOfMonthIso(): string {
   const now = new Date();
@@ -41,6 +46,7 @@ export default async function CatalogDashboardPage({
     recentOrdersRes,
     allOrderIdsRes,
     catalogItemsRes,
+    reservationsRes,
   ] = await Promise.all([
     requireAccount(),
     getCatalogOrNotFound(catalogId),
@@ -67,6 +73,12 @@ export default async function CatalogDashboardPage({
       .limit(4),
     supabase.from("orders").select("id").eq("catalog_id", catalogId),
     supabase.from("catalog_items").select("code, image").eq("catalog_id", catalogId),
+    supabase
+      .from("reservations")
+      .select("*")
+      .eq("catalog_id", catalogId)
+      .order("created_at", { ascending: false })
+      .limit(6),
   ]);
 
   const loadFailed = Boolean(
@@ -82,7 +94,9 @@ export default async function CatalogDashboardPage({
   const itemCount = itemsCountRes.count ?? 0;
   const visibleItemCount = visibleItemsCountRes.count ?? 0;
   const recentOrders = (recentOrdersRes.data ?? []) as OrderRow[];
-  const extraFieldCount = parseCheckoutForm(catalog.checkout_form).length;
+  const recentReservations = (reservationsRes.data ?? []) as ReservationRow[];
+  const settings = parseTemplateSettings(catalog.template_settings);
+  const showReservations = settings.restaurant.enableReserve || recentReservations.length > 0;
   const acceptOrders = catalog.accept_orders !== false;
   const showAlert = catalog.show_storefront_alert === true;
   const isLive = catalog.status === "live";
@@ -181,6 +195,12 @@ export default async function CatalogDashboardPage({
           >
             Inbox
           </Link>
+          <Link
+            href={`/admin/${catalogId}/floor`}
+            className="inline-flex min-h-11 items-center px-2 text-[13px] text-[#5a6472] no-underline hover:text-[#0b5fce]"
+          >
+            Floor
+          </Link>
         </div>
 
         <section className={`${dashCard} flex flex-wrap items-center gap-3.5 px-4 py-4 sm:px-[18px]`}>
@@ -221,13 +241,24 @@ export default async function CatalogDashboardPage({
           ))}
         </div>
 
+        <FloorPlanCard
+          catalogId={catalogId}
+          template={catalog.template}
+          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
+          settings={parseTemplateSettings(catalog.template_settings)}
+        />
+
         <div className="flex flex-col gap-3.5 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+            {showReservations ? (
+              <LiveRecentReservations catalogId={catalogId} initial={recentReservations} />
+            ) : null}
             <LiveRecentOrders
               catalogId={catalogId}
               currency={catalog.currency}
               initialOrders={recentOrders}
               statuses={statuses}
+              sounds={parseTemplateSettings(catalog.template_settings).notify}
             />
           </div>
 
@@ -281,10 +312,8 @@ export default async function CatalogDashboardPage({
         <LookSettingsForm
           catalogId={catalogId}
           catalogName={catalog.name}
-          extraFieldCount={extraFieldCount}
           template={catalog.template}
           accent={catalog.accent}
-          checkoutFields={parseCheckoutFields(catalog.checkout_fields)}
           logo={catalog.logo ?? ""}
           tagline={catalog.tagline ?? ""}
           about={catalog.about ?? ""}
@@ -304,16 +333,23 @@ export default async function CatalogDashboardPage({
           showContact={catalog.show_contact !== false}
           showSocial={catalog.show_social !== false}
           showMap={Boolean(catalog.show_map)}
+          templateSettings={parseTemplateSettings(catalog.template_settings)}
+          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
         />
 
         <OrderingCard
           catalogId={catalogId}
           fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
+          checkoutFields={parseCheckoutFields(catalog.checkout_fields)}
           checkoutForm={parseCheckoutForm(catalog.checkout_form)}
+          template={catalog.template}
+          templateSettings={parseTemplateSettings(catalog.template_settings)}
           acceptOrders={acceptOrders}
           ordersPausedMessage={catalog.orders_paused_message ?? ""}
           storefrontAlert={catalog.storefront_alert ?? ""}
           showStorefrontAlert={showAlert}
+          orderEmail={catalog.order_email ?? ""}
+          catalogAddress={catalog.address ?? ""}
         />
       </div>
     </>

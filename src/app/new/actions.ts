@@ -5,7 +5,7 @@ import { canPublishNewCatalog } from "@/lib/billing/status";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
-import { isTemplateKey } from "@/lib/catalog/templates";
+import { isTemplateKey, parseAccentHex } from "@/lib/catalog/templates";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 
 export interface PublishDraftItem {
@@ -73,7 +73,7 @@ export async function publishCatalog(input: PublishInput): Promise<PublishResult
     }))
     .filter((it) => it.name.length > 0);
 
-  const accent = /^#[0-9a-fA-F]{6}$/.test(input.accent) ? input.accent : "#0b5fce";
+  const accent = parseAccentHex(input.accent) ?? "#0b5fce";
   const orderEmail = input.orderEmail.trim() || null;
   const template: CatalogTemplate = isTemplateKey(input.template) ? input.template : "grid";
 

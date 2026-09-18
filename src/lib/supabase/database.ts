@@ -13,6 +13,9 @@ import type {
   OrderItemRow,
   OrderStatusEventRow,
   CatalogViewRow,
+  ReservationRow,
+  ReservationStatusEventRow,
+  ServiceRequestRow,
 } from "./types";
 
 type TableDef<Row> = {
@@ -34,6 +37,9 @@ export interface Database {
       order_items: TableDef<OrderItemRow>;
       order_status_events: TableDef<OrderStatusEventRow>;
       catalog_views: TableDef<CatalogViewRow>;
+      reservations: TableDef<ReservationRow>;
+      reservation_status_events: TableDef<ReservationStatusEventRow>;
+      service_requests: TableDef<ServiceRequestRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

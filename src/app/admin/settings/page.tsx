@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { isBillingConfigured } from "@/lib/billing/config";
 import { MONTHLY_PRICE_LABEL, MONTHLY_PRICE_USD } from "@/lib/billing/plan";
@@ -39,17 +40,33 @@ export default async function SettingsPage() {
         account={account}
         email={email}
       />
-      <div className="flex max-w-[680px] flex-col gap-[18px] p-4 pb-16 sm:p-8">
-        <div className="rounded-2xl bg-[var(--cat-ink)] p-6 text-white">
-          <p className="m-0 text-[13px] text-[#a1a1a6]">{eyebrow}</p>
-          <p className="m-0 mt-2 text-[34px] font-semibold tracking-tight">
+      <div className="mx-auto grid w-full max-w-[960px] grid-cols-1 gap-3 p-4 pb-10 sm:p-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-[var(--cat-border)] bg-white p-4">
+          <h3 className="m-0 mb-1.5 text-[14px] font-semibold text-[var(--cat-ink)]">Account</h3>
+          {email ? (
+            <p className="m-0 mb-2.5 truncate text-[13px] text-[var(--cat-muted)]">{email}</p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/account"
+              className="inline-flex min-h-11 items-center rounded-[10px] bg-[var(--cat-ink)] px-4 text-[13px] font-medium text-white"
+            >
+              Change password
+            </Link>
+            <SignOutButton />
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-[var(--cat-ink)] p-4 text-white">
+          <p className="m-0 text-[12px] text-[#a1a1a6]">{eyebrow}</p>
+          <p className="m-0 mt-1 text-[24px] font-semibold tracking-tight">
             {paid ? `Pro · ${MONTHLY_PRICE_LABEL}` : `$${MONTHLY_PRICE_USD} / month`}
           </p>
-          <p className="m-0 mb-5 mt-2 text-[13px] text-[#a1a1a6]">
+          <p className="m-0 mb-3 mt-1 text-[12px] text-[#a1a1a6]">
             Unlimited catalogs, items and team members.
           </p>
           {paid ? (
-            <p className="m-0 text-[13px] text-[#a1a1a6]">
+            <p className="m-0 text-[12px] text-[#a1a1a6]">
               {renews ? `Next renewal ${renews}.` : "Subscription is active."}
             </p>
           ) : (
@@ -57,16 +74,8 @@ export default async function SettingsPage() {
           )}
         </div>
 
-        <NotificationsForm account={account} />
         <CompanyForm account={account} email={email} />
-
-        <div className="rounded-2xl border border-[var(--cat-border)] p-[22px]">
-          <h3 className="m-0 mb-3 text-[15px] font-semibold text-[var(--cat-ink)]">Account</h3>
-          {email ? (
-            <p className="m-0 mb-3 truncate text-[13px] text-[var(--cat-muted)]">{email}</p>
-          ) : null}
-          <SignOutButton />
-        </div>
+        <NotificationsForm account={account} />
       </div>
     </>
   );

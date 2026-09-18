@@ -43,7 +43,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(signIn);
   }
 
-  if (pathname.startsWith("/auth") && user) {
+  // Callback must run even if a session already exists — recovery emails
+  // exchange ?code= here. Forgot-password stays reachable while signed out.
+  if (pathname.startsWith("/auth") && user && !pathname.startsWith("/auth/callback")) {
     const admin = request.nextUrl.clone();
     admin.pathname = "/admin";
     admin.search = "";

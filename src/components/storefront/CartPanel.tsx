@@ -5,17 +5,23 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
 import {
   FULFILLMENTS,
+  checkoutFieldsForDineInSkip,
   fulfillmentLabel,
   mapFormValues,
   missingCustomFieldLabels,
   visibleCheckoutFields,
 } from "@/lib/catalog/checkout-form";
+import { submitCatalogOrder } from "@/lib/catalog/place-order";
+import { isDineInTableSession } from "@/lib/catalog/template-settings";
 import { formatComboIncludes } from "@/lib/catalog/combos";
 import { formatSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import { loadGuestAddress, mapsUrlFromCoords, saveGuestAddress } from "@/lib/catalog/guest-address";
 import type { CheckoutFields, CheckoutFormField, OrderFulfillment } from "@/lib/supabase/types";
 import type { OrderResult } from "@/lib/catalog/order-types";
 import { QuantityStepper } from "./QuantityStepper";
+import { useStorefrontSession } from "./StorefrontSession";
+import { orderCtaLabel } from "@/lib/catalog/template-settings";
+import { DEFAULT_TEMPLATE_SETTINGS } from "@/lib/catalog/template-settings";
 
 type Step = "review" | "delivery";
 type Status = "idle" | "submitting" | "error";
@@ -40,10 +46,19 @@ export function CartPanel({
   onPlaced: (result: OrderResult) => void;
 }) {
   const { items, lines, itemCount, lineCount, subtotal, incrementLine, decrementLine, clear } = useCart();
+  const session = useStorefrontSession();
+  const settings = session?.catalog.settings ?? DEFAULT_TEMPLATE_SETTINGS;
+  const rest = settings.restaurant;
+  const availableModes = session?.visibleModes ?? fulfillmentModes;
   const [step, setStep] = useState<Step>("review");
-  const [fulfillment, setFulfillment] = useState<OrderFulfillment | null>(
-    fulfillmentModes.length === 1 ? fulfillmentModes[0]! : null,
+  const [fulfillment, setFulfillmentState] = useState<OrderFulfillment | null>(
+    session?.fulfillment ?? (availableModes.length === 1 ? availableModes[0]! : null),
   );
+
+  function setFulfillment(mode: OrderFulfillment | null) {
+    setFulfillmentState(mode);
+    if (mode) session?.setFulfillment(mode);
+  }
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
@@ -58,24 +73,52 @@ export function CartPanel({
     })
     .filter((entry): entry is { item: (typeof items)[number]; line: (typeof lines)[number] } => entry !== null);
 
-  const visibleFields = useMemo(
-    () => visibleCheckoutFields(checkoutForm, fulfillmentModes.length > 0 ? fulfillment : null),
-    [checkoutForm, fulfillment, fulfillmentModes.length],
-  );
+  const tableSession = isDineInTableSession({
+    dineInQr: rest.dineInQr,
+    tableNo: session?.tableNo,
+    fulfillment,
+  });
+  const skipDetails = tableSession && rest.skipDineInDetails;
+  const visibleFields = useMemo(() => {
+    const raw = visibleCheckoutFields(checkoutForm, fulfillmentModes.length > 0 ? fulfillment : null);
+    return skipDetails ? checkoutFieldsForDineInSkip(raw) : raw;
+  }, [checkoutForm, fulfillment, fulfillmentModes.length, skipDetails]);
+
+  const extras =
+    fulfillment === "delivery" ? rest.deliveryFee : 0;
+  const service = rest.servicePercent > 0 ? (subtotal * rest.servicePercent) / 100 : 0;
+  const payable = subtotal + extras + service;
+  const belowMin = rest.minOrder > 0 && subtotal < rest.minOrder;
 
   const missing = useMemo(() => {
     const labels: string[] = [];
-    if (fulfillmentModes.length > 0 && !fulfillment) labels.push("order type");
+    if (availableModes.length > 0 && !fulfillment) labels.push("order type");
     labels.push(...missingCustomFieldLabels(visibleFields, formValues));
     return labels;
-  }, [fulfillment, fulfillmentModes.length, visibleFields, formValues]);
-  const canSubmit = missing.length === 0;
+  }, [availableModes.length, fulfillment, visibleFields, formValues]);
+  const canSubmit = missing.length === 0 && !belowMin;
 
   function setField(id: string, value: string) {
     setFormValues((prev) => ({ ...prev, [id]: value }));
   }
 
   const phoneValue = formValues.phone ?? formValues.tel ?? formValues.mobile ?? "";
+
+  useEffect(() => {
+    if (session?.fulfillment && session.fulfillment !== fulfillment) {
+      setFulfillmentState(session.fulfillment);
+      return;
+    }
+    if (fulfillment && availableModes.length > 0 && !availableModes.includes(fulfillment)) {
+      setFulfillmentState(session?.fulfillment ?? (availableModes.length === 1 ? availableModes[0]! : null));
+    }
+  }, [availableModes, fulfillment, session?.fulfillment]);
+
+  useEffect(() => {
+    if (session?.tableNo) {
+      setFormValues((prev) => (prev.table ? prev : { ...prev, table: session.tableNo }));
+    }
+  }, [session?.tableNo]);
 
   useEffect(() => {
     if (!phoneValue) return;
@@ -136,8 +179,8 @@ export function CartPanel({
     );
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!canSubmit || cartItems.length === 0) return;
     setStatus("submitting");
     setErrorMessage("");
@@ -147,74 +190,60 @@ export function CartPanel({
       phone: phoneValue,
       location: formValues.location ?? formValues.address ?? "",
     });
-    try {
-      const res = await fetch("/api/catalog/order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          catalogId,
-          shopName: mapped.shopName,
-          phone: mapped.phone || phoneValue,
-          location: mapped.location || formValues.address || "",
-          mapsLink: mapped.mapsLink || formValues.maps || "",
-          notes: mapped.notes || formValues.notes || "",
-          fulfillment,
-          tableNo: mapped.tableNo || formValues.table || "",
-          geoLat,
-          geoLng,
-          formValues,
-          items: cartItems.map(({ item, line }) => ({
-            code: item.code,
-            qty: line.qty,
-            options: line.options,
-          })),
-        }),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        error?: string;
-        reference?: string;
-        total?: number;
-        itemCount?: number;
-        lineCount?: number;
-        trackUrl?: string;
-      } | null;
-      if (!res.ok || !data?.reference || typeof data.total !== "number") {
-        setErrorMessage(data?.error || "Something went wrong. Please try again.");
-        setStatus("error");
-        return;
-      }
-      const result: OrderResult = {
-        reference: data.reference,
-        total: data.total,
-        itemCount: data.itemCount ?? 0,
-        lineCount: data.lineCount ?? 0,
-        shopName: mapped.shopName,
-        phone: mapped.phone || phoneValue,
-        trackUrl: typeof data.trackUrl === "string" ? data.trackUrl : undefined,
-      };
-      saveGuestAddress(catalogId, mapped.phone || phoneValue, {
-        address: mapped.location || formValues.address || "",
-        maps: mapped.mapsLink || formValues.maps || "",
-        lat: geoLat,
-        lng: geoLng,
-      });
-      clear();
-      setFormValues({});
-      setFulfillment(fulfillmentModes.length === 1 ? fulfillmentModes[0]! : null);
-      setGeoLat(null);
-      setGeoLng(null);
-      setStep("review");
-      setStatus("idle");
-      onPlaced(result);
-    } catch {
-      setErrorMessage("Could not reach the server. Check your connection and try again.");
+    const placed = await submitCatalogOrder({
+      catalogId,
+      shopName: skipDetails && session?.tableNo ? `Table ${session.tableNo}` : mapped.shopName,
+      phone: mapped.phone || phoneValue,
+      location: mapped.location || formValues.address || "",
+      mapsLink: mapped.mapsLink || formValues.maps || "",
+      notes: mapped.notes || formValues.notes || "",
+      fulfillment,
+      tableNo: mapped.tableNo || formValues.table || session?.tableNo || "",
+      geoLat,
+      geoLng,
+      formValues: skipDetails ? { table: session?.tableNo ?? "" } : formValues,
+      items: cartItems.map(({ item, line }) => ({
+        code: item.code,
+        qty: line.qty,
+        options: line.options,
+        notes: line.note,
+      })),
+    });
+    if (!placed.ok) {
+      setErrorMessage(placed.error);
       setStatus("error");
+      return;
     }
+    saveGuestAddress(catalogId, mapped.phone || phoneValue, {
+      address: mapped.location || formValues.address || "",
+      maps: mapped.mapsLink || formValues.maps || "",
+      lat: geoLat,
+      lng: geoLng,
+    });
+    clear();
+    setFormValues({});
+    if (!tableSession) {
+      setFulfillment(session?.fulfillment ?? (availableModes.length === 1 ? availableModes[0]! : null));
+    }
+    setGeoLat(null);
+    setGeoLng(null);
+    setStep("review");
+    setStatus("idle");
+    if (skipDetails) {
+      onClose();
+      return;
+    }
+    onPlaced(placed.result);
   }
 
   if (!open) return null;
 
   const detailsTitle = fulfillmentModes.length > 0 ? "Your details" : "Delivery details";
+  const cta = orderCtaLabel(settings, fulfillment);
+  const shopNameField = visibleFields.find((f) => f.id === "shopName");
+  if (shopNameField && fulfillmentModes.length > 0) {
+    shopNameField.label = shopNameField.label === "Shop name" ? "Your name" : shopNameField.label;
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
@@ -277,6 +306,7 @@ export function CartPanel({
                         </p>
                       ) : null}
                       {extras ? <p className="text-xs text-[var(--cat-muted)]">{extras}</p> : null}
+                      {line.note ? <p className="text-xs text-[var(--cat-accent)]">{line.note}</p> : null}
                       <p className="text-xs text-[var(--cat-muted)]">
                         {formatMoney(unit, currency)} each
                       </p>
@@ -300,11 +330,11 @@ export function CartPanel({
                 No payment now — we confirm the order
                 {fulfillment ? ` for ${fulfillmentLabel(fulfillment).toLowerCase()}` : ""}.
               </p>
-              {fulfillmentModes.length > 0 ? (
+              {availableModes.length > 0 && !tableSession ? (
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-[var(--cat-muted)]">Order type *</p>
                   <div className="grid grid-cols-3 gap-2">
-                    {FULFILLMENTS.filter((mode) => fulfillmentModes.includes(mode.value)).map((mode) => (
+                    {FULFILLMENTS.filter((mode) => availableModes.includes(mode.value)).map((mode) => (
                       <button
                         key={mode.value}
                         type="button"
@@ -343,15 +373,36 @@ export function CartPanel({
 
         {cartItems.length > 0 && (
           <div className="sticky bottom-0 border-t border-[var(--cat-border)] bg-white px-4 py-3.5">
-            <div className="mb-3 flex items-center justify-between text-sm">
-              <span className="text-[var(--cat-muted)]">
-                {step === "review"
-                  ? "Subtotal"
-                  : `${itemCount} unit${itemCount === 1 ? "" : "s"} · ${lineCount} line${lineCount === 1 ? "" : "s"}`}
-              </span>
-              <span className="text-base font-bold text-[var(--cat-ink)]">
-                {formatMoney(subtotal, currency)}
-              </span>
+            <div className="mb-3 space-y-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--cat-muted)]">
+                  {step === "review"
+                    ? "Subtotal"
+                    : `${itemCount} unit${itemCount === 1 ? "" : "s"} · ${lineCount} line${lineCount === 1 ? "" : "s"}`}
+                </span>
+                <span className="font-bold text-[var(--cat-ink)]">{formatMoney(subtotal, currency)}</span>
+              </div>
+              {fulfillment === "delivery" && rest.deliveryFee > 0 ? (
+                <div className="flex justify-between text-[var(--cat-muted)]">
+                  <span>Delivery</span>
+                  <span>{formatMoney(rest.deliveryFee, currency)}</span>
+                </div>
+              ) : null}
+              {rest.servicePercent > 0 ? (
+                <div className="flex justify-between text-[var(--cat-muted)]">
+                  <span>Service {rest.servicePercent}%</span>
+                  <span>{formatMoney(service, currency)}</span>
+                </div>
+              ) : null}
+              {fulfillment === "pickup" && rest.pickupReadyCopy ? (
+                <p className="m-0 text-xs text-[var(--cat-muted)]">{rest.pickupReadyCopy}</p>
+              ) : null}
+              {step === "delivery" && extras + service > 0 ? (
+                <div className="flex justify-between font-bold text-[var(--cat-ink)]">
+                  <span>Total</span>
+                  <span>{formatMoney(payable, currency)}</span>
+                </div>
+              ) : null}
             </div>
             {step === "review" ? (
               <div className="flex flex-col gap-2">
@@ -362,13 +413,25 @@ export function CartPanel({
                 >
                   Add more items
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setStep("delivery")}
-                  className="min-h-11 w-full rounded-[9px] bg-[var(--cat-accent)] text-sm font-semibold text-white transition hover:opacity-90"
-                >
-                  Continue to {fulfillmentModes.length > 0 ? "checkout" : "delivery details"}
-                </button>
+                {skipDetails ? (
+                  <button
+                    type="button"
+                    disabled={!canSubmit || status === "submitting"}
+                    onClick={() => void handleSubmit()}
+                    className="min-h-12 w-full rounded-[9px] bg-[var(--cat-accent)] text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {status === "submitting" ? "Sending…" : cta}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setStep("delivery")}
+                    className="min-h-11 w-full rounded-[9px] bg-[var(--cat-accent)] text-sm font-semibold text-white transition hover:opacity-90"
+                  >
+                    Continue to {fulfillmentModes.length > 0 ? "checkout" : "delivery details"}
+                  </button>
+                )}
+                {status === "error" && skipDetails ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
               </div>
             ) : (
               <button
@@ -377,7 +440,11 @@ export function CartPanel({
                 disabled={!canSubmit || status === "submitting"}
                 className="min-h-11 w-full rounded-[9px] bg-[var(--cat-accent)] text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {submitLabel()}
+                {status === "submitting" || missing.length > 0 || belowMin
+                  ? belowMin
+                    ? `Minimum ${formatMoney(rest.minOrder, currency)}`
+                    : submitLabel()
+                  : cta}
               </button>
             )}
           </div>

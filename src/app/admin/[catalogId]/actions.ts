@@ -4,9 +4,14 @@ import { revalidatePath } from "next/cache";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getServerSupabase } from "@/lib/supabase/server";
-import { ACCENT_COLORS, isTemplateKey } from "@/lib/catalog/templates";
+import { ACCENT_COLORS, isTemplateKey, parseAccentHex } from "@/lib/catalog/templates";
 import { checkoutFieldsFromForm } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
+import {
+  parseTemplateSettings,
+  parseTemplateSettingsFromForm,
+  TEMPLATE_SETTINGS_SQL_HINT,
+} from "@/lib/catalog/template-settings";
 import { getServiceClient } from "@/lib/supabase/service";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 import {
@@ -82,11 +87,8 @@ export async function updateCatalogLook(
   const template: CatalogTemplate = isTemplateKey(templateRaw) ? templateRaw : "grid";
 
   const accentRaw = String(formData.get("accent") ?? "").trim();
-  const accent = /^#[0-9a-fA-F]{6}$/.test(accentRaw)
-    ? accentRaw
-    : ACCENT_COLORS[0];
+  const accent = parseAccentHex(accentRaw) ?? ACCENT_COLORS[0]!;
 
-  const checkoutFields = checkoutFieldsFromForm(formData);
   const tagline = String(formData.get("tagline") ?? "").trim().slice(0, 160);
   const about = String(formData.get("about") ?? "").trim().slice(0, 400);
   let logo = String(formData.get("logo") ?? "").trim();
@@ -130,14 +132,15 @@ export async function updateCatalogLook(
   const showContact = formData.get("showContact") === "1";
   const showSocial = formData.get("showSocial") === "1";
   const showMap = formData.get("showMap") === "1";
+  const templateSettings = parseTemplateSettingsFromForm(formData.get("template_settings"));
 
   const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from("catalogs")
     .update({
       template,
+      template_settings: templateSettings,
       accent,
-      checkout_fields: checkoutFields,
       logo: logo || null,
       tagline: tagline || null,
       about: about || null,
@@ -193,6 +196,9 @@ export async function updateCatalogLook(
     ) {
       return { error: "Run supabase/catalog-branding.sql in the Supabase SQL editor, then try again." };
     }
+    if (error?.message?.includes("template_settings") || error?.code === "PGRST204") {
+      return { error: TEMPLATE_SETTINGS_SQL_HINT };
+    }
     return { error: "Could not save look. Try again." };
   }
 
@@ -213,6 +219,7 @@ export async function updateCatalogOrdering(
     safeJson(formData.get("fulfillment_modes")),
   );
   const checkoutForm = parseCheckoutForm(safeJson(formData.get("checkout_form")));
+  const checkoutFields = checkoutFieldsFromForm(formData);
   const acceptOrders = formData.get("acceptOrders") === "1";
   const ordersPausedMessage =
     typeof formData.get("ordersPausedMessage") === "string"
@@ -223,17 +230,31 @@ export async function updateCatalogOrdering(
       ? String(formData.get("storefrontAlert")).trim().slice(0, 280)
       : "";
   const showStorefrontAlert = formData.get("showStorefrontAlert") === "1";
+  const orderEmail = String(formData.get("order_email") ?? "").trim().slice(0, 120);
+  if (orderEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(orderEmail)) {
+    return { error: "Enter a valid order email." };
+  }
+  const incomingSettings = formData.get("template_settings");
 
   const supabase = await getServerSupabase();
+  const current = await supabase.from("catalogs").select("template_settings").eq("id", catalogId).maybeSingle();
+  const merged = parseTemplateSettings(current.data?.template_settings);
+  const nextSettings = incomingSettings
+    ? parseTemplateSettingsFromForm(incomingSettings)
+    : merged;
+
   const { data, error } = await supabase
     .from("catalogs")
     .update({
       fulfillment_modes: fulfillmentModes,
       checkout_form: checkoutForm,
+      checkout_fields: checkoutFields,
       accept_orders: acceptOrders,
       orders_paused_message: ordersPausedMessage || null,
       storefront_alert: storefrontAlert || null,
       show_storefront_alert: showStorefrontAlert,
+      order_email: orderEmail || null,
+      template_settings: nextSettings,
     })
     .eq("id", catalogId)
     .select("slug")

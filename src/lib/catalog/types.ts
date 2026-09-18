@@ -13,6 +13,7 @@ import type {
   OrderFulfillment,
 } from "@/lib/supabase/types";
 import type { CatalogLocation } from "./locations";
+import type { TemplateSettings } from "./template-settings";
 
 export type CatalogTemplateKey =
   | "grid"
@@ -61,6 +62,7 @@ export interface StorefrontCatalog {
   checkoutFields: CheckoutFields;
   checkoutForm: CheckoutFormField[];
   fulfillmentModes: OrderFulfillment[];
+  settings: TemplateSettings;
   /** Public image URL, or "" when the merchant has not set a logo. */
   logo: string;
   tagline: string;

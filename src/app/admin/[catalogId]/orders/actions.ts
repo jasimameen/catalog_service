@@ -12,6 +12,8 @@ import {
 } from "@/lib/catalog/order-statuses";
 import { newTrackToken, ORDER_HISTORY_SQL_HINT, trackingUrl } from "@/lib/catalog/order-tracking";
 import type { OrderStatusEventRow } from "@/lib/supabase/types";
+import { requireAccount } from "@/lib/auth/current-account";
+import { ORDER_CLAIMS_SQL_HINT } from "@/lib/catalog/template-settings";
 
 function isMissingColumn(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
@@ -21,6 +23,29 @@ function isMissingColumn(error: { code?: string; message?: string } | null): boo
 function isStatusCheck(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
   return error.code === "23514" || Boolean(error.message?.includes("orders_status_check"));
+}
+
+export async function claimOrder(catalogId: string, orderId: string) {
+  const account = await requireAccount();
+  await getCatalogOrNotFound(catalogId);
+  const supabase = await getServerSupabase();
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      claimed_at: new Date().toISOString(),
+      claimed_by: account.name || account.id,
+    })
+    .eq("id", orderId)
+    .eq("catalog_id", catalogId)
+    .is("claimed_at", null);
+  if (error) {
+    if (error.code === "42703" || error.message.includes("claimed")) {
+      return { error: ORDER_CLAIMS_SQL_HINT };
+    }
+    return { error: "Could not take this order." };
+  }
+  revalidatePath(`/admin/${catalogId}/orders`);
+  return { claimed_by: account.name || account.id };
 }
 
 export async function markOrderConfirmed(catalogId: string, orderId: string) {

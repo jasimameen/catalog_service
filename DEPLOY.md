@@ -9,6 +9,7 @@ Import this Git repo into your existing or new Vercel project. Vercel auto-detec
 3. Paste the env vars below (Production + Preview). Then deploy.
 4. In the Vercel project **Domains** tab, add `catalog.hevyf.com` and `*.catalog.hevyf.com`. Point DNS at `cname.vercel-dns.com`.
 5. Optional custom domains: default is DNS-only (`DOMAIN_PROVIDER=manual`). Add Vercel tokens later if merchants want auto-cert. Details: [`CLOUDFLARE.md`](CLOUDFLARE.md).
+6. In Supabase **Authentication → URL Configuration**, keep Site URL `https://catalog.hevyf.com` and allow `https://catalog.hevyf.com/auth/callback` plus `https://catalog.hevyf.com/reset-password` (see [`SETUP.md`](SETUP.md)).
 
 Do not commit `.env.local`. Tokens stay in the Vercel dashboard.
 

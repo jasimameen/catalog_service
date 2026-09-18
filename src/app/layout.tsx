@@ -12,7 +12,7 @@ const archivo = Archivo({
 const plexSans = IBM_Plex_Sans({
   variable: "--kl-font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 

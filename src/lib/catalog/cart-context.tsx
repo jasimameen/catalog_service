@@ -18,6 +18,7 @@ export type CartLine = {
   code: string;
   qty: number;
   options: SelectedOption[];
+  note?: string;
 };
 
 type LineMap = Record<string, CartLine>;
@@ -34,7 +35,8 @@ interface CartContextValue {
   setQuantity: (code: string, qty: number) => void;
   increment: (code: string) => void;
   decrement: (code: string) => void;
-  addLine: (code: string, options: SelectedOption[], qty?: number) => void;
+  addLine: (code: string, options: SelectedOption[], qty?: number, note?: string) => void;
+  setLineNote: (key: string, note: string) => void;
   incrementLine: (key: string) => void;
   decrementLine: (key: string) => void;
   setLineQuantity: (key: string, qty: number) => void;
@@ -76,7 +78,8 @@ function readStoredCart(catalogId: string): LineMap {
           const options = Array.isArray(row.options) ? (row.options as SelectedOption[]) : [];
           const clean = normalizeOptions(options);
           const nextKey = lineKey(code, clean);
-          lines[nextKey] = { key: nextKey, code, qty, options: clean };
+          const note = typeof row.note === "string" ? row.note.slice(0, 200) : "";
+          lines[nextKey] = { key: nextKey, code, qty, options: clean, note: note || undefined };
           void key;
         }
         return lines;
@@ -95,14 +98,27 @@ function readStoredCart(catalogId: string): LineMap {
   }
 }
 
-function writeLine(prev: LineMap, code: string, options: SelectedOption[], qty: number): LineMap {
+function writeLine(
+  prev: LineMap,
+  code: string,
+  options: SelectedOption[],
+  qty: number,
+  note?: string,
+): LineMap {
   const clean = normalizeOptions(options);
   const key = lineKey(code, clean);
   const next = { ...prev };
   if (qty <= 0) {
     delete next[key];
   } else {
-    next[key] = { key, code, qty, options: clean };
+    const existing = prev[key];
+    next[key] = {
+      key,
+      code,
+      qty,
+      options: clean,
+      note: (note ?? existing?.note ?? "").trim().slice(0, 200) || undefined,
+    };
   }
   return next;
 }
@@ -175,7 +191,7 @@ export function CartProvider({
     });
   }, []);
 
-  const addLine = useCallback((code: string, options: SelectedOption[], qty = 1) => {
+  const addLine = useCallback((code: string, options: SelectedOption[], qty = 1, note?: string) => {
     if (!acceptOrders) return;
     const item = items.find((p) => p.code === code);
     if (item && item.available === false) return;
@@ -183,9 +199,20 @@ export function CartProvider({
     setLineMap((prev) => {
       const key = lineKey(code, normalizeOptions(options));
       const current = prev[key]?.qty ?? 0;
-      return writeLine(prev, code, options, current + add);
+      return writeLine(prev, code, options, current + add, note);
     });
   }, [acceptOrders, items]);
+
+  const setLineNote = useCallback((key: string, note: string) => {
+    setLineMap((prev) => {
+      const line = prev[key];
+      if (!line) return prev;
+      return {
+        ...prev,
+        [key]: { ...line, note: note.trim().slice(0, 200) || undefined },
+      };
+    });
+  }, []);
 
   const incrementLine = useCallback((key: string) => {
     if (!acceptOrders) return;
@@ -257,6 +284,7 @@ export function CartProvider({
       increment,
       decrement,
       addLine,
+      setLineNote,
       incrementLine,
       decrementLine,
       setLineQuantity,
@@ -276,6 +304,7 @@ export function CartProvider({
       increment,
       decrement,
       addLine,
+      setLineNote,
       incrementLine,
       decrementLine,
       setLineQuantity,

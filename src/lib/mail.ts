@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 
 export async function sendMail(options: {
   to: string;
+  cc?: string;
   subject: string;
   text: string;
   html?: string;
@@ -25,6 +26,7 @@ export async function sendMail(options: {
   await transporter.sendMail({
     from: ORDER_FROM_EMAIL || SMTP_USER,
     to: options.to,
+    cc: options.cc || undefined,
     subject: options.subject,
     text: options.text,
     html: options.html,

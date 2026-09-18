@@ -27,11 +27,11 @@ export const TEMPLATES: TemplateMeta[] = [
   },
   {
     key: "menu",
-    name: "Menu",
-    blurb: "Sectioned list, photos optional.",
+    name: "Restaurant Menu",
+    blurb: "Modes, search, featured dishes, and a cart built for kitchens.",
     longBlurb:
-      "A sectioned list with no photos required. Best for kitchens, services and weekly " +
-      "supply lists where the names carry the order.",
+      "Delivery, pickup and dine-in on a sectioned menu with featured dishes, a variant " +
+      "sheet and table reserve. Best for restaurants. Trade catalogs should stay on Grid.",
   },
   {
     key: "pricelist",
@@ -68,6 +68,21 @@ export const TEMPLATES: TemplateMeta[] = [
 ];
 
 export const ACCENT_COLORS = ["#0b5fce", "#1d1d1f", "#0f7b53", "#b2432b"];
+
+/** Accept any #RGB or #RRGGBB accent. Returns lowercase #rrggbb or null. */
+export function parseAccentHex(value: string): string | null {
+  const t = value.trim();
+  const six = /^#?([0-9a-fA-F]{6})$/.exec(t);
+  if (six) return `#${six[1]!.toLowerCase()}`;
+  const three = /^#?([0-9a-fA-F]{3})$/.exec(t);
+  if (!three) return null;
+  const s = three[1]!;
+  return `#${s[0]}${s[0]}${s[1]}${s[1]}${s[2]}${s[2]}`.toLowerCase();
+}
+
+export function resolveAccent(value: string, fallback = ACCENT_COLORS[0]!): string {
+  return parseAccentHex(value) ?? fallback;
+}
 
 export const TEMPLATE_KEYS: CatalogTemplateKey[] = TEMPLATES.map((t) => t.key);
 

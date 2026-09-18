@@ -4,6 +4,7 @@ import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { PageHeader } from "@/components/admin/PageHeader";
 import type { ItemThumb } from "@/lib/catalog/combos";
 import { parseFulfillmentModes, resolveCheckoutForm } from "@/lib/catalog/checkout-form";
+import { parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import {
   findDuplicateRefs,
@@ -11,26 +12,36 @@ import {
   parseOrderStatuses,
   parseStatusFilterParam,
 } from "@/lib/catalog/order-statuses";
-import type { OrderItemRow, OrderRow, OrderStatusEventRow } from "@/lib/supabase/types";
+import type { OrderItemRow, OrderRow, OrderStatusEventRow, ReservationRow } from "@/lib/supabase/types";
+import type { ServiceRequestRow } from "@/lib/supabase/types";
+import { LiveServiceRequests } from "../LiveServiceRequests";
 import { OrdersBoard } from "./OrdersBoard";
+import { ReservationsInbox } from "./ReservationsInbox";
 import { StatusSettings } from "./StatusSettings";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 export default async function OrdersPage({
   params,
   searchParams,
 }: {
   params: Promise<{ catalogId: string }>;
-  searchParams: Promise<{ status?: string | string[] }>;
+  searchParams: Promise<{ status?: string | string[]; inbox?: string | string[] }>;
 }) {
   const { catalogId } = await params;
   const query = await searchParams;
+  const inboxRaw = Array.isArray(query.inbox) ? query.inbox[0] : query.inbox;
+  const inbox = inboxRaw === "reservations" ? "reservations" : "orders";
   const supabase = await getServerSupabase();
 
-  const [account, catalog, ordersRes] = await Promise.all([
+  const [account, catalog, ordersRes, reservationsRes] = await Promise.all([
     requireAccount(),
     getCatalogOrNotFound(catalogId),
     supabase.from("orders").select("*").eq("catalog_id", catalogId).order("created_at", { ascending: false }),
+    supabase.from("reservations").select("*").eq("catalog_id", catalogId).order("created_at", { ascending: false }),
   ]);
+  const reservations = (reservationsRes.data ?? []) as ReservationRow[];
   const orders = (ordersRes.data ?? []) as OrderRow[];
   const orderIds = orders.map((o) => o.id);
   const { data: lineData } =
@@ -58,6 +69,7 @@ export default async function OrdersPage({
   }
   const initialFilter = parseStatusFilterParam(query.status, statuses);
   const showFulfillment = parseFulfillmentModes(catalog.fulfillment_modes).length > 0;
+  const settings = parseTemplateSettings(catalog.template_settings);
   const checkoutForm = resolveCheckoutForm(catalog.checkout_form, parseCheckoutFields(catalog.checkout_fields));
   const { data: thumbRows } = await supabase
     .from("catalog_items")
@@ -69,36 +81,78 @@ export default async function OrdersPage({
     name: String(row.name ?? ""),
     image: String(row.image ?? ""),
   }));
+  const { data: requestRows } = await supabase
+    .from("service_requests")
+    .select("*")
+    .eq("catalog_id", catalogId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const serviceRequests = ((requestRows ?? []) as ServiceRequestRow[]).filter(
+    (row) => row.catalog_id === catalogId,
+  );
 
   return (
     <>
       <PageHeader
-        title="Orders"
-        subtitle={`${catalog.name} · ${orders.length} ${orders.length === 1 ? "order" : "orders"}`}
+        title={inbox === "reservations" ? "Reservations" : "Orders"}
+        subtitle={
+          inbox === "reservations"
+            ? `${catalog.name} · ${reservations.length} ${reservations.length === 1 ? "booking" : "bookings"}`
+            : `${catalog.name} · what to cook and send out`
+        }
         account={account}
       />
       <div className="mx-auto flex w-full max-w-[1180px] flex-col px-4 pb-14 pt-4">
-        <OrdersBoard
-          catalogId={catalogId}
-          currency={catalog.currency}
-          showFulfillment={showFulfillment}
-          statuses={statuses}
-          initialFilter={initialFilter}
-          initialOrders={orders}
-          initialItems={items}
-          initialDuplicates={duplicates}
-          initialEvents={events}
-          thumbs={thumbs}
-          checkoutForm={checkoutForm}
-        >
-          <StatusSettings
-            key={`${defaultStatusId}:${statuses.map((row) => `${row.id}:${row.label}:${row.is_done}`).join("|")}`}
+        <div className="mb-3 flex gap-1 rounded-[11px] border border-[var(--cat-border)] bg-white p-[3px] self-start">
+          <Link
+            href={`/admin/${catalogId}/orders`}
+            className="inline-flex min-h-[38px] items-center rounded-lg px-3.5 text-[13px] font-medium no-underline"
+            style={{
+              background: inbox === "orders" ? "var(--cat-ink)" : "transparent",
+              color: inbox === "orders" ? "#fff" : "var(--cat-muted)",
+            }}
+          >
+            Orders{orders.length > 0 ? ` · ${orders.length}` : ""}
+          </Link>
+          <Link
+            href={`/admin/${catalogId}/orders?inbox=reservations`}
+            className="inline-flex min-h-[38px] items-center rounded-lg px-3.5 text-[13px] font-medium no-underline"
+            style={{
+              background: inbox === "reservations" ? "var(--cat-ink)" : "transparent",
+              color: inbox === "reservations" ? "#fff" : "var(--cat-muted)",
+            }}
+          >
+            Reservations{reservations.length > 0 ? ` · ${reservations.length}` : ""}
+          </Link>
+        </div>
+        {inbox === "reservations" ? (
+          <ReservationsInbox catalogId={catalogId} currency={catalog.currency} initial={reservations} />
+        ) : (
+          <OrdersBoard
             catalogId={catalogId}
-            initialStatuses={statuses}
-            initialDefaultId={defaultStatusId}
-            usedCounts={usedCounts}
-          />
-        </OrdersBoard>
+            currency={catalog.currency}
+            showFulfillment={showFulfillment}
+            statuses={statuses}
+            initialFilter={initialFilter}
+            initialOrders={orders}
+            initialItems={items}
+            initialDuplicates={duplicates}
+            initialEvents={events}
+            thumbs={thumbs}
+            checkoutForm={checkoutForm}
+            enableClaim={settings.restaurant.enableClaim}
+            notify={settings.notify}
+          >
+            <LiveServiceRequests catalogId={catalogId} initial={serviceRequests} />
+            <StatusSettings
+              key={`${defaultStatusId}:${statuses.map((row) => `${row.id}:${row.label}:${row.is_done}`).join("|")}`}
+              catalogId={catalogId}
+              initialStatuses={statuses}
+              initialDefaultId={defaultStatusId}
+              usedCounts={usedCounts}
+            />
+          </OrdersBoard>
+        )}
       </div>
     </>
   );

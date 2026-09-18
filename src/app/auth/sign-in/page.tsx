@@ -71,7 +71,12 @@ function SignInForm() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-[#6e6e73]">Password</label>
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <label className="block text-xs font-medium text-[#6e6e73]">Password</label>
+            <Link href="/auth/forgot-password" className="text-xs font-medium text-[var(--cat-accent)]">
+              Forgot password?
+            </Link>
+          </div>
           <input
             required
             type="password"

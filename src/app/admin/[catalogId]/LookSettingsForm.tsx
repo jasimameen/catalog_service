@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
-import { TEMPLATES, ACCENT_COLORS } from "@/lib/catalog/templates";
-import { CHECKOUT_FIELD_KEYS, CHECKOUT_FIELD_LABELS } from "@/lib/catalog/checkout-fields";
-import type { CatalogBanner, CatalogTemplate, CheckoutFields, ImageFit } from "@/lib/supabase/types";
+import { TEMPLATES } from "@/lib/catalog/templates";
+import { AccentPicker } from "@/components/catalog/AccentPicker";
+import type { CatalogBanner, CatalogTemplate, ImageFit } from "@/lib/supabase/types";
 import { MAX_BANNERS } from "@/lib/catalog/merchandising";
 import { useDashboardSection } from "@/components/admin/dashboard/useDashboardSection";
 import {
-  dashBtnGhost,
   dashBtnPrimary,
   dashCard,
   dashChipOff,
@@ -20,31 +19,19 @@ import {
   dashTextarea,
 } from "@/components/admin/dashboard/styles";
 import { updateCatalogLook, type LookState } from "./actions";
+import type { TemplateSettings } from "@/lib/catalog/template-settings";
+import { parseTemplateSettings } from "@/lib/catalog/template-settings";
+import { TemplateSettingsFields } from "@/components/admin/TemplateSettingsFields";
+import type { OrderFulfillment } from "@/lib/supabase/types";
 
 const PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
 const MAX_LOGO_BYTES = 4 * 1024 * 1024;
 
-const MODES = [
-  { value: "required", label: "Required" },
-  { value: "optional", label: "Optional" },
-  { value: "hidden", label: "Hidden" },
-] as const;
-
-const FIELD_UI_LABEL: Record<(typeof CHECKOUT_FIELD_KEYS)[number], string> = {
-  shopName: "Shop name",
-  phone: "Phone",
-  address: "Delivery address",
-  maps: "Maps link",
-  notes: "Notes",
-};
-
 export function LookSettingsForm({
   catalogId,
   catalogName,
-  extraFieldCount,
   template,
   accent,
-  checkoutFields,
   logo,
   tagline,
   about,
@@ -64,13 +51,13 @@ export function LookSettingsForm({
   showContact,
   showSocial,
   showMap,
+  templateSettings: initialSettings,
+  fulfillmentModes,
 }: {
   catalogId: string;
   catalogName: string;
-  extraFieldCount: number;
   template: CatalogTemplate;
   accent: string;
-  checkoutFields: CheckoutFields;
   logo: string;
   tagline: string;
   about: string;
@@ -90,6 +77,8 @@ export function LookSettingsForm({
   showContact: boolean;
   showSocial: boolean;
   showMap: boolean;
+  templateSettings: TemplateSettings;
+  fulfillmentModes: OrderFulfillment[];
 }) {
   const [open, setOpen] = useDashboardSection("look");
   const [state, formAction, pending] = useActionState<LookState, FormData>(
@@ -101,7 +90,12 @@ export function LookSettingsForm({
   const [clearLogo, setClearLogo] = useState(false);
   const [banners, setBanners] = useState<CatalogBanner[]>(initialBanners);
   const [bannerError, setBannerError] = useState<string | null>(null);
-  const accents = ACCENT_COLORS.includes(accent) ? ACCENT_COLORS : [...ACCENT_COLORS, accent];
+  const [picked, setPicked] = useState<CatalogTemplate>(template);
+  const [pickedAccent, setPickedAccent] = useState(accent);
+  const [tplSettings, setTplSettings] = useState<TemplateSettings>(
+    () => parseTemplateSettings(initialSettings),
+  );
+  void fulfillmentModes;
   const shownLogo = clearLogo ? "" : (logoPreview ?? logo);
   const brandInitial = (catalogName.trim()[0] ?? "C").toUpperCase();
 
@@ -118,7 +112,7 @@ export function LookSettingsForm({
             Look
           </span>
           <span className="mt-1 block text-[13px] leading-snug text-[#5a6472]">
-            Brand, template, accent, and what the storefront order form collects.
+            Brand, template, accent, and storefront details.
           </span>
         </span>
         <span className="mt-0.5 shrink-0 text-[13px] text-[#0b5fce]">{open ? "Hide" : "Show"}</span>
@@ -126,7 +120,7 @@ export function LookSettingsForm({
       <div className="hidden border-b border-[#edf0f4] px-4 py-4 md:block">
         <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Look</p>
         <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-          Brand, template, accent, and what the storefront order form collects.
+          Brand, template, accent, and storefront details.
         </p>
         <p className="m-0 mt-1.5 text-xs leading-snug text-[#8a93a2]">
           Hours, contact, map, and social only appear when enabled. Take orders is under Ordering.
@@ -450,7 +444,8 @@ export function LookSettingsForm({
                       type="radio"
                       name="template"
                       value={tpl.key}
-                      defaultChecked={tpl.key === template}
+                      checked={tpl.key === picked}
+                      onChange={() => setPicked(tpl.key)}
                       className="mt-1 accent-[#0b5fce]"
                     />
                     <span className="min-w-0">
@@ -464,101 +459,18 @@ export function LookSettingsForm({
                   </label>
                 ))}
               </div>
+              <input type="hidden" name="template_settings" value={JSON.stringify(tplSettings)} />
+              <div className="mt-3">
+                <TemplateSettingsFields template={picked} settings={tplSettings} onChange={setTplSettings} />
+              </div>
             </div>
 
             <div className={dashSection}>
               <p className={dashKicker}>Accent colour</p>
-              <div className="flex flex-wrap gap-2.5">
-                {accents.map((hex) => (
-                  <label key={hex} className="cursor-pointer">
-                    <input
-                      type="radio"
-                      name="accent"
-                      value={hex}
-                      defaultChecked={hex === accent}
-                      className="peer sr-only"
-                    />
-                    <span
-                      aria-label={hex}
-                      className="block h-11 w-11 rounded-xl border-2 border-transparent peer-checked:border-[#101720]"
-                      style={{ background: hex }}
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className={dashSection}>
-              <p className={dashKicker}>Order form</p>
               <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-                Required fields must be filled. Hidden fields are not shown to the shop.
+                Pick a theme swatch or any custom colour. Buttons, selected states, and the floor default follow this.
               </p>
-              <div className="overflow-hidden rounded-xl border border-[#e2e7ee]">
-                {CHECKOUT_FIELD_KEYS.map((key) => (
-                  <div
-                    key={key}
-                    className="flex flex-col gap-2 border-b border-[#f1f4f8] px-3.5 py-2.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <label htmlFor={`cf_${key}`} className="min-w-0 text-[14px] text-[var(--cat-ink)]">
-                      {FIELD_UI_LABEL[key]}
-                      <span className="sr-only"> ({CHECKOUT_FIELD_LABELS[key]})</span>
-                    </label>
-                    <div className="flex gap-1 self-start rounded-[10px] border border-[#e2e7ee] bg-[#fbfbfd] p-0.5 sm:self-auto">
-                      {MODES.map((mode) => (
-                        <label key={mode.value} className="cursor-pointer">
-                          <input
-                            type="radio"
-                            id={mode.value === checkoutFields[key] ? `cf_${key}` : undefined}
-                            name={`cf_${key}`}
-                            value={mode.value}
-                            defaultChecked={checkoutFields[key] === mode.value}
-                            className="peer sr-only"
-                          />
-                          <span className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[12px] text-[#5a6472] peer-checked:bg-[#101720] peer-checked:text-white">
-                            {mode.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col gap-2.5 rounded-xl border border-[#e2e7ee] bg-[#fbfbfd] p-3.5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="m-0 min-w-0 text-[13px] leading-snug text-[#46505e]">
-                  {extraFieldCount > 0
-                    ? `${extraFieldCount} extra field${extraFieldCount === 1 ? "" : "s"} in Ordering`
-                    : "Restaurant extra fields live in Ordering. Empty extra fields use these settings."}
-                </p>
-                <a href="#ordering" className={`${dashBtnGhost} shrink-0 no-underline`}>
-                  Edit in Ordering
-                </a>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <span className={dashLabel}>Phone prefix</span>
-                  <input
-                    id="phonePrefix"
-                    name="phonePrefix"
-                    defaultValue={checkoutFields.phonePrefix}
-                    placeholder="+974"
-                    maxLength={16}
-                    className={dashInput}
-                  />
-                  <span className={dashHint}>Shown on the phone field. Added if they skip it.</span>
-                </label>
-                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <span className={dashLabel}>Order reference prefix</span>
-                  <input
-                    id="orderPrefix"
-                    name="orderPrefix"
-                    defaultValue={checkoutFields.orderPrefix}
-                    placeholder="KLE"
-                    maxLength={16}
-                    className={dashInput}
-                  />
-                  <span className={dashHint}>Becomes KLE-1842 instead of the slug letters.</span>
-                </label>
-              </div>
+              <AccentPicker name="accent" value={pickedAccent} onChange={setPickedAccent} />
             </div>
           </div>
 

@@ -117,12 +117,19 @@ export function visibleCheckoutFields(
   });
 }
 
+/** Dine-in at a known table: ask nothing — table is already in session. */
+export function checkoutFieldsForDineInSkip(_fields: CheckoutFormField[]): CheckoutFormField[] {
+  return [];
+}
+
 export function restaurantPresetFields(): CheckoutFormField[] {
   return [
     { id: "name", label: "Your name", type: "text", required: true },
     { id: "phone", label: "Phone", type: "tel", required: true },
     { id: "table", label: "Table number", type: "text", required: true, show_when: ["dine_in"] },
     { id: "address", label: "Delivery address", type: "textarea", required: true, show_when: ["delivery"] },
+    { id: "pickup_time", label: "Pickup time", type: "text", required: false, show_when: ["pickup"] },
+    { id: "payment", label: "Pay with", type: "select", required: false, options: ["Cash", "Card"] },
     { id: "notes", label: "Notes", type: "textarea", required: false },
   ];
 }
@@ -134,6 +141,17 @@ const PHONE_IDS = new Set(["phone", "tel", "mobile"]);
 const ADDRESS_IDS = new Set(["address", "location", "delivery_address"]);
 const MAPS_IDS = new Set(["maps", "mapsLink", "maps_link"]);
 const NOTES_IDS = new Set(["notes", "note", "special_requests"]);
+
+/** Per-item kitchen note when checkout still collects notes. */
+export function checkoutAllowsItemNotes(
+  checkoutForm: CheckoutFormField[],
+  checkoutFields: CheckoutFields,
+): boolean {
+  if (checkoutForm.length > 0) {
+    return checkoutForm.some((field) => NOTES_IDS.has(field.id));
+  }
+  return checkoutFields.notes !== "hidden";
+}
 const TABLE_IDS = new Set(["table", "table_no", "tableNo"]);
 
 export type MappedCheckoutValues = {

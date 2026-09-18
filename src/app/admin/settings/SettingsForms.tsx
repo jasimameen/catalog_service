@@ -8,9 +8,12 @@ export function NotificationsForm({ account }: { account: AccountRow }) {
   const [state, formAction, pending] = useActionState<SettingsState, FormData>(updateNotifications, null);
 
   return (
-    <div className="rounded-2xl border border-[var(--cat-border)] p-[22px]">
-      <h3 className="m-0 mb-4 text-[15px] font-semibold text-[var(--cat-ink)]">Order notifications</h3>
-      <form action={formAction} className="flex flex-col gap-3.5">
+    <div className="rounded-xl border border-[var(--cat-border)] bg-white p-4">
+      <h3 className="m-0 mb-2.5 text-[14px] font-semibold text-[var(--cat-ink)]">Order notifications</h3>
+      <p className="m-0 mb-2.5 text-[12px] leading-snug text-[var(--cat-muted)]">
+        Account default. Each catalog can set its own addresses on the dashboard Ordering card.
+      </p>
+      <form action={formAction} className="flex flex-col gap-2.5">
         <div>
           <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">Email orders to</label>
           <input
@@ -49,9 +52,9 @@ export function CompanyForm({ account, email }: { account: AccountRow; email: st
   const [state, formAction, pending] = useActionState<SettingsState, FormData>(updateCompany, null);
 
   return (
-    <div className="rounded-2xl border border-[var(--cat-border)] p-[22px]">
-      <h3 className="m-0 mb-4 text-[15px] font-semibold text-[var(--cat-ink)]">Company</h3>
-      <form action={formAction} className="flex flex-col gap-3.5">
+    <div className="rounded-xl border border-[var(--cat-border)] bg-white p-4">
+      <h3 className="m-0 mb-2.5 text-[14px] font-semibold text-[var(--cat-ink)]">Company</h3>
+      <form action={formAction} className="flex flex-col gap-2.5">
         <div>
           <label className="mb-1 block text-xs text-[#86868b]">Email</label>
           <input
@@ -62,7 +65,7 @@ export function CompanyForm({ account, email }: { account: AccountRow; email: st
             className="w-full cursor-default rounded-[10px] border border-[#d2d2d7] bg-[#f5f5f7] px-3 py-2 text-[13px] text-[var(--cat-ink)] outline-none"
           />
         </div>
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs text-[#86868b]">Company name</label>
             <input

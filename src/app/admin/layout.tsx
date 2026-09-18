@@ -10,10 +10,7 @@ import {
   isPaid,
   trialDaysLeft,
 } from "@/lib/billing/status";
-import { CatalogLogo } from "@/components/brand/CatalogLogo";
-import { AdminNav } from "@/components/admin/AdminNav";
-import { PRODUCT_NAME } from "@/lib/brand";
-import { SignOutButton } from "@/components/admin/SignOutButton";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
 
 async function TrialCard() {
@@ -84,42 +81,19 @@ async function BillingBanner() {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col overflow-x-clip bg-white md:flex-row">
-      <aside className="sticky top-0 z-30 flex shrink-0 flex-col gap-2.5 border-b border-[var(--cat-border)] bg-[#fbfbfd] pb-2.5 pl-[max(0.875rem,env(safe-area-inset-left))] pr-[max(0.875rem,env(safe-area-inset-right))] pt-[max(0.625rem,env(safe-area-inset-top))] print:hidden md:static md:w-[236px] md:gap-[22px] md:border-b-0 md:border-r md:pb-6 md:pl-[max(1rem,env(safe-area-inset-left))] md:pr-4 md:pt-[18px]">
-        <div className="flex items-center gap-2.5">
-          <Link
-            href="/admin"
-            className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 px-1 md:px-0"
-          >
-            <CatalogLogo size={28} className="shrink-0" />
-            <span className="truncate text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">
-              {PRODUCT_NAME}
-            </span>
-          </Link>
-          <div className="md:hidden">
-            <SignOutButton variant="chrome" />
-          </div>
-        </div>
-
-        <NewCatalogLink />
-
-        <AdminNav />
-
-        <div className="mt-auto hidden min-w-0 flex-col gap-3 md:flex">
-          <Suspense fallback={<TrialCardFallback />}>
-            <TrialCard />
-          </Suspense>
-          <SignOutButton variant="nav" />
-        </div>
-      </aside>
-
-      <main className="min-w-0 flex-1 overflow-x-clip">
-        <Suspense fallback={null}>
-          <BillingBanner />
+    <AdminShell
+      newCatalog={<NewCatalogLink />}
+      trial={
+        <Suspense fallback={<TrialCardFallback />}>
+          <TrialCard />
         </Suspense>
-        {children}
-      </main>
-    </div>
+      }
+    >
+      <Suspense fallback={null}>
+        <BillingBanner />
+      </Suspense>
+      {children}
+    </AdminShell>
   );
 }
 
@@ -127,14 +101,21 @@ async function NewCatalogLink() {
   const account = await requireAccount();
   const allowed = canPublishNewCatalog(account);
 
+  const plus = (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path d="M8 3.4v9.2M3.4 8h9.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+
   if (!allowed) {
     return (
       <Link
         href="/admin/settings"
         title="Subscribe to publish a new catalog"
-        className="hidden min-h-11 shrink-0 items-center justify-center rounded-[11px] bg-[var(--cat-accent)] px-4 text-center text-[14px] font-medium text-white opacity-50 md:flex"
+        className="hidden min-h-11 shrink-0 items-center justify-center rounded-[11px] bg-[var(--cat-accent)] px-4 text-center text-[14px] font-medium text-white opacity-50 md:flex group-data-[collapsed=true]/shell:h-11 group-data-[collapsed=true]/shell:w-11 group-data-[collapsed=true]/shell:px-0"
       >
-        New catalog
+        <span className="group-data-[collapsed=true]/shell:hidden">New catalog</span>
+        <span className="hidden group-data-[collapsed=true]/shell:inline-flex">{plus}</span>
       </Link>
     );
   }
@@ -142,9 +123,11 @@ async function NewCatalogLink() {
   return (
     <Link
       href="/new"
-      className="hidden min-h-11 shrink-0 items-center justify-center rounded-[11px] bg-[var(--cat-accent)] px-4 text-center text-[14px] font-medium text-white md:flex"
+      title="New catalog"
+      className="hidden min-h-11 shrink-0 items-center justify-center rounded-[11px] bg-[var(--cat-accent)] px-4 text-center text-[14px] font-medium text-white md:flex group-data-[collapsed=true]/shell:h-11 group-data-[collapsed=true]/shell:w-11 group-data-[collapsed=true]/shell:px-0"
     >
-      New catalog
+      <span className="group-data-[collapsed=true]/shell:hidden">New catalog</span>
+      <span className="hidden group-data-[collapsed=true]/shell:inline-flex">{plus}</span>
     </Link>
   );
 }

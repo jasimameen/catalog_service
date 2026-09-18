@@ -4,39 +4,21 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import { formatOrderDateTime, statusById, type OrderStatusDef } from "@/lib/catalog/order-statuses";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
 import type { OrderRow } from "@/lib/supabase/types";
 import { dashCard } from "@/components/admin/dashboard/styles";
-
-function playBeep() {
-  try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    gain.gain.value = 0.12;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.2);
-  } catch {
-    // ignore autoplay restrictions
-  }
-}
-
-function notifyNewOrder(order: OrderRow) {
-  playBeep();
-  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    try {
-      new Notification("New order", {
-        body: `${order.reference} · ${order.shop_name || order.phone || "Guest"}`,
-      });
-    } catch {
-      // ignore
-    }
-  }
-}
+import { FulfillmentTypeBadge } from "@/components/orders/FulfillmentTypeBadge";
+import {
+  announceNewOrder,
+  asCatalogOrder,
+  fetchCatalogOrders,
+  newcomersToast,
+  rowCatalogId,
+  rowId,
+  useCatalogLiveChannel,
+  useLiveRefresh,
+} from "@/lib/catalog/live-orders";
+import type { NotifySoundSettings } from "@/lib/catalog/template-settings";
+import { DEFAULT_TEMPLATE_SETTINGS } from "@/lib/catalog/template-settings";
 
 function relativeTime(iso: string, now: number | null): string {
   if (now == null) return formatOrderDateTime(iso);
@@ -59,70 +41,96 @@ export function LiveRecentOrders({
   currency,
   initialOrders,
   statuses,
+  sounds = DEFAULT_TEMPLATE_SETTINGS.notify,
 }: {
   catalogId: string;
   currency: string;
   initialOrders: OrderRow[];
   statuses: OrderStatusDef[];
+  sounds?: NotifySoundSettings;
 }) {
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState(initialOrders.filter((order) => order.catalog_id === catalogId));
   const [toast, setToast] = useState<string | null>(null);
-  const [notify, setNotify] = useState<"hidden" | "ask" | "on">("hidden");
+  const [notifyAsk, setNotifyAsk] = useState<"hidden" | "ask" | "on">("hidden");
   const [now, setNow] = useState<number | null>(null);
   const seenIds = useRef(new Set(initialOrders.map((order) => order.id)));
   const hydrated = useRef(false);
 
-  const refresh = useCallback(async () => {
-    const supabase = getBrowserSupabase();
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("catalog_id", catalogId)
-      .order("created_at", { ascending: false })
-      .limit(4);
-    const next = (data ?? []) as OrderRow[];
-    const newcomers = next.filter((order) => !seenIds.current.has(order.id));
-    if (hydrated.current && newcomers.length > 0) {
-      for (const order of newcomers) {
-        seenIds.current.add(order.id);
-        notifyNewOrder(order);
+  const markSeen = useCallback(
+    (incoming: OrderRow[]) => {
+      const newcomers = incoming.filter((order) => !seenIds.current.has(order.id));
+      if (hydrated.current && newcomers.length > 0) {
+        for (const order of newcomers) {
+          seenIds.current.add(order.id);
+          announceNewOrder(order, sounds);
+        }
+        setToast(newcomersToast(newcomers));
+      } else {
+        for (const order of incoming) seenIds.current.add(order.id);
       }
-      setToast(
-        newcomers.length === 1 ? `New order ${newcomers[0]!.reference}` : `${newcomers.length} new orders`,
-      );
-    } else {
-      for (const order of next) seenIds.current.add(order.id);
+      hydrated.current = true;
+    },
+    [sounds],
+  );
+
+  const refresh = useCallback(async () => {
+    try {
+      const next = await fetchCatalogOrders(catalogId, 4);
+      markSeen(next);
+      setOrders(next);
+    } catch {
+      // poll retries
     }
-    hydrated.current = true;
-    setOrders(next);
-  }, [catalogId]);
+  }, [catalogId, markSeen]);
 
-  useEffect(() => {
-    const supabase = getBrowserSupabase();
-    const channel = supabase
-      .channel(`dashboard-orders:${catalogId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders", filter: `catalog_id=eq.${catalogId}` },
-        () => {
+  const ingestInsert = useCallback(
+    async (hint: OrderRow | null, orderId: string | null) => {
+      try {
+        const incoming = hint ?? (orderId
+          ? (await fetchCatalogOrders(catalogId, 4)).find((row) => row.id === orderId) ?? null
+          : null);
+        if (!incoming || incoming.catalog_id !== catalogId) {
           void refresh();
-        },
-      )
-      .subscribe();
-    const interval = window.setInterval(() => {
+          return;
+        }
+        markSeen([incoming]);
+        setOrders((prev) => [incoming, ...prev.filter((row) => row.id !== incoming.id)].slice(0, 4));
+      } catch {
+        void refresh();
+      }
+    },
+    [catalogId, markSeen, refresh],
+  );
+
+  const onRealtime = useCallback(
+    (table: "orders" | "service_requests" | "reservations", eventType: string, row: unknown) => {
+      if (table !== "orders") return;
+      const cid = rowCatalogId(row);
+      if (cid && cid !== catalogId) return;
+      if (eventType === "INSERT") {
+        void ingestInsert(asCatalogOrder(row, catalogId), rowId(row));
+        return;
+      }
       void refresh();
-    }, 10000);
-    return () => {
-      window.clearInterval(interval);
-      void supabase.removeChannel(channel);
-    };
-  }, [catalogId, refresh]);
+    },
+    [catalogId, ingestInsert, refresh],
+  );
+
+  useCatalogLiveChannel(catalogId, ["orders"], onRealtime);
+  useLiveRefresh(refresh);
 
   useEffect(() => {
-    setNow(Date.now());
-    if (typeof Notification === "undefined") return;
-    if (Notification.permission === "granted") setNotify("on");
-    else if (Notification.permission === "default") setNotify("ask");
+    const start = window.setTimeout(() => {
+      setNow(Date.now());
+      if (typeof Notification === "undefined") return;
+      if (Notification.permission === "granted") setNotifyAsk("on");
+      else if (Notification.permission === "default") setNotifyAsk("ask");
+    }, 0);
+    const tick = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(tick);
+    };
   }, []);
 
   useEffect(() => {
@@ -144,12 +152,12 @@ export function LiveRecentOrders({
           </h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {notify === "ask" ? (
+          {notifyAsk === "ask" ? (
             <button
               type="button"
               onClick={() => {
                 void Notification.requestPermission().then((permission) => {
-                  setNotify(permission === "granted" ? "on" : "hidden");
+                  setNotifyAsk(permission === "granted" ? "on" : "hidden");
                 });
               }}
               className="min-h-11 text-[13px] text-[#5a6472] hover:text-[var(--cat-ink)]"
@@ -170,7 +178,7 @@ export function LiveRecentOrders({
       <div className="flex flex-col">
         {orders.length === 0 ? (
           <p className="px-4 py-9 text-center text-[13px] leading-relaxed text-[#8a93a2] sm:px-[18px]">
-            No orders yet. They will show up here when a shop places one.
+            No orders yet. They will show up here when a guest places one.
           </p>
         ) : (
           orders.map((order) => {
@@ -187,8 +195,9 @@ export function LiveRecentOrders({
                   title={statusById(statuses, order.status)?.label ?? order.status}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px]">
-                    {order.shop_name || "Guest"}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <FulfillmentTypeBadge order={order} compact />
+                    <span className="truncate text-[14px]">{order.shop_name || "Guest"}</span>
                   </span>
                   <span className="block truncate font-mono text-[12px] text-[#8a93a2] sm:hidden">
                     {order.reference}

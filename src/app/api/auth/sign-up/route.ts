@@ -1,5 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
+import { authCallbackUrl } from "@/lib/auth/request-origin";
 import { provisionAccount } from "@/lib/auth/provision";
 import { sendMail } from "@/lib/mail";
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     password,
     options: {
       data: { company_name: companyName },
-      emailRedirectTo: callbackUrl(request),
+      emailRedirectTo: authCallbackUrl(request, "/new"),
     },
   });
 
@@ -65,14 +66,6 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true, needsConfirmation: false });
-}
-
-function callbackUrl(request: Request): string {
-  const url = new URL(request.url);
-  const host = request.headers.get("x-forwarded-host") || url.host;
-  const proto =
-    request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "") || "http";
-  return `${proto}://${host}/auth/callback`;
 }
 
 function escapeHtml(value: string): string {

@@ -1,8 +1,10 @@
 import { DEFAULT_CHECKOUT_FIELDS } from "./checkout-fields";
-import { resolveCheckoutForm } from "./checkout-form";
+import { resolveCheckoutForm, restaurantPresetFields } from "./checkout-form";
 import { STOCK_PHOTOS } from "./placeholders";
 import type { CatalogTemplateKey, StorefrontCatalog, StorefrontItem } from "./types";
 import type { ItemOptionGroup } from "@/lib/supabase/types";
+import { DEFAULT_TEMPLATE_SETTINGS, publishedFloorPlan } from "./template-settings";
+import { emptyPlan, planFromLegacyTables } from "./floor-plan";
 
 const PREVIEW_CATALOG_ID = "builder-look-preview";
 
@@ -126,20 +128,43 @@ export function buildLookPreviewCatalog(input: {
     }),
   ];
 
+  const restaurant = input.template === "menu";
   const checkoutFields = DEFAULT_CHECKOUT_FIELDS;
+  const checkoutForm = restaurant
+    ? restaurantPresetFields()
+    : resolveCheckoutForm(null, checkoutFields);
 
   return {
     id: PREVIEW_CATALOG_ID,
-    name: input.name.trim() || "Sample shop",
+    name: input.name.trim() || (restaurant ? "Sample kitchen" : "Sample shop"),
     slug: "sample-shop",
     template: input.template,
     accent: input.accent,
     currency: input.currency,
     checkoutFields,
-    checkoutForm: resolveCheckoutForm(null, checkoutFields),
-    fulfillmentModes: [],
+    checkoutForm,
+    fulfillmentModes: restaurant ? ["delivery", "pickup", "dine_in"] : [],
+    settings: {
+      ...DEFAULT_TEMPLATE_SETTINGS,
+      restaurant: {
+        ...DEFAULT_TEMPLATE_SETTINGS.restaurant,
+        deliveryFee: restaurant ? 8 : 0,
+        minOrder: restaurant ? 25 : 0,
+        kitchenOpen: true,
+      },
+      floor: publishedFloorPlan(
+        restaurant
+          ? planFromLegacyTables("Main floor", [
+              { id: "t1", no: "1", seats: 4, bookable: true, status: "open" },
+              { id: "t2", no: "2", seats: 4, bookable: true, status: "open" },
+              { id: "t3", no: "3", seats: 2, bookable: true, status: "open" },
+              { id: "t4", no: "4", seats: 6, bookable: true, status: "open" },
+            ])
+          : emptyPlan("Main floor"),
+      ),
+    },
     logo: "",
-    tagline: "Sample menu",
+    tagline: restaurant ? "Kitchen · sample preview" : "Sample menu",
     about: "",
     banners: [],
     imageFit: "cover",

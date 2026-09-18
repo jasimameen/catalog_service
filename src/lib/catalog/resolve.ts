@@ -15,6 +15,7 @@ import { isStockPhotoUrl } from "./placeholders";
 import { STOREFRONT_CATALOG_CACHE_TAG } from "./storefront-cache";
 import { isTemplateKey } from "./templates";
 import { pausedOrdersMessage, storefrontAlertText } from "./order-tracking";
+import { parseTemplateSettings } from "./template-settings";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -108,6 +109,7 @@ function toStorefront(catalogRow: CatalogRow, items: CatalogItemRow[] | null): S
     checkoutFields,
     checkoutForm: resolveCheckoutForm(catalogRow.checkout_form, checkoutFields),
     fulfillmentModes: parseFulfillmentModes(catalogRow.fulfillment_modes),
+    settings: parseTemplateSettings(catalogRow.template_settings),
     logo: catalogRow.logo ?? "",
     tagline: catalogRow.tagline ?? "",
     about: catalogRow.about ?? "",
@@ -189,7 +191,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host-v8"],
+  ["storefront-catalog-by-host-v9"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

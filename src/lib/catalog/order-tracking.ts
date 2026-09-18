@@ -22,6 +22,10 @@ export function storefrontAlertText(value: unknown): string {
   return value.trim().slice(0, 280);
 }
 
+export function trackingPath(slug: string, token: string): string {
+  return `/s/${encodeURIComponent(slug.trim().toLowerCase())}/track/${encodeURIComponent(token.trim())}`;
+}
+
 export function trackingUrl(slug: string, token: string, hostname?: string | null): string {
   if (hostname && hostname.trim()) {
     const host = hostname.trim().toLowerCase();

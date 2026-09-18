@@ -127,6 +127,7 @@ export type CatalogRow = {
   orders_paused_message?: string | null;
   storefront_alert?: string | null;
   show_storefront_alert?: boolean | null;
+  template_settings?: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -180,6 +181,65 @@ export type OrderRow = {
   geo_lng?: number | null;
   form_values?: Record<string, string> | unknown;
   track_token?: string | null;
+  claimed_at?: string | null;
+  claimed_by?: string | null;
+  created_at: string;
+};
+
+export type ReservationItemSnap = {
+  code: string;
+  name: string;
+  qty: number;
+  price: number;
+  options?: SelectedOption[];
+  notes?: string;
+};
+
+export type ReservationStatus = "pending" | "confirmed" | "seated" | "completed" | "cancelled" | "no_show";
+
+export type ReservationTableRef = {
+  id: string;
+  no: string;
+};
+
+export type ReservationRow = {
+  id: string;
+  catalog_id: string;
+  table_id: string | null;
+  table_no: string | null;
+  table_ids?: ReservationTableRef[] | unknown;
+  day: string;
+  slot: string;
+  guests: number;
+  name: string;
+  phone: string;
+  note: string | null;
+  items?: ReservationItemSnap[] | unknown;
+  order_id?: string | null;
+  status?: ReservationStatus | string | null;
+  confirmed_at?: string | null;
+  seated_at?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  no_show_at?: string | null;
+  created_at: string;
+};
+
+export type ReservationStatusEventRow = {
+  id: string;
+  reservation_id: string;
+  from_status: string | null;
+  to_status: string;
+  actor: string | null;
+  created_at: string;
+};
+
+export type ServiceRequestRow = {
+  id: string;
+  catalog_id: string;
+  table_no: string | null;
+  kind: string;
+  note: string | null;
   created_at: string;
 };
 

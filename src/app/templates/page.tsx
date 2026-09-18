@@ -158,17 +158,17 @@ function MenuPreview() {
     { title: "Scourers & cloths", rows: SAMPLE_ITEMS.slice(6, 8) },
   ];
   return (
-    <div style={{ background: "#fffdf8" }} className="px-9 py-11 sm:px-11">
-      <div className="border-b border-[#e6e0d3] pb-5.5 text-center">
+    <div className="bg-[var(--cat-bg)] px-9 py-11 sm:px-11">
+      <div className="border-b border-[var(--cat-border)] pb-5.5 text-center">
         <h2 className="text-[28px] font-semibold uppercase tracking-[0.02em]">Example Co Supply List</h2>
-        <p className="mt-2 text-[13px] text-[#8a8171]">Prices in QAR · Delivery within 48 hours</p>
+        <p className="mt-2 text-[13px] text-[var(--cat-muted)]">Prices in QAR · Delivery within 48 hours</p>
       </div>
       <div className="mt-8 grid grid-cols-1 gap-10 sm:grid-cols-2">
         {sections.map((sec) => (
           <div key={sec.title}>
-            <p className="mb-3.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8171]">{sec.title}</p>
+            <p className="mb-3.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--cat-muted)]">{sec.title}</p>
             {sec.rows.map((row) => (
-              <div key={row.code} className="flex items-baseline gap-2.5 border-b border-dotted border-[#ddd5c5] py-2.5">
+              <div key={row.code} className="flex items-baseline gap-2.5 border-b border-dotted border-[var(--cat-border)] py-2.5">
                 <span className="text-[15px] font-medium">{row.name}</span>
                 <span className="flex-1" />
                 <span className="text-[15px] font-semibold">{row.price.toFixed(2)}</span>
@@ -177,7 +177,7 @@ function MenuPreview() {
           </div>
         ))}
       </div>
-      <p className="mt-9 text-center text-[13px] text-[#8a8171]">Tap any line to add it to your order</p>
+      <p className="mt-9 text-center text-[13px] text-[var(--cat-muted)]">Tap any line to add it to your order</p>
     </div>
   );
 }

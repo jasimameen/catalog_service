@@ -15,6 +15,12 @@ import type { OrderResult } from "@/lib/catalog/order-types";
 import { formatMoney } from "@/lib/catalog/currency";
 import { storefrontCategories } from "@/lib/catalog/merchandising";
 import { isTemplateKey } from "@/lib/catalog/templates";
+import { isRestaurantCatalog } from "@/lib/catalog/template-settings";
+import { StorefrontSessionProvider } from "./StorefrontSession";
+import { DineInPresenceGate } from "./DineInPresenceGate";
+import { StorefrontMarquee } from "./StorefrontMarquee";
+import { PausedNote } from "./PausedNote";
+import { trackingPath } from "@/lib/catalog/order-tracking";
 
 export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const [cartOpen, setCartOpen] = useState(false);
@@ -24,7 +30,9 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const forcedTemplate = searchParams.get("tpl");
   const templateKey = forcedTemplate && isTemplateKey(forcedTemplate) ? forcedTemplate : catalog.template;
   const Template = TEMPLATE_COMPONENTS[templateKey] ?? TEMPLATE_COMPONENTS.grid;
-  const showChips = storefrontCategories(catalog.items).length >= 2;
+  const restaurant = isRestaurantCatalog(templateKey, catalog.fulfillmentModes);
+  const showChips = !restaurant && storefrontCategories(catalog.items).length >= 2;
+  const initialTable = (searchParams.get("table") ?? "").trim();
   const viewCatalog = useMemo<StorefrontCatalog>(() => {
     if (!category) return catalog;
     return {
@@ -40,56 +48,17 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
       acceptOrders={catalog.acceptOrders}
       pausedMessage={catalog.ordersPausedMessage}
     >
+    <StorefrontSessionProvider catalog={viewCatalog} restaurant={restaurant} initialTable={initialTable}>
+      <DineInPresenceGate />
       {order ? (
-        <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 py-10 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--cat-success-bg)]">
-            <span className="text-3xl text-[var(--cat-success-ink)]">✓</span>
-          </div>
-          <h1 className="font-catalog-display text-2xl font-bold text-[var(--cat-ink)]">
-            Order placed
-          </h1>
-          <p className="mt-2 text-sm text-[var(--cat-muted)]">
-            {order.phone
-              ? `We'll call ${order.phone} to confirm stock and delivery${order.shopName ? ` for ${order.shopName}` : ""}.`
-              : `We'll confirm stock and delivery${order.shopName ? ` for ${order.shopName}` : ""}.`}
-          </p>
-          <div className="mt-6 w-full rounded-[14px] border border-[var(--cat-border)] bg-white p-4 text-left">
-            <Row label="Reference" value={order.reference} bold />
-            <Row
-              label="Items"
-              value={`${order.itemCount} unit${order.itemCount === 1 ? "" : "s"} · ${order.lineCount} line${order.lineCount === 1 ? "" : "s"}`}
-            />
-            <Row label="Subtotal" value={formatMoney(order.total, catalog.currency)} bold last={!order.trackUrl} />
-            {order.trackUrl ? (
-              <div className="pt-2">
-                <a href={order.trackUrl} className="text-sm font-semibold text-[var(--cat-accent)]">
-                  Track this order
-                </a>
-              </div>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={() => setOrder(null)}
-            className="mt-6 w-full rounded-[9px] bg-[var(--cat-accent)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            Back to catalogue
-          </button>
-          <StorefrontWatermark />
-        </main>
+        <OrderConfirmation catalog={catalog} restaurant={restaurant} order={order} onBack={() => setOrder(null)} />
       ) : (
         <main className="@container">
           {catalog.showStorefrontAlert && catalog.storefrontAlert ? (
-            <div className="bg-[var(--cat-ink)] px-4 py-2.5 text-center text-sm font-medium text-white">
-              {catalog.storefrontAlert}
-            </div>
+            <StorefrontMarquee text={catalog.storefrontAlert} tone="ink" />
           ) : null}
-          {!catalog.acceptOrders ? (
-            <div className="bg-[#fff4e5] px-4 py-2.5 text-center text-sm font-medium text-[#9a5b00]">
-              {catalog.ordersPausedMessage}
-            </div>
-          ) : null}
-          <StorefrontHero banners={catalog.banners} />
+          {!catalog.acceptOrders ? <PausedNote message={catalog.ordersPausedMessage} /> : null}
+          {!restaurant ? <StorefrontHero banners={catalog.banners} /> : null}
           <Template
             catalog={viewCatalog}
             onOpenCart={() => setCartOpen(true)}
@@ -98,9 +67,9 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
                 <CategoryChips items={catalog.items} selected={category} onSelect={setCategory} />
               ) : undefined
             }
-            featured={<FeaturedStrip catalog={catalog} />}
+            featured={restaurant ? undefined : <FeaturedStrip catalog={catalog} />}
           />
-          <StorefrontFooter catalog={catalog} />
+          {!restaurant ? <StorefrontFooter catalog={catalog} /> : null}
           {catalog.acceptOrders ? (
             <CartPanel
               catalogId={catalog.id}
@@ -118,7 +87,75 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
           ) : null}
         </main>
       )}
+    </StorefrontSessionProvider>
     </CartProvider>
+  );
+}
+
+function trackHref(order: OrderResult, slug: string): string | undefined {
+  if (order.trackPath) return order.trackPath;
+  if (order.trackToken) return trackingPath(slug, order.trackToken);
+  return order.trackUrl;
+}
+
+function OrderConfirmation({
+  catalog,
+  restaurant,
+  order,
+  onBack,
+}: {
+  catalog: StorefrontCatalog;
+  restaurant: boolean;
+  order: OrderResult;
+  onBack: () => void;
+}) {
+  const href = trackHref(order, catalog.slug);
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 py-10 text-center">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--cat-success-bg)]">
+        <span className="text-3xl text-[var(--cat-success-ink)]">✓</span>
+      </div>
+      <h1 className="font-catalog-display text-2xl font-bold text-[var(--cat-ink)]">
+        {restaurant ? `Order received at ${catalog.name}` : "Order placed"}
+      </h1>
+      <p className="mt-2 text-sm text-[var(--cat-muted)]">
+        {restaurant
+          ? order.phone
+            ? `${catalog.name} will confirm on ${order.phone}.`
+            : `${catalog.name} has your order.`
+          : order.phone
+            ? `We'll call ${order.phone} to confirm stock and delivery${order.shopName ? ` for ${order.shopName}` : ""}.`
+            : `We'll confirm stock and delivery${order.shopName ? ` for ${order.shopName}` : ""}.`}
+      </p>
+      <div className="mt-6 w-full rounded-[14px] border border-[var(--cat-border)] bg-white p-4 text-left">
+        <Row label="Reference" value={order.reference} bold />
+        <Row
+          label="Items"
+          value={`${order.itemCount} unit${order.itemCount === 1 ? "" : "s"} · ${order.lineCount} line${order.lineCount === 1 ? "" : "s"}`}
+        />
+        <Row label="Subtotal" value={formatMoney(order.total, catalog.currency)} bold last />
+      </div>
+      {href ? (
+        <a
+          href={href}
+          className="mt-6 flex w-full items-center justify-center rounded-[9px] bg-[var(--cat-accent)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+        >
+          Track order
+        </a>
+      ) : null}
+      <button
+        type="button"
+        onClick={onBack}
+        className={
+          href
+            ? "mt-3 w-full rounded-[9px] border border-[var(--cat-border)] bg-white py-2.5 text-sm font-semibold text-[var(--cat-ink)] transition hover:bg-[var(--cat-photo-bg)]"
+            : "mt-6 w-full rounded-[9px] bg-[var(--cat-accent)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+        }
+      >
+        {restaurant ? "Back to menu" : "Back to catalogue"}
+      </button>
+      <StorefrontWatermark />
+    </main>
   );
 }
 

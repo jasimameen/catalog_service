@@ -1,6 +1,7 @@
 "use client";
 
-import { TEMPLATES, ACCENT_COLORS } from "@/lib/catalog/templates";
+import { TEMPLATES } from "@/lib/catalog/templates";
+import { AccentPicker } from "@/components/catalog/AccentPicker";
 import type { CatalogTemplateKey } from "./types";
 
 interface StepLookProps {
@@ -58,22 +59,7 @@ export function StepLook({
       <p className="mb-3 mt-8 text-[13px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
         Accent colour
       </p>
-      <div className="flex gap-2.5">
-        {ACCENT_COLORS.map((hex) => (
-          <button
-            key={hex}
-            type="button"
-            onClick={() => onAccent(hex)}
-            aria-label="Accent colour"
-            className="h-[34px] w-[34px] rounded-full"
-            style={{
-              background: hex,
-              border: `2px solid ${accent === hex ? "#1d1d1f" : "transparent"}`,
-              boxShadow: "0 0 0 2px #fff inset",
-            }}
-          />
-        ))}
-      </div>
+      <AccentPicker value={accent} onChange={onAccent} size="builder" />
 
       <p className="mb-3 mt-8 text-[13px] font-semibold uppercase tracking-[0.06em] text-[#86868b]">
         Catalog name

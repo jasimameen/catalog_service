@@ -32,19 +32,6 @@ export async function updateNotifications(
 
   if (error) return { error: "Could not save notifications. Try again." };
 
-  // Order emails are sent from catalogs.order_email (see the public order
-  // route). Keep every catalog in this account pointed at the address the
-  // owner just saved, so Settings is not a no-op.
-  const { error: catalogsError } = await supabase
-    .from("catalogs")
-    .update({ order_email: orderEmail || null })
-    .eq("account_id", account.id);
-
-  if (catalogsError) {
-    console.error("updateNotifications: catalog email sync failed", catalogsError);
-    return { error: "Could not save notifications. Try again." };
-  }
-
   revalidatePath("/admin", "layout");
   return { saved: true };
 }

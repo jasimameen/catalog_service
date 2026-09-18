@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
-import { fulfillmentLabel } from "@/lib/catalog/checkout-form";
+import { FulfillmentTypeBadge } from "@/components/orders/FulfillmentTypeBadge";
 import { formatSelectedOptions } from "@/lib/catalog/item-options";
 import {
   formatComboIncludes,
@@ -11,7 +11,7 @@ import {
   thumbForSku,
   type ItemThumb,
 } from "@/lib/catalog/combos";
-import { formatOrderDateTime, statusLabel, type OrderStatusDef } from "@/lib/catalog/order-statuses";
+import { formatOrderDateTime, nextWorkflowAction, statusLabel, type OrderStatusDef } from "@/lib/catalog/order-statuses";
 import type {
   CheckoutFormField,
   OrderItemRow,
@@ -86,7 +86,7 @@ export function OrderDetailDrawer({
   events,
   statuses,
   currency,
-  showFulfillment,
+  showFulfillment: _showFulfillment,
   thumbs,
   checkoutForm,
   onClose,
@@ -146,6 +146,7 @@ export function OrderDetailDrawer({
       ];
   const current = statuses.find((row) => row.id === order.status);
   const statusColor = current?.color || "#86868b";
+  const nextAction = nextWorkflowAction(order.status, statuses);
 
   async function copyLink() {
     setCopying(true);
@@ -175,19 +176,25 @@ export function OrderDetailDrawer({
         className="orders-sheet flex h-[92%] w-full max-h-full max-w-none flex-col overflow-y-auto rounded-t-[18px] bg-white md:h-full md:max-w-[440px] md:rounded-none md:border-l md:border-[#e2e7ee]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-[1] border-b border-[#edf0f4] bg-white px-[18px] py-[15px]">
-          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#e2e7ee] md:hidden" aria-hidden />
+        <div className="sticky top-0 z-[1] border-b border-[#edf0f4] bg-white px-4 py-3">
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-[#e2e7ee] md:hidden" aria-hidden />
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-[11px] uppercase tracking-[0.08em] text-[#8a93a2]">Order</p>
+              <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                <FulfillmentTypeBadge order={order} />
+                <span className="text-[11px] uppercase tracking-[0.08em] text-[#8a93a2]">
+                  {lines.reduce((sum, line) => sum + Number(line.qty || 0), 0)} items
+                </span>
+              </div>
               <h2
                 id="order-detail-title"
-                className="m-0 mt-[3px] font-mono text-[17px] font-medium tracking-tight text-[var(--cat-ink)]"
+                className="m-0 font-mono text-[16px] font-medium tracking-tight text-[var(--cat-ink)]"
               >
                 {order.reference}
               </h2>
               <p suppressHydrationWarning className="m-0 mt-0.5 text-[12px] text-[#8a93a2]">
                 {formatOrderDateTime(order.created_at)}
+                {order.shop_name ? ` · ${order.shop_name}` : ""}
               </p>
             </div>
             <button
@@ -201,9 +208,18 @@ export function OrderDetailDrawer({
           </div>
         </div>
 
-        <div className="flex flex-col gap-[22px] px-[18px] py-[18px] pb-[max(18px,env(safe-area-inset-bottom))]">
+        <div className="flex flex-col gap-4 px-4 py-3.5 pb-[max(16px,env(safe-area-inset-bottom))]">
           <section className="flex flex-col gap-2.5">
             <div className="text-[11px] uppercase tracking-[0.08em] text-[#8a93a2]">Status</div>
+            {nextAction ? (
+              <button
+                type="button"
+                onClick={() => onStatus(nextAction.nextId)}
+                className="min-h-11 w-full rounded-[11px] bg-[var(--cat-ink)] text-[14px] font-semibold text-white"
+              >
+                {nextAction.label}
+              </button>
+            ) : null}
             <div
               className="flex items-center gap-2 rounded-xl border p-1"
               style={{ borderColor: statusColor, background: statusTint(statusColor) }}
@@ -245,12 +261,7 @@ export function OrderDetailDrawer({
                 {email}
               </a>
             ) : null}
-            {showFulfillment && (order.fulfillment || order.table_no) ? (
-              <div className="text-[13px] text-[#5a6472]">
-                {order.fulfillment ? fulfillmentLabel(order.fulfillment) : ""}
-                {order.table_no ? `${order.fulfillment ? " · " : ""}Table ${order.table_no}` : ""}
-              </div>
-            ) : null}
+            <FulfillmentTypeBadge order={order} />
           </section>
 
           {order.location || order.maps_link || hasPin ? (

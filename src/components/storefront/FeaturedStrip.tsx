@@ -81,7 +81,7 @@ function FeaturedBanner({
         type="button"
         onClick={() => onSelect(item)}
         className={`relative shrink-0 cursor-pointer overflow-hidden rounded-[10px] bg-[var(--cat-photo-bg)] ${
-          item.isCombo ? "h-20 w-28 sm:h-24 sm:w-36" : "h-20 w-20 sm:h-24 sm:w-24"
+          item.isCombo ? "h-[88px] w-[120px] sm:h-[104px] sm:w-[140px]" : "h-[88px] w-[88px] sm:h-[104px] sm:w-[104px]"
         }`}
         aria-label={`View details for ${item.name}`}
       >
@@ -156,13 +156,11 @@ function FeaturedCard({
   const { acceptOrders, pausedMessage } = useCart();
   const cover = comboCoverImage(item);
   return (
-    <article className="flex w-[148px] shrink-0 snap-start flex-col overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-white sm:w-[168px]">
+    <article className="flex w-[132px] shrink-0 snap-start flex-col overflow-hidden rounded-[12px] border border-[var(--cat-border)] bg-white sm:w-[148px]">
       <button
         type="button"
         onClick={() => onSelect(item)}
-        className={`relative w-full cursor-pointer overflow-hidden bg-[var(--cat-photo-bg)] ${
-          item.isCombo ? "aspect-[16/10]" : "aspect-square"
-        }`}
+        className="relative h-[120px] w-full cursor-pointer overflow-hidden bg-[var(--cat-photo-bg)]"
         aria-label={`View details for ${item.name}`}
       >
         {cover ? (

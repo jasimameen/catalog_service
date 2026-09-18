@@ -2,16 +2,25 @@ import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { requestOrigin } from "@/lib/auth/request-origin";
 import { companyNameFromUser, provisionAccount, safeNextPath } from "@/lib/auth/provision";
 
 /**
- * Supabase email-confirm / magic-link landing. PKCE sends `?code=`, some
+ * Supabase email-confirm / recovery landing. PKCE sends `?code=`, some
  * templates send `?token_hash=&type=`. Either way we establish a session,
- * provision the account if needed, and send the user to Catalog Builder.
+ * provision the account if needed, and send the user on.
+ *
+ * Recovery links must land here (not /reset-password) so the code is
+ * exchanged before the new-password form. `next=/reset-password` or
+ * `type=recovery` sends them to that form.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const next = safeNextPath(url.searchParams.get("next"), "/new");
+  const type = url.searchParams.get("type") as EmailOtpType | null;
+  const requestedNext = url.searchParams.get("next");
+  const next = type === "recovery"
+    ? "/reset-password"
+    : safeNextPath(requestedNext, "/new");
   const origin = requestOrigin(request);
 
   if (!isSupabaseConfigured()) {
@@ -20,7 +29,6 @@ export async function GET(request: Request) {
 
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
-  const type = url.searchParams.get("type") as EmailOtpType | null;
 
   const supabase = await getServerSupabase();
 
@@ -36,7 +44,10 @@ export async function GET(request: Request) {
   }
 
   if (authError) {
-    return NextResponse.redirect(`${origin}/auth/sign-in?error=confirm`);
+    const failed = type === "recovery" || next === "/reset-password"
+      ? `${origin}/auth/forgot-password?error=expired`
+      : `${origin}/auth/sign-in?error=confirm`;
+    return NextResponse.redirect(failed);
   }
 
   const {
@@ -47,14 +58,4 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.redirect(`${origin}${next}`);
-}
-
-function requestOrigin(request: Request): string {
-  const url = new URL(request.url);
-  const host = request.headers.get("x-forwarded-host") || url.host;
-  const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
-  const proto =
-    request.headers.get("x-forwarded-proto") ||
-    (isLocal ? "http" : url.protocol.replace(":", "") || "https");
-  return `${proto}://${host}`;
 }

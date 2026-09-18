@@ -334,6 +334,65 @@ export function formatOrderDateTime(iso: string): string {
   });
 }
 
+export function formatOrderTime(iso: string): string {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return "";
+  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+export type WorkflowLaneId = "new" | "kitchen" | "ready" | "done";
+
+export const WORKFLOW_LANES: { id: WorkflowLaneId; label: string }[] = [
+  { id: "new", label: "New" },
+  { id: "kitchen", label: "In kitchen" },
+  { id: "ready", label: "Ready" },
+  { id: "done", label: "Done" },
+];
+
+export function workflowLane(status: string, statuses: OrderStatusDef[]): WorkflowLaneId {
+  const def = statusById(statuses, status);
+  if (def?.is_done || LEGACY_DONE.has(status)) return "done";
+  const hay = `${status} ${def?.label ?? ""}`.toLowerCase();
+  if (/(ready|collect|out_for|gone|deliver|ship)/.test(hay)) return "ready";
+  if (/(new|pending|receiv|hold|wait)/.test(hay)) return "new";
+  if (/(prepar|kitchen|progress|confirm|pack|schedul)/.test(hay)) return "kitchen";
+  const open = statuses.filter((row) => !row.is_done);
+  const idx = open.findIndex((row) => row.id === status);
+  if (idx <= 0) return "new";
+  if (idx === open.length - 1) return "ready";
+  return "kitchen";
+}
+
+export function statusesForLane(lane: WorkflowLaneId, statuses: OrderStatusDef[]): string[] {
+  return statuses.filter((row) => workflowLane(row.id, statuses) === lane).map((row) => row.id);
+}
+
+export function nextWorkflowAction(
+  status: string,
+  statuses: OrderStatusDef[],
+): { nextId: string; label: string } | null {
+  const ordered = [...statuses].sort((a, b) => a.sort - b.sort);
+  const idx = ordered.findIndex((row) => row.id === status);
+  const next = idx >= 0 ? ordered[idx + 1] : ordered.find((row) => !row.is_done);
+  if (!next) return null;
+  return { nextId: next.id, label: nextActionLabel(status, next) };
+}
+
+function nextActionLabel(current: string, next: OrderStatusDef): string {
+  const from = current.toLowerCase();
+  const to = `${next.id} ${next.label}`.toLowerCase();
+  if (/(new|pending|receiv|hold|wait)/.test(from)) return "Accept";
+  if (/(prepar|kitchen|progress|confirm|pack|schedul)/.test(from)) {
+    if (/(ready|collect)/.test(to) || next.is_done) return "Ready";
+    return "Start";
+  }
+  if (/(ready|collect|out_for|gone|deliver)/.test(from) || next.is_done) return "Done";
+  if (/(prepar|kitchen|progress)/.test(to)) return "Start";
+  if (/(ready|collect)/.test(to)) return "Ready";
+  if (next.is_done) return "Done";
+  return next.label;
+}
+
 export type StatusIconKind = "clock" | "package" | "check" | "truck";
 
 /** Pick a calm receipt icon from the status id or label. */

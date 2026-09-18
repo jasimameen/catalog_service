@@ -21,7 +21,8 @@ import {
 import { formatSelectedOptions, parseItemOptions, resolveSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import type { OrderPayload } from "@/lib/catalog/order-types";
 import { resolveIncomingOrderStatus } from "@/lib/catalog/order-statuses";
-import { newTrackToken, trackingUrl } from "@/lib/catalog/order-tracking";
+import { newTrackToken, trackingPath, trackingUrl } from "@/lib/catalog/order-tracking";
+import { parseNotifyEmails, parseTemplateSettings } from "@/lib/catalog/template-settings";
 import type { CatalogItemRow, CatalogRow, OrderFulfillment } from "@/lib/supabase/types";
 
 function clean(value: unknown, max = 300): string {
@@ -111,7 +112,12 @@ export async function POST(request: Request) {
   put("table", clean(body.tableNo, 40));
   put("table_no", clean(body.tableNo, 40));
 
-  const visible = visibleCheckoutFields(formFields, modes.length > 0 ? fulfillment : null);
+  const templateSettings = parseTemplateSettings(catalog.template_settings);
+  const tableHint = clean(body.tableNo, 40) || incomingValues.table || incomingValues.table_no || incomingValues.tableNo || "";
+  const skipDineInDetails =
+    fulfillment === "dine_in" && Boolean(tableHint) && templateSettings.restaurant.skipDineInDetails;
+  const visibleRaw = visibleCheckoutFields(formFields, modes.length > 0 ? fulfillment : null);
+  const visible = skipDineInDetails ? [] : visibleRaw;
   const missing = missingCustomFieldLabels(visible, incomingValues);
   if (missing.length > 0) {
     const list =
@@ -122,12 +128,15 @@ export async function POST(request: Request) {
   }
 
   const mapped = mapFormValues(visible, incomingValues);
-  const shopName = mapped.shopName || clean(body.shopName, 120);
+  const tableNo = mapped.tableNo || tableHint;
+  const shopName =
+    skipDineInDetails && tableNo
+      ? mapped.shopName || clean(body.shopName, 120) || `Table ${tableNo}`
+      : mapped.shopName || clean(body.shopName, 120);
   const phone = applyPhonePrefix(mapped.phone || clean(body.phone, 40), checkout.phonePrefix);
   const location = mapped.location || clean(body.location, 300);
   const mapsLink = mapped.mapsLink || clean(body.mapsLink, 300);
   const notes = mapped.notes || clean(body.notes, 500);
-  const tableNo = mapped.tableNo || clean(body.tableNo, 40);
   const geoLat = asCoord(body.geoLat);
   const geoLng = asCoord(body.geoLng);
   const extraNote = Object.entries(mapped.extras)
@@ -269,6 +278,7 @@ export async function POST(request: Request) {
     .eq("status", "verified");
   const customHost = (domainRows ?? []).find((row) => row.kind === "custom")?.hostname ?? null;
   const trackUrl = trackingUrl(catalog.slug, trackToken, customHost);
+  const trackPath = trackingPath(catalog.slug, trackToken);
 
   await sendOrderEmail({
     catalog,
@@ -292,6 +302,8 @@ export async function POST(request: Request) {
     itemCount: items.reduce((s, i) => s + i.qty, 0),
     lineCount: items.length,
     trackUrl,
+    trackPath,
+    trackToken,
   });
 }
 
@@ -310,12 +322,12 @@ async function sendOrderEmail(args: {
   trackUrl: string;
 }) {
   const { catalog, items, total, reference, shopName, phone, location, mapsLink, notes, fulfillment, tableNo, trackUrl } = args;
-  const toEmail = catalog.order_email;
+  const { to: toEmail, cc } = await resolveOrderMailRecipients(catalog);
 
   if (!toEmail) {
     // Order is already saved in Supabase and visible in the Admin inbox even
     // if email isn't configured for this catalog yet — don't fail the request.
-    console.warn(`Catalog order ${reference}: email not sent (catalog has no order_email).`);
+    console.warn(`Catalog order ${reference}: email not sent (no catalog or account order email).`);
     return;
   }
 
@@ -386,6 +398,7 @@ Track: ${trackUrl}
   try {
     const sent = await sendMail({
       to: toEmail,
+      cc: cc || undefined,
       subject: `New order ${reference} from ${shopName || "a customer"}${phone ? ` (${phone})` : ""}`,
       text: textBody,
       html: htmlBody,
@@ -398,4 +411,22 @@ Track: ${trackUrl}
     // for the customer. It's still visible in the Admin inbox.
     console.error(`Catalog order ${reference}: failed to send email`, error);
   }
+}
+
+async function resolveOrderMailRecipients(catalog: CatalogRow): Promise<{ to: string; cc: string }> {
+  const extras = parseNotifyEmails(parseTemplateSettings(catalog.template_settings).notify.emailCc);
+  const supabase = getServiceClient();
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("order_email, order_email_cc")
+    .eq("id", catalog.account_id)
+    .maybeSingle();
+  const fallback = typeof account?.order_email === "string" ? account.order_email.trim() : "";
+  const accountCc = parseNotifyEmails(account?.order_email_cc ?? "");
+  const to = (catalog.order_email || fallback || extras[0] || "").trim();
+  const cc = [...extras, ...accountCc]
+    .filter((email) => email && email !== to.toLowerCase())
+    .filter((email, index, all) => all.indexOf(email) === index)
+    .join(", ");
+  return { to, cc };
 }

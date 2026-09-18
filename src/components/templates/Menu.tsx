@@ -13,6 +13,8 @@ import { formatMoney } from "@/lib/catalog/currency";
 import { hasItemOptions, optionsCue } from "@/lib/catalog/item-options";
 import { BrandHeader } from "./BrandHeader";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
+import { isRestaurantCatalog } from "@/lib/catalog/template-settings";
+import { RestaurantMenu } from "@/components/storefront/RestaurantMenu";
 
 /** Sectioned food menu — photos use cover by default. Combos get their own section. */
 export function MenuTemplate({
@@ -28,6 +30,9 @@ export function MenuTemplate({
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
   const { quantities, increment, decrement, acceptOrders, pausedMessage } = useCart();
+  if (isRestaurantCatalog(catalog.template, catalog.fulfillmentModes)) {
+    return <RestaurantMenu catalog={catalog} onOpenCart={onOpenCart} />;
+  }
 
   const { comboItems, otherSections } = useMemo(() => {
     const combos = catalog.items.filter((item) => item.isCombo);
@@ -51,8 +56,8 @@ export function MenuTemplate({
   }, [catalog.items]);
 
   return (
-    <div style={{ background: "#fffdf8" }}>
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#e6e0d3] bg-[#fffdf8]/95 px-6 py-3 backdrop-blur">
+    <div className="bg-[var(--cat-bg)]">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--cat-border)] bg-white/95 px-6 py-3 backdrop-blur">
         <BrandHeader
           catalog={catalog}
           nameClassName="font-catalog-display text-lg font-bold leading-tight text-[var(--cat-ink)]"
@@ -63,11 +68,11 @@ export function MenuTemplate({
       <CatalogSlots filters={filters} featured={featured} />
 
       <div className="mx-auto max-w-3xl px-6 py-12 sm:px-10">
-        <div className="border-b border-[#e6e0d3] pb-6 text-center">
+        <div className="border-b border-[var(--cat-border)] pb-6 text-center">
           <h1 className="text-[26px] font-semibold uppercase tracking-[0.02em] text-[var(--cat-ink)]">
             {catalog.name}
           </h1>
-          <p className="mt-2 text-[13px] text-[#8a8171]">
+          <p className="mt-2 text-[13px] text-[var(--cat-muted)]">
             Prices in {catalog.currency} · Tap any line to add it to your order
           </p>
         </div>
@@ -79,7 +84,7 @@ export function MenuTemplate({
         ) : null}
 
         {catalog.items.length === 0 ? (
-          <p className="mt-10 text-center text-sm text-[#8a8171]">No items yet.</p>
+          <p className="mt-10 text-center text-sm text-[var(--cat-muted)]">No items yet.</p>
         ) : (
           <div className="mt-8 space-y-10">
             {comboItems.length > 0 ? (
@@ -119,7 +124,7 @@ export function MenuTemplate({
             ) : null}
           </div>
         )}
-        <p className="mt-10 text-center text-[13px] text-[#8a8171]">
+        <p className="mt-10 text-center text-[13px] text-[var(--cat-muted)]">
           Tap any line to add or remove it from your order.
         </p>
       </div>
@@ -154,7 +159,7 @@ function MenuSection({
 }) {
   return (
     <div>
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#8a8171]">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--cat-muted)]">
         {group}
       </p>
       {items.map((item) => {
@@ -181,11 +186,11 @@ function MenuSection({
                 activate();
               }
             }}
-            className={`flex min-h-14 w-full cursor-pointer items-start gap-3 border-b border-dotted border-[#ddd5c5] py-2.5 text-left ${
+            className={`flex min-h-14 w-full cursor-pointer items-start gap-3 border-b border-dotted border-[var(--cat-border)] py-2.5 text-left ${
               available ? "" : "opacity-55"
             }`}
           >
-            <span className="relative mt-0.5 h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#f3eee4]">
+            <span className="relative mt-0.5 h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[var(--cat-photo-bg)]">
               {item.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -218,17 +223,17 @@ function MenuSection({
                   {cue}
                 </span>
               ) : item.description ? (
-                <span className="mt-0.5 block truncate text-[12px] text-[#8a8171]">
+                <span className="mt-0.5 block truncate text-[12px] text-[var(--cat-muted)]">
                   {item.description}
                 </span>
               ) : null}
               {!item.isCombo && item.description && cue ? (
-                <span className="mt-0.5 block truncate text-[12px] text-[#8a8171]">
+                <span className="mt-0.5 block truncate text-[12px] text-[var(--cat-muted)]">
                   {item.description}
                 </span>
               ) : null}
               {!available ? (
-                <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-wide text-[#8a8171]">
+                <span className="mt-0.5 block text-[11px] font-medium uppercase tracking-wide text-[var(--cat-muted)]">
                   Unavailable
                 </span>
               ) : null}

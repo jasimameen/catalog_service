@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SelectedOption } from "@/lib/supabase/types";
 import type { StorefrontItem } from "@/lib/catalog/types";
 import { useCart } from "@/lib/catalog/cart-context";
@@ -19,12 +19,18 @@ export function ProductDetailModal({
   item,
   currency,
   onClose,
+  variant = "catalog",
+  showKitchenNote = false,
 }: {
   item: StorefrontItem;
   currency: string;
   onClose: () => void;
+  /** `menu` is a mobile bottom sheet. `catalog` keeps Trade Grid’s dialog. */
+  variant?: "catalog" | "menu";
+  showKitchenNote?: boolean;
 }) {
-  const { quantities, increment, decrement, setQuantity, addLine, incrementLine, decrementLine, lineFor, acceptOrders, pausedMessage } =
+  const menu = variant === "menu";
+  const { quantities, increment, decrement, setQuantity, addLine, incrementLine, decrementLine, lineFor, setLineNote, acceptOrders, pausedMessage } =
     useCart();
   const optioned = hasItemOptions(item);
   const [singlePick, setSinglePick] = useState<Record<string, string>>(() => {
@@ -38,6 +44,7 @@ export function ProductDetailModal({
   });
   const [multiPick, setMultiPick] = useState<Record<string, string[]>>({});
   const [localQty, setLocalQty] = useState(1);
+  const [note, setNote] = useState("");
 
   const selected: SelectedOption[] = useMemo(() => {
     const rows: SelectedOption[] = [];
@@ -62,12 +69,19 @@ export function ProductDetailModal({
   });
 
   const unit = unitPriceWithOptions(item.price, selected);
-  const existing = optioned ? lineFor(item.code, selected) : undefined;
+  const existing = optioned ? lineFor(item.code, selected) : lineFor(item.code, []);
   const qty = optioned ? (existing?.qty ?? 0) : (quantities[item.code] ?? 0);
   const cover = item.isCombo ? comboCoverImage(item) : item.image;
   const showDescription =
     Boolean(item.description) &&
     !(item.isCombo && isAutoComboDescription(item.description, item.comboIncludes));
+  const showDeltas =
+    !menu &&
+    selected.some((group) => group.values.some((value) => value.price_delta !== 0));
+
+  useEffect(() => {
+    setNote(existing?.note ?? "");
+  }, [existing?.key, existing?.note]);
 
   function toggleMulti(groupName: string, valueName: string) {
     setMultiPick((prev) => {
@@ -79,16 +93,45 @@ export function ProductDetailModal({
     });
   }
 
+  function addToOrder() {
+    if (missingRequired.length > 0) return;
+    addLine(item.code, selected, localQty, showKitchenNote ? note : undefined);
+    if (menu) onClose();
+  }
+
+  function onNoteChange(value: string) {
+    const next = value.slice(0, 200);
+    setNote(next);
+    if (existing) setLineNote(existing.key, next);
+  }
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      className={
+        menu
+          ? "fixed inset-0 z-[80] flex items-end justify-center bg-[rgba(16,23,32,0.45)]"
+          : "fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      }
       onClick={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[20px] bg-white shadow-2xl sm:max-h-[90vh] sm:flex-row sm:rounded-[16px]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="item-detail-title"
+        className={
+          menu
+            ? "flex max-h-[92%] w-full max-w-[460px] flex-col overflow-hidden rounded-t-[18px] bg-white"
+            : "flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[20px] bg-white shadow-2xl sm:max-h-[90vh] sm:flex-row sm:rounded-[16px]"
+        }
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative aspect-[584/480] w-full shrink-0 overflow-hidden bg-[var(--cat-photo-bg)] sm:aspect-auto sm:w-1/2">
+        <div
+          className={
+            menu
+              ? "relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[var(--cat-photo-bg)]"
+              : "relative aspect-[584/480] w-full shrink-0 overflow-hidden bg-[var(--cat-photo-bg)] sm:aspect-auto sm:w-1/2"
+          }
+        >
           {cover ? (
             // User-pasted https/data URLs are not in next/image remotePatterns.
             // eslint-disable-next-line @next/next/no-img-element
@@ -101,8 +144,8 @@ export function ProductDetailModal({
               className={`absolute inset-0 h-full w-full ${imageFitClass(item.imageFit)}`}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-xs text-[var(--cat-muted)]">
-              No photo yet
+            <div className="flex h-full w-full items-center justify-center font-catalog-display text-[42px] font-semibold text-[var(--cat-muted)]">
+              {item.name.trim()[0]?.toUpperCase() ?? "?"}
             </div>
           )}
           <button
@@ -118,12 +161,12 @@ export function ProductDetailModal({
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-5">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-catalog-display text-xl font-bold text-[var(--cat-ink)]">
+              <h2 id="item-detail-title" className="font-catalog-display text-xl font-bold text-[var(--cat-ink)]">
                 {item.name}
               </h2>
               {item.isCombo ? <ComboBadge /> : null}
             </div>
-            {item.code && <p className="text-sm text-[var(--cat-muted)]">{item.code}</p>}
+            {!menu && item.code ? <p className="text-sm text-[var(--cat-muted)]">{item.code}</p> : null}
           </div>
 
           {showDescription && (
@@ -178,11 +221,17 @@ export function ProductDetailModal({
             : null}
 
           <div className="mt-1">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--cat-muted)]">
-              {currency}
-            </p>
-            <p className="text-2xl font-bold text-[var(--cat-ink)]">{unit.toFixed(2)}</p>
-            {selected.some((group) => group.values.some((value) => value.price_delta !== 0)) ? (
+            {menu ? (
+              <p className="text-2xl font-bold text-[var(--cat-ink)]">{formatMoney(unit, currency)}</p>
+            ) : (
+              <>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--cat-muted)]">
+                  {currency}
+                </p>
+                <p className="text-2xl font-bold text-[var(--cat-ink)]">{unit.toFixed(2)}</p>
+              </>
+            )}
+            {showDeltas ? (
               <p className="mt-1 text-xs text-[var(--cat-muted)]">
                 {selected
                   .flatMap((group) => group.values)
@@ -197,20 +246,77 @@ export function ProductDetailModal({
                   .join(" · ")}
               </p>
             ) : null}
-            {qty > 0 && (
+            {!menu && qty > 0 && (
               <p className="text-xs text-[var(--cat-muted)]">
                 × {qty} = {formatMoney(unit * qty, currency)}
               </p>
             )}
           </div>
 
+          {showKitchenNote ? (
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--cat-muted)]">
+              Kitchen note
+              <input
+                value={note}
+                onChange={(e) => onNoteChange(e.target.value)}
+                placeholder="No onions, extra sauce…"
+                className="mt-1.5 h-11 w-full rounded-[10px] border border-[var(--cat-border)] bg-[var(--cat-photo-bg)] px-3 text-[14px] font-normal normal-case tracking-normal text-[var(--cat-ink)] outline-none"
+              />
+            </label>
+          ) : null}
+
           <div className="mt-auto space-y-2 pt-2">
             {!acceptOrders ? (
               <PausedNote message={pausedMessage} />
             ) : !isItemAvailable(item) ? (
-              <p className="min-h-11 rounded-[9px] bg-slate-100 py-2.5 text-center text-sm font-semibold text-[var(--cat-muted)]">
+              <p
+                className={
+                  menu
+                    ? "min-h-11 rounded-[9px] bg-[var(--cat-photo-bg)] py-2.5 text-center text-sm font-semibold text-[var(--cat-muted)]"
+                    : "min-h-11 rounded-[9px] bg-slate-100 py-2.5 text-center text-sm font-semibold text-[var(--cat-muted)]"
+                }
+              >
                 Unavailable
               </p>
+            ) : menu ? (
+              existing ? (
+                <QuantityStepper
+                  qty={existing.qty}
+                  label={item.name}
+                  onDecrement={() => decrementLine(existing.key)}
+                  onIncrement={() => incrementLine(existing.key)}
+                />
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLocalQty((n) => Math.max(1, n - 1))}
+                      className="h-12 w-11 rounded-[10px] border border-[var(--cat-border)] text-lg font-bold text-[var(--cat-ink)]"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-6 text-center font-bold text-[var(--cat-ink)]">{localQty}</span>
+                    <button
+                      type="button"
+                      onClick={() => setLocalQty((n) => n + 1)}
+                      className="h-12 w-11 rounded-[10px] bg-[var(--cat-accent)] text-lg font-bold text-white"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={missingRequired.length > 0}
+                    onClick={addToOrder}
+                    className="h-12 flex-1 rounded-[10px] bg-[var(--cat-accent)] text-[14px] font-bold text-white disabled:cursor-not-allowed disabled:bg-[var(--cat-border)] disabled:text-[var(--cat-muted)]"
+                  >
+                    {missingRequired.length > 0
+                      ? `Choose ${missingRequired[0]!.name}`
+                      : `Add ${formatMoney(unit * localQty, currency)}`}
+                  </button>
+                </div>
+              )
             ) : optioned ? (
               <>
                 {existing ? (

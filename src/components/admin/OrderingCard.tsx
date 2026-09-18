@@ -1,7 +1,12 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import type { CheckoutFormField, OrderFulfillment } from "@/lib/supabase/types";
+import type { CheckoutFields, CheckoutFormField, OrderFulfillment } from "@/lib/supabase/types";
+import {
+  CHECKOUT_FIELD_KEYS,
+  CHECKOUT_FIELD_LABELS,
+  DEFAULT_CHECKOUT_FIELDS,
+} from "@/lib/catalog/checkout-fields";
 import {
   FORM_FIELD_TYPES,
   FULFILLMENTS,
@@ -10,9 +15,12 @@ import {
   restaurantPresetFields,
 } from "@/lib/catalog/checkout-form";
 import { updateCatalogOrdering, type OrderingState } from "@/app/admin/[catalogId]/actions";
+import type { CatalogTemplate } from "@/lib/supabase/types";
+import type { TemplateSettings } from "@/lib/catalog/template-settings";
+import { isRestaurantCatalog, parseTemplateSettings } from "@/lib/catalog/template-settings";
+import { RestaurantSettingsFields } from "./RestaurantSettingsFields";
 import { useDashboardSection } from "@/components/admin/dashboard/useDashboardSection";
 import {
-  dashBtnGhost,
   dashBtnPrimary,
   dashCard,
   dashHint,
@@ -23,28 +31,55 @@ import {
   dashTextarea,
 } from "@/components/admin/dashboard/styles";
 
+const FIELD_MODES = [
+  { value: "required", label: "Required" },
+  { value: "optional", label: "Optional" },
+  { value: "hidden", label: "Hidden" },
+] as const;
+
+const FIELD_UI_LABEL: Record<(typeof CHECKOUT_FIELD_KEYS)[number], string> = {
+  shopName: "Shop name",
+  phone: "Phone",
+  address: "Delivery address",
+  maps: "Maps link",
+  notes: "Notes",
+};
+
 export function OrderingCard({
   catalogId,
   fulfillmentModes,
+  checkoutFields,
   checkoutForm,
   acceptOrders,
   ordersPausedMessage,
   storefrontAlert,
   showStorefrontAlert,
+  template,
+  templateSettings,
+  orderEmail,
+  catalogAddress,
 }: {
   catalogId: string;
   fulfillmentModes: OrderFulfillment[];
+  checkoutFields: CheckoutFields;
   checkoutForm: CheckoutFormField[];
   acceptOrders: boolean;
   ordersPausedMessage: string;
   storefrontAlert: string;
   showStorefrontAlert: boolean;
+  template: CatalogTemplate;
+  templateSettings: TemplateSettings;
+  orderEmail: string;
+  catalogAddress?: string;
 }) {
   const [open, setOpen] = useDashboardSection("ordering");
+  const builtIn = checkoutFields ?? DEFAULT_CHECKOUT_FIELDS;
   const [modes, setModes] = useState<OrderFulfillment[]>(fulfillmentModes);
   const [fields, setFields] = useState<CheckoutFormField[]>(checkoutForm);
   const [taking, setTaking] = useState(acceptOrders);
   const [alertOn, setAlertOn] = useState(showStorefrontAlert);
+  const [tplSettings, setTplSettings] = useState(() => parseTemplateSettings(templateSettings));
+  const restaurantUi = isRestaurantCatalog(template, modes);
   const [state, formAction, pending] = useActionState<OrderingState, FormData>(
     updateCatalogOrdering.bind(null, catalogId),
     null,
@@ -88,8 +123,7 @@ export function OrderingCard({
             Ordering
           </span>
           <span className="mt-1 block text-[13px] leading-snug text-[#5a6472]">
-            Restaurant order types and the fields guests fill in. Trade catalogs can leave this
-            empty.
+            Order types, built-in fields, and extra fields guests fill in.
           </span>
         </span>
         <span className="mt-0.5 shrink-0 text-[13px] text-[#0b5fce]">{open ? "Hide" : "Show"}</span>
@@ -97,7 +131,7 @@ export function OrderingCard({
       <div className="hidden border-b border-[#edf0f4] px-4 py-4 md:block">
         <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Ordering</p>
         <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-          Restaurant order types and the fields guests fill in. Trade catalogs can leave this empty.
+          Order types, built-in fields, and extra fields guests fill in.
         </p>
       </div>
 
@@ -105,6 +139,7 @@ export function OrderingCard({
         <form action={formAction} className="flex flex-col">
           <input type="hidden" name="fulfillment_modes" value={JSON.stringify(modes)} />
           <input type="hidden" name="checkout_form" value={JSON.stringify(fields)} />
+          <input type="hidden" name="template_settings" value={JSON.stringify(tplSettings)} />
 
           <div className="flex flex-col gap-[22px] px-4 pb-2">
             <div className="flex flex-col gap-2.5">
@@ -165,6 +200,39 @@ export function OrderingCard({
             </div>
 
             <div className={dashSection}>
+              <p className={dashKicker}>Who gets order emails</p>
+              <p className={`m-0 ${dashHint}`}>
+                This catalog only. Account Settings is the fallback if To is empty. Team invites
+                are not built yet — everyone on the account can open orders here.
+              </p>
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Email orders to</span>
+                <input
+                  name="order_email"
+                  type="email"
+                  defaultValue={orderEmail}
+                  placeholder="kitchen@teaday.com"
+                  className={dashInput}
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Also send to</span>
+                <input
+                  value={tplSettings.notify.emailCc}
+                  onChange={(e) =>
+                    setTplSettings((prev) => ({
+                      ...prev,
+                      notify: { ...prev.notify, emailCc: e.target.value },
+                    }))
+                  }
+                  placeholder="owner@…, floor@…"
+                  className={dashInput}
+                />
+                <span className={dashHint}>Comma-separated extra addresses for this catalog.</span>
+              </label>
+            </div>
+
+            <div className={dashSection}>
               <div className="flex flex-wrap items-center gap-3">
                 <p className={`m-0 min-w-0 flex-1 ${dashKicker}`}>Fulfillment</p>
                 <button
@@ -199,21 +267,79 @@ export function OrderingCard({
                   None selected — guests will not be asked for dine-in, pickup, or delivery.
                 </p>
               ) : null}
+              {restaurantUi ? (
+                <div className="mt-4">
+                  <RestaurantSettingsFields
+                    settings={tplSettings}
+                    modes={modes}
+                    onChange={setTplSettings}
+                    catalogAddress={catalogAddress}
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className={dashSection}>
               <p className={dashKicker}>Order form</p>
               <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-                Required fields must be filled. Hidden fields are not shown to the shop. Empty uses
-                the Look order-form settings (shop name, phone, address).
+                Required fields must be filled. Hidden fields are not shown to the shop. Empty extra
+                fields use these built-in settings.
               </p>
-              <div className="flex flex-col gap-2.5 rounded-xl border border-[#e2e7ee] bg-[#fbfbfd] p-3.5 sm:flex-row sm:items-center sm:justify-between">
-                <p className="m-0 min-w-0 text-[13px] leading-snug text-[#46505e]">
-                  Built-in shop name, phone, address, maps, and notes are set in Look.
-                </p>
-                <a href="#look" className={`${dashBtnGhost} shrink-0 no-underline`}>
-                  Edit in Look
-                </a>
+              <div className="overflow-hidden rounded-xl border border-[#e2e7ee]">
+                {CHECKOUT_FIELD_KEYS.map((key) => (
+                  <div
+                    key={key}
+                    className="flex flex-col gap-2 border-b border-[#f1f4f8] px-3.5 py-2.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <label htmlFor={`cf_${key}`} className="min-w-0 text-[14px] text-[var(--cat-ink)]">
+                      {FIELD_UI_LABEL[key]}
+                      <span className="sr-only"> ({CHECKOUT_FIELD_LABELS[key]})</span>
+                    </label>
+                    <div className="flex gap-1 self-start rounded-[10px] border border-[#e2e7ee] bg-[#fbfbfd] p-0.5 sm:self-auto">
+                      {FIELD_MODES.map((mode) => (
+                        <label key={mode.value} className="cursor-pointer">
+                          <input
+                            type="radio"
+                            id={mode.value === builtIn[key] ? `cf_${key}` : undefined}
+                            name={`cf_${key}`}
+                            value={mode.value}
+                            defaultChecked={builtIn[key] === mode.value}
+                            className="peer sr-only"
+                          />
+                          <span className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[12px] text-[#5a6472] peer-checked:bg-[#101720] peer-checked:text-white">
+                            {mode.label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className={dashLabel}>Phone prefix</span>
+                  <input
+                    id="phonePrefix"
+                    name="phonePrefix"
+                    defaultValue={builtIn.phonePrefix}
+                    placeholder="+974"
+                    maxLength={16}
+                    className={dashInput}
+                  />
+                  <span className={dashHint}>Shown on the phone field. Added if they skip it.</span>
+                </label>
+                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className={dashLabel}>Order reference prefix</span>
+                  <input
+                    id="orderPrefix"
+                    name="orderPrefix"
+                    defaultValue={builtIn.orderPrefix}
+                    placeholder="KLE"
+                    maxLength={16}
+                    className={dashInput}
+                  />
+                  <span className={dashHint}>Becomes KLE-1842 instead of the slug letters.</span>
+                </label>
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
                 <p className="m-0 min-w-0 flex-1 text-[13px] font-medium text-[#46505e]">
@@ -234,7 +360,7 @@ export function OrderingCard({
               </div>
               {fields.length === 0 ? (
                 <p className={`m-0 ${dashHint}`}>
-                  Empty uses the Look order-form settings (shop name, phone, address).
+                  Empty extra fields use the built-in settings above.
                 </p>
               ) : (
                 <div className="flex flex-col gap-2.5">

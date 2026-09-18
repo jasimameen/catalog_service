@@ -30,4 +30,6 @@ export interface OrderResult {
   shopName: string;
   phone: string;
   trackUrl?: string;
+  trackPath?: string;
+  trackToken?: string;
 }

@@ -74,6 +74,13 @@ export function GridTemplate({
 
   const totalMatches = sections.reduce((sum, s) => sum + s.items.length, 0);
   const showGroupHeaders = sections.length > 1 || sections[0]?.group !== "All items";
+  const grid = catalog.settings.grid;
+  const colClass =
+    grid.columns === 2
+      ? "grid grid-cols-2 gap-3"
+      : grid.columns === 3
+        ? "grid grid-cols-2 gap-3 @md:grid-cols-3"
+        : "grid grid-cols-2 gap-3 @md:grid-cols-3 @5xl:grid-cols-4";
 
   return (
     <div>
@@ -131,7 +138,7 @@ export function GridTemplate({
                     className={
                       group === "Combos"
                         ? "grid grid-cols-1 gap-3 @md:grid-cols-2"
-                        : "grid grid-cols-2 gap-3 @md:grid-cols-3 @5xl:grid-cols-4"
+                        : colClass
                     }
                   >
                     {items.map((item, itemIndex) => (
@@ -142,6 +149,8 @@ export function GridTemplate({
                         eager={priorCount + itemIndex < 8}
                         onSelect={setSelected}
                         mixedSection={group !== "Combos"}
+                        showCodes={grid.showCodes}
+                        qtySteppers={grid.qtySteppers}
                       />
                     ))}
                   </div>
@@ -169,12 +178,16 @@ function GridCard({
   eager,
   onSelect,
   mixedSection,
+  showCodes = true,
+  qtySteppers = true,
 }: {
   item: StorefrontItem;
   currency: string;
   eager?: boolean;
   onSelect: (item: StorefrontItem) => void;
   mixedSection?: boolean;
+  showCodes?: boolean;
+  qtySteppers?: boolean;
 }) {
   const { quantities, increment, decrement, setQuantity, acceptOrders, pausedMessage } = useCart();
   const qty = quantities[item.code] ?? 0;
@@ -227,7 +240,7 @@ function GridCard({
           <p className="text-[15px] font-semibold leading-tight text-[var(--cat-ink)]">
             {item.name}
           </p>
-          {item.code && <p className="text-xs text-[var(--cat-muted)]">{item.code}</p>}
+          {showCodes && item.code ? <p className="text-xs text-[var(--cat-muted)]">{item.code}</p> : null}
           {!item.isCombo && cue ? (
             <p className="mt-0.5 text-[11px] font-semibold text-[var(--cat-accent)]">{cue}</p>
           ) : null}
@@ -264,6 +277,14 @@ function GridCard({
             className="min-h-11 w-full rounded-[9px] border border-[var(--cat-accent)] bg-white py-2 text-sm font-semibold text-[var(--cat-accent)] transition hover:bg-slate-50 active:scale-[0.98]"
           >
             {qty > 0 ? `Added × ${qty} · Options` : "Choose options"}
+          </button>
+        ) : !qtySteppers ? (
+          <button
+            type="button"
+            onClick={() => increment(item.code)}
+            className="min-h-11 w-full rounded-[9px] border border-[var(--cat-accent)] bg-white py-2 text-sm font-semibold text-[var(--cat-accent)]"
+          >
+            {qty > 0 ? `Added × ${qty}` : "Add to order"}
           </button>
         ) : qty === 0 ? (
           <button

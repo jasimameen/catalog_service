@@ -17,6 +17,17 @@ Copy `.env.example` to `.env.local`. Then do this once:
 
 The Publishable key is the same kind of public key as the old `anon` key (the JWT still has `"role":"anon"`). The Secret key replaces `service_role`. Old env names still work if you already have them.
 
+## Auth redirect URLs (password reset)
+
+Reset emails use the current site origin — no extra env vars. In Supabase **Authentication → URL Configuration**, set **Site URL** to `http://localhost:3000` locally and `https://catalog.hevyf.com` in production. Add these **Redirect URLs**:
+
+- `http://localhost:3000/auth/callback`
+- `http://localhost:3000/reset-password`
+- `https://catalog.hevyf.com/auth/callback`
+- `https://catalog.hevyf.com/reset-password`
+
+The app sends `redirectTo` as `{origin}/auth/callback?next=/reset-password` (same callback as sign-up confirm).
+
 ## Lemon Squeezy ($19.99/month)
 
 1. Create an account at [lemonsqueezy.com](https://lemonsqueezy.com) and a **Store**.

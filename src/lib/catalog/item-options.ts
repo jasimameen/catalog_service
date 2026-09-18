@@ -61,6 +61,20 @@ export function hasItemOptions(item: { options?: ItemOptionGroup[] | unknown } |
   return parseItemOptions(item?.options).some((group) => group.values.length > 0);
 }
 
+/** True when the guest must pick before the line can be added. */
+export function hasRequiredItemOptions(
+  item: { options?: ItemOptionGroup[] | unknown } | null | undefined,
+): boolean {
+  return parseItemOptions(item?.options).some((group) => group.required && group.values.length > 0);
+}
+
+/** + opens the variant sheet — any option group or required pick. Combos without extras add direct. */
+export function needsOptionPick(
+  item: { options?: ItemOptionGroup[] | unknown } | null | undefined,
+): boolean {
+  return hasItemOptions(item) || hasRequiredItemOptions(item);
+}
+
 /** Admin table/card: "Yes · 3", "No", or "Combo". */
 export function variantColumnLabel(item: {
   is_combo?: boolean | null;
