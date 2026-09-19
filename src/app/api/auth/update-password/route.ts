@@ -1,3 +1,5 @@
+import { notifyPasswordChanged } from "@/lib/auth/password-changed-mail";
+import { requestOrigin } from "@/lib/auth/request-origin";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -45,6 +47,11 @@ export async function POST(request: Request) {
   if (error) {
     return Response.json({ error: error.message || "Could not update your password." }, { status: 400 });
   }
+
+  await notifyPasswordChanged({
+    to: user.email,
+    forgotPasswordUrl: `${requestOrigin(request)}/auth/forgot-password`,
+  });
 
   return Response.json({ ok: true });
 }
