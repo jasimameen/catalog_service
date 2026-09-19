@@ -1,5 +1,8 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
+import { sendEmailOtpForUser, OTP_COOLDOWN_SECONDS } from "@/lib/auth/email-otp";
+import { sessionNeedsEmailOtp } from "@/lib/auth/email-verified";
+import { findUserByEmail } from "@/lib/auth/find-user";
 import { companyNameFromUser, provisionAccount, safeNextPath } from "@/lib/auth/provision";
 
 export async function POST(request: Request) {
@@ -14,7 +17,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const email = (body.email || "").trim();
+  const email = (body.email || "").trim().toLowerCase();
   const password = body.password || "";
   if (!email || !password) {
     return Response.json({ error: "Enter your email and password." }, { status: 400 });
@@ -24,7 +27,28 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.user) {
+    if (error && /email not confirmed/i.test(error.message)) {
+      const user = await findUserByEmail(email);
+      if (user) {
+        const sent = await sendEmailOtpForUser(user);
+        return Response.json({
+          ok: true,
+          needsVerification: true,
+          cooldownSeconds: sent.ok ? sent.cooldownSeconds : sent.cooldownSeconds ?? OTP_COOLDOWN_SECONDS,
+        });
+      }
+    }
     return Response.json({ error: "Incorrect email or password." }, { status: 401 });
+  }
+
+  if (sessionNeedsEmailOtp(data.user)) {
+    const sent = await sendEmailOtpForUser(data.user);
+    await supabase.auth.signOut();
+    return Response.json({
+      ok: true,
+      needsVerification: true,
+      cooldownSeconds: sent.ok ? sent.cooldownSeconds : sent.cooldownSeconds ?? OTP_COOLDOWN_SECONDS,
+    });
   }
 
   const provisioned = await provisionAccount(data.user.id, companyNameFromUser(data.user));
@@ -34,7 +58,7 @@ export async function POST(request: Request) {
         error:
           "Signed in, but couldn't set up your account. Add SUPABASE_SECRET_KEY to .env.local (see SETUP.md).",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 

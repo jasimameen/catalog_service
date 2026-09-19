@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getCatalogAdminClient } from "@/app/admin/_lib/data";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 
@@ -19,7 +19,7 @@ export async function updateSlug(
     return { error: "That address isn't available — use lowercase letters, numbers and hyphens." };
   }
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { error } = await supabase.from("catalogs").update({ slug }).eq("id", catalogId);
 
   if (error) {
@@ -52,7 +52,7 @@ export async function addCustomDomain(
     return { error: "Enter a valid domain, e.g. catalog.example.com." };
   }
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { error } = await supabase.from("domains").insert({
     catalog_id: catalogId,
     hostname,
@@ -73,7 +73,7 @@ export async function addCustomDomain(
 }
 
 export async function removeDomain(catalogId: string, domainId: string) {
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   await supabase.from("domains").delete().eq("id", domainId).eq("catalog_id", catalogId);
   revalidatePath(`/admin/${catalogId}/domains`);
   revalidateStorefrontCatalog();

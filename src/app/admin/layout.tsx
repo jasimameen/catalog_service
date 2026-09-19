@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { requireAccount } from "@/lib/auth/current-account";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { isBillingConfigured } from "@/lib/billing/config";
 import { MONTHLY_PRICE_LABEL } from "@/lib/billing/plan";
 import {
@@ -10,6 +10,7 @@ import {
   isPaid,
   trialDaysLeft,
 } from "@/lib/billing/status";
+import { canOperatePlatform } from "@/lib/auth/platform";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
 
@@ -79,10 +80,15 @@ async function BillingBanner() {
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const user = await getSessionUser();
+  const isOperator = canOperatePlatform(user?.email);
+
   return (
     <AdminShell
       newCatalog={<NewCatalogLink />}
+      showInquiries={isOperator}
+      showOps={isOperator}
       trial={
         <Suspense fallback={<TrialCardFallback />}>
           <TrialCard />

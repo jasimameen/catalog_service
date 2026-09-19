@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getCatalogAdminClient } from "@/app/admin/_lib/data";
 import { ACCENT_COLORS, isTemplateKey, parseAccentHex } from "@/lib/catalog/templates";
 import { checkoutFieldsFromForm } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
@@ -134,7 +134,7 @@ export async function updateCatalogLook(
   const showMap = formData.get("showMap") === "1";
   const templateSettings = parseTemplateSettingsFromForm(formData.get("template_settings"));
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalogs")
     .update({
@@ -236,7 +236,7 @@ export async function updateCatalogOrdering(
   }
   const incomingSettings = formData.get("template_settings");
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const current = await supabase.from("catalogs").select("template_settings").eq("id", catalogId).maybeSingle();
   const merged = parseTemplateSettings(current.data?.template_settings);
   const nextSettings = incomingSettings

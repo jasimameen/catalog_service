@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { requireAccount } from "@/lib/auth/current-account";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { darken } from "@/lib/catalog/color";
 import { parseTemplateSettings } from "@/lib/catalog/template-settings";
 import type { ServiceRequestRow } from "@/lib/supabase/types";
@@ -12,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function FloorPage({ params }: { params: Promise<{ catalogId: string }> }) {
   const { catalogId } = await params;
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const [account, catalog] = await Promise.all([requireAccount(), getCatalogOrNotFound(catalogId)]);
   void account;
   const settings = parseTemplateSettings(catalog.template_settings);

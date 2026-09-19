@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import {
   canMerchantSetReservationStatus,
   parseReservationStatus,
@@ -17,7 +16,7 @@ export async function setReservationStatus(
   next: ReservationStatus,
 ): Promise<{ row?: ReservationRow; error?: string }> {
   await getCatalogOrNotFound(catalogId);
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data: current } = await supabase
     .from("reservations")
     .select("*")

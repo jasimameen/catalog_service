@@ -44,10 +44,14 @@ function IconPanel({ expanded }: { expanded: boolean }) {
 export function AdminShell({
   newCatalog,
   trial,
+  showInquiries = false,
+  showOps = false,
   children,
 }: {
   newCatalog: ReactNode;
   trial: ReactNode;
+  showInquiries?: boolean;
+  showOps?: boolean;
   children: ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -112,7 +116,7 @@ export function AdminShell({
         {newCatalog}
 
         <div className="min-h-0 md:flex-1 md:overflow-y-auto">
-          <AdminNav collapsed={collapsed} />
+          <AdminNav collapsed={collapsed} showInquiries={showInquiries} showOps={showOps} />
         </div>
 
         <div

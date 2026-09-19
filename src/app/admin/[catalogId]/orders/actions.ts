@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import {
   ORDER_STATUSES_SQL_HINT,
   parseDefaultOrderStatus,
@@ -28,7 +27,7 @@ function isStatusCheck(error: { code?: string; message?: string } | null): boole
 export async function claimOrder(catalogId: string, orderId: string) {
   const account = await requireAccount();
   await getCatalogOrNotFound(catalogId);
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { error } = await supabase
     .from("orders")
     .update({
@@ -60,7 +59,7 @@ export async function setOrderStatus(catalogId: string, orderId: string, status:
   const statuses = parseOrderStatuses(catalog.order_statuses);
   if (!statuses.some((row) => row.id === status)) return { error: "Unknown status." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data: current } = await supabase
     .from("orders")
     .select("id, status")
@@ -103,7 +102,7 @@ export async function ensureTrackLink(
   orderId: string,
 ): Promise<{ url?: string; error?: string }> {
   const catalog = await getCatalogOrNotFound(catalogId);
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data: order } = await supabase
     .from("orders")
     .select("id, track_token")
@@ -142,7 +141,7 @@ export async function saveOrderStatuses(
   const checked = validateStatuses(incoming, defaultId);
   if (!checked.ok) return { error: checked.error };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data: usedRows } = await supabase
     .from("orders")
     .select("status")

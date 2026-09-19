@@ -1,6 +1,5 @@
 import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { PageHeader } from "@/components/admin/PageHeader";
 import type { ItemThumb } from "@/lib/catalog/combos";
 import { parseFulfillmentModes, resolveCheckoutForm } from "@/lib/catalog/checkout-form";
@@ -33,7 +32,7 @@ export default async function OrdersPage({
   const query = await searchParams;
   const inboxRaw = Array.isArray(query.inbox) ? query.inbox[0] : query.inbox;
   const inbox = inboxRaw === "reservations" ? "reservations" : "orders";
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
 
   const [account, catalog, ordersRes, reservationsRes] = await Promise.all([
     requireAccount(),

@@ -13,6 +13,9 @@
   --cat-accent-dark: #0a52b3;
   --cat-success-bg: #dff5e6;
   --cat-success-ink: #1e9e4a;
+  --cat-on-ink: #f4f6f8;
+  --cat-on-ink-muted: #9aa3af;
+  --cat-on-ink-faint: #6e7784;
 }
 
 * {

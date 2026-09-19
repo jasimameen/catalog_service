@@ -14,6 +14,7 @@ Copy `.env.example` to `.env.local`. Then do this once:
 7. Optional — item photo uploads: **SQL Editor** → run [`supabase/catalog-images.sql`](supabase/catalog-images.sql) (creates the public `catalog-images` bucket).
 8. Billing — **SQL Editor** → run [`supabase/billing.sql`](supabase/billing.sql) (Lemon Squeezy columns on `accounts`). Then see **Lemon Squeezy** below.
 9. Restaurant ordering — **SQL Editor** → run [`supabase/restaurant.sql`](supabase/restaurant.sql) (item variants, dine-in/pickup/delivery, kitchen status, custom checkout form). Safe to skip for trade catalogs.
+10. Concierge inquiries — **SQL Editor** → run [`supabase/setup-inquiries.sql`](supabase/setup-inquiries.sql) (private `setup-inquiries` bucket + inbox table). Optional demo catalog: [`supabase/harbor-demo.sql`](supabase/harbor-demo.sql) (slug `harbor`, generic restaurant — not Tea Day).
 
 The Publishable key is the same kind of public key as the old `anon` key (the JWT still has `"role":"anon"`). The Secret key replaces `service_role`. Old env names still work if you already have them.
 
@@ -40,14 +41,18 @@ If reset / confirm never shows up:
 4. Supabase → **Authentication → Emails → SMTP Settings** → enable custom SMTP and paste the **same** host, user, and new app password. Signup confirm emails will keep failing with `535 Username and Password not accepted` until this matches.
 5. In admin **Settings**, use **Send test email**. If it arrives, app mail works; if confirm still fails, only the Supabase dashboard SMTP is stale.
 
-## Lemon Squeezy ($19.99/month)
+## Lemon Squeezy ($24.99/month)
+
+In-app billing copy is **$24.99/mo** after **30 days free**. The **variant ID stays the same** (`LEMONSQUEEZY_VARIANT_ID`). Do not create a new variant or rotate API secrets for this price change.
+
+**Jasim — dashboard click:** Lemon Squeezy → Instant Catalog product → the existing monthly subscription variant → set price to **$24.99**, and set the variant **trial period to 30 days**. Existing subscribers keep their current price until you migrate them in Lemon Squeezy. New Instant Catalog accounts use `accounts.trial_ends_at` default of 30 days (`supabase/trial-30-days.sql`).
 
 1. Create an account at [lemonsqueezy.com](https://lemonsqueezy.com) and a **Store**.
 2. **Products → New product** named **Instant Catalog**.
-3. Add a **subscription variant** at **$19.99 / month**.
+3. Add a **subscription variant** at **$24.99 / month**.
 4. Copy the **Store ID** (Settings → Stores) into `LEMONSQUEEZY_STORE_ID`.
 5. **Settings → API** → create an API key → `LEMONSQUEEZY_API_KEY`.
-6. Open Instant Catalog → the **$19.99 / month** variant → **Copy ID**. That is the **Variant ID** (not the product ID in the URL) → `LEMONSQUEEZY_VARIANT_ID`. Use a Test API key only with Test-mode variants (or Live with Live).
+6. Open Instant Catalog → the **$24.99 / month** variant → **Copy ID**. That is the **Variant ID** (not the product ID in the URL) → `LEMONSQUEEZY_VARIANT_ID`. Use a Test API key only with Test-mode variants (or Live with Live).
 7. **Settings → Webhooks → +** with URL `https://catalog.hevyf.com/api/billing/webhook` (or `LEMONSQUEEZY_WEBHOOK_URL`). Signing secret → `LEMONSQUEEZY_WEBHOOK_SECRET`.
 8. Subscribe the webhook to: `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`, `subscription_payment_success`.
 9. Paste the four env vars in `.env.local` locally and in Vercel (see [`DEPLOY.md`](DEPLOY.md)).

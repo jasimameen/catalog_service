@@ -136,7 +136,8 @@ SETUP.md / CLOUDFLARE.md / DEPLOY.md
 
 ## Known gaps (deliberately not built — flagging rather than silently skipping)
 
-- **Billing**: Lemon Squeezy at $19.99/mo. Checkout + webhook update `accounts.ls_*`.
+- **Billing**: Lemon Squeezy at $24.99/mo. Checkout + webhook update `accounts.ls_*`.
+  Price lives in `src/lib/billing/plan.ts`. Jasim must set the existing LS variant to $24.99.
   Cancel/expired shows a banner and blocks publishing a new catalog; storefronts stay live.
 - **Team invites**: schema supports multiple `account_members` but there's no invite-by-email
   UI yet — only the signed-up owner exists on an account.

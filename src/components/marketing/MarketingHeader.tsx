@@ -20,7 +20,10 @@ export function MarketingHeader({ variant = "inner" }: MarketingHeaderProps) {
           <span className="text-[15px] font-semibold tracking-tight">{PRODUCT_NAME}</span>
           <span className="hidden text-xs text-[#86868b] sm:inline">{PRODUCT_DOMAIN}</span>
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link href="/live" className="hidden text-xs sm:inline">
+            See it live
+          </Link>
           <Link href={templatesHref} className="hidden text-xs sm:inline">
             Templates
           </Link>
@@ -30,6 +33,9 @@ export function MarketingHeader({ variant = "inner" }: MarketingHeaderProps) {
           <a href={pricingHref} className="hidden text-xs sm:inline">
             Pricing
           </a>
+          <Link href="/setup" className="hidden text-xs sm:inline">
+            We’ll set it up
+          </Link>
           <Link href="/auth/sign-in" className="text-xs">
             Sign in
           </Link>

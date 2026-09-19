@@ -130,6 +130,7 @@ export type CatalogRow = {
   template_settings?: unknown;
   created_at: string;
   updated_at: string;
+  transferred_at?: string | null;
 };
 
 export type CatalogItemRow = {
@@ -270,4 +271,58 @@ export type CatalogViewRow = {
   id: number;
   catalog_id: string;
   created_at: string;
+};
+
+export type SetupInquiryStatus = "new" | "in_progress" | "live" | "closed";
+export type SetupBusinessType = "restaurant" | "retail" | "other";
+export type SetupInquiryFileKind = "menu" | "logo" | "photo";
+
+export type SetupInquiryFile = {
+  path: string;
+  name: string;
+  kind: SetupInquiryFileKind;
+  size: number;
+  type: string;
+};
+
+export type SetupInquiryDayHours = {
+  day: "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+  closed: boolean;
+  open: string;
+  close: string;
+};
+
+export type SetupInquiryHours = {
+  days: SetupInquiryDayHours[];
+  notes: string;
+};
+
+export type EmailOtpChallengeRow = {
+  email: string;
+  code_hash: string;
+  expires_at: string;
+  sent_at: string;
+  attempts: number;
+};
+
+export type SetupInquiryRow = {
+  id: string;
+  business_name: string;
+  business_type: SetupBusinessType;
+  city: string;
+  country: string;
+  contact_name: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  instagram: string;
+  facebook: string;
+  website: string;
+  tiktok: string;
+  hours: SetupInquiryHours | unknown;
+  notes: string;
+  files: SetupInquiryFile[] | unknown;
+  status: SetupInquiryStatus;
+  created_at: string;
+  updated_at: string;
 };

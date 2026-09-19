@@ -16,6 +16,8 @@ import type {
   ReservationRow,
   ReservationStatusEventRow,
   ServiceRequestRow,
+  SetupInquiryRow,
+  EmailOtpChallengeRow,
 } from "./types";
 
 type TableDef<Row> = {
@@ -40,6 +42,8 @@ export interface Database {
       reservations: TableDef<ReservationRow>;
       reservation_status_events: TableDef<ReservationStatusEventRow>;
       service_requests: TableDef<ServiceRequestRow>;
+      setup_inquiries: TableDef<SetupInquiryRow>;
+      email_otp_challenges: TableDef<EmailOtpChallengeRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

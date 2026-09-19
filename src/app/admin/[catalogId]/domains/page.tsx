@@ -1,6 +1,5 @@
 import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { getRootDomain } from "@/lib/tenant";
 import { getExpectedCnameTarget } from "@/lib/domains/provider";
@@ -9,7 +8,7 @@ import { DomainsClient } from "./DomainsClient";
 
 export default async function DomainsPage({ params }: { params: Promise<{ catalogId: string }> }) {
   const { catalogId } = await params;
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
 
   const [account, catalog, domainsRes] = await Promise.all([
     requireAccount(),

@@ -1,15 +1,33 @@
 import Link from "next/link";
-import { requireAccount } from "@/lib/auth/current-account";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { canOperatePlatform } from "@/lib/auth/platform";
 import { canPublishNewCatalog } from "@/lib/billing/status";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import type { CatalogRow } from "@/lib/supabase/types";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
 import { catalogHost, catalogUrl } from "@/app/admin/_lib/urls";
 
-async function loadCatalogCards(catalogs: CatalogRow[]) {
-  const supabase = await getServerSupabase();
+type CatalogScope = "own" | "all";
 
+type CatalogCard = {
+  catalog: CatalogRow;
+  thumbs: string[];
+  itemCount: number;
+  orderCount: number;
+  viewCount: number;
+  ownerEmail: string;
+};
+
+type DataClient = Awaited<ReturnType<typeof getServerSupabase>>;
+
+function requestedScope(raw: string | string[] | undefined): CatalogScope {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value === "all" ? "all" : "own";
+}
+
+async function loadCatalogCards(catalogs: CatalogRow[], supabase: DataClient): Promise<CatalogCard[]> {
   return Promise.all(
     catalogs.map(async (catalog) => {
       const [thumbsRes, itemsCountRes, ordersCountRes, viewsCountRes] = await Promise.all([
@@ -38,38 +56,159 @@ async function loadCatalogCards(catalogs: CatalogRow[]) {
       const orderCount = ordersCountRes.count ?? 0;
       const viewCount = viewsCountRes.count ?? 0;
 
-      return { catalog, thumbs, itemCount, orderCount, viewCount };
+      return { catalog, thumbs, itemCount, orderCount, viewCount, ownerEmail: "" };
     }),
   );
 }
 
-export default async function CatalogsPage() {
+async function loadOwnerEmails(accountIds: string[]): Promise<Map<string, string>> {
+  const emails = new Map<string, string>();
+  const unique = [...new Set(accountIds.filter(Boolean))];
+  if (unique.length === 0) return emails;
+
+  const service = getServiceClient();
+  const [{ data: members }, { data: accounts }] = await Promise.all([
+    service.from("account_members").select("account_id, user_id, role").in("account_id", unique),
+    service.from("accounts").select("id, order_email").in("id", unique),
+  ]);
+
+  const ownerIdByAccount = new Map<string, string>();
+  for (const row of members ?? []) {
+    if (row.role === "owner" || !ownerIdByAccount.has(row.account_id)) {
+      ownerIdByAccount.set(row.account_id, row.user_id);
+    }
+  }
+
+  const emailByUser = new Map<string, string>();
+  await Promise.all(
+    [...new Set(ownerIdByAccount.values())].map(async (userId) => {
+      const { data } = await service.auth.admin.getUserById(userId);
+      const email = data.user?.email?.toLowerCase();
+      if (email) emailByUser.set(userId, email);
+    }),
+  );
+
+  for (const accountId of unique) {
+    const ownerId = ownerIdByAccount.get(accountId);
+    const fallback = (accounts ?? []).find((row) => row.id === accountId)?.order_email ?? "";
+    emails.set(accountId, (ownerId && emailByUser.get(ownerId)) || fallback.toLowerCase());
+  }
+  return emails;
+}
+
+export default async function CatalogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string | string[] }>;
+}) {
+  const query = await searchParams;
   const account = await requireAccount();
-  const supabase = await getServerSupabase();
+  const user = await getSessionUser();
+  const isOperator = canOperatePlatform(user?.email);
+  const scope: CatalogScope = isOperator && requestedScope(query.scope) === "all" ? "all" : "own";
 
-  const { data: catalogs, error: catalogsError } = await supabase
-    .from("catalogs")
-    .select("*")
-    .eq("account_id", account.id)
-    .order("created_at", { ascending: false });
+  let newInquiryCount = 0;
+  if (isOperator) {
+    const { count } = await getServiceClient()
+      .from("setup_inquiries")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "new");
+    newInquiryCount = count ?? 0;
+  }
 
-  const cards = catalogsError ? [] : await loadCatalogCards((catalogs ?? []) as CatalogRow[]);
+  // Own always uses the signed-in JWT + account_id (RLS). All is service-role
+  // and only after the operator gate — merchants cannot request it.
+  let catalogs: CatalogRow[] = [];
+  let catalogsError = false;
+  let cards: CatalogCard[] = [];
+
+  if (scope === "all") {
+    const service = getServiceClient();
+    const { data, error } = await service
+      .from("catalogs")
+      .select("*")
+      .order("created_at", { ascending: false });
+    catalogsError = Boolean(error);
+    catalogs = error ? [] : ((data ?? []) as CatalogRow[]);
+    const [loaded, owners] = await Promise.all([
+      loadCatalogCards(catalogs, service),
+      loadOwnerEmails(catalogs.map((row) => row.account_id)),
+    ]);
+    cards = loaded.map((card) => ({
+      ...card,
+      ownerEmail: owners.get(card.catalog.account_id) ?? "",
+    }));
+  } else {
+    const supabase = await getServerSupabase();
+    const { data, error } = await supabase
+      .from("catalogs")
+      .select("*")
+      .eq("account_id", account.id)
+      .order("created_at", { ascending: false });
+    catalogsError = Boolean(error);
+    catalogs = error ? [] : ((data ?? []) as CatalogRow[]);
+    cards = await loadCatalogCards(catalogs, supabase);
+  }
+
   const liveCount = cards.filter((c) => c.catalog.status === "live").length;
   const canPublish = canPublishNewCatalog(account);
+  const subtitle =
+    scope === "all"
+      ? `All shops · ${cards.length} ${cards.length === 1 ? "catalog" : "catalogs"} · ${liveCount} live`
+      : `${cards.length} ${cards.length === 1 ? "catalog" : "catalogs"} · ${liveCount} live`;
 
   return (
     <>
-      <PageHeader
-        title="Catalogs"
-        subtitle={`${cards.length} ${cards.length === 1 ? "catalog" : "catalogs"} · ${liveCount} live`}
-        account={account}
-      />
+      <PageHeader title="Catalogs" subtitle={subtitle} account={account} />
       <div className="p-4 pb-16 sm:p-8">
+        {isOperator ? (
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            <Link
+              href="/admin/ops"
+              className="flex items-center justify-between gap-3 rounded-[18px] border border-[var(--cat-border)] bg-white px-4 py-4 sm:px-5"
+            >
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">Platform</p>
+                <p className="mt-1 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">
+                  Operator desk
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--cat-muted)]">All catalogs, users, transfers</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[var(--cat-ink)] px-3.5 py-2 text-xs font-medium text-white">
+                Open ops
+              </span>
+            </Link>
+            <Link
+              href="/admin/inquiries"
+              className="flex items-center justify-between gap-3 rounded-[18px] border border-[var(--cat-border)] bg-white px-4 py-4 sm:px-5"
+            >
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">Setup inbox</p>
+                <p className="mt-1 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">
+                  {newInquiryCount === 0 ? "No new setup inquiries" : `${newInquiryCount} new setup ${newInquiryCount === 1 ? "inquiry" : "inquiries"}`}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--cat-muted)]">We’ll-set-it-up requests from the public form</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[var(--cat-ink)] px-3.5 py-2 text-xs font-medium text-white">
+                Open inbox
+              </span>
+            </Link>
+          </div>
+        ) : null}
+        {isOperator ? (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <ScopeChip href="/admin" label="Own" active={scope === "own"} />
+            <ScopeChip href="/admin?scope=all" label="All" active={scope === "all"} />
+            <p className="m-0 text-xs text-[var(--cat-muted)]">
+              {scope === "all" ? "Every shop · owner on each card" : "This account only"}
+            </p>
+          </div>
+        ) : null}
         {catalogsError ? (
           <p className="mb-4 text-[13px] text-[#b2432b]">Could not load catalogs. Refresh and try again.</p>
         ) : null}
         <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map(({ catalog, thumbs, itemCount, orderCount, viewCount }, cardIndex) => {
+          {cards.map(({ catalog, thumbs, itemCount, orderCount, viewCount, ownerEmail }, cardIndex) => {
             const isLive = catalog.status === "live";
             const meta = isLive
               ? `${itemCount} items · ${orderCount} orders · ${viewCount} views`
@@ -120,6 +259,9 @@ export default async function CatalogsPage() {
                     {catalog.name}
                   </h3>
                   <p className="m-0 text-xs text-[var(--cat-muted)]">{catalogHost(catalog.slug)}</p>
+                  {scope === "all" && ownerEmail ? (
+                    <p className="m-0 mt-1 break-all text-xs text-[var(--cat-ink)]">{ownerEmail}</p>
+                  ) : null}
                   <p className="m-0 mt-3 text-xs text-[var(--cat-muted)]">{meta}</p>
                   <div className="mt-3.5 flex gap-2">
                     <Link
@@ -151,5 +293,20 @@ export default async function CatalogsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+function ScopeChip({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex min-h-10 items-center rounded-full border px-3.5 text-[13px] ${
+        active
+          ? "border-[var(--cat-ink)] bg-[var(--cat-ink)] font-medium text-white"
+          : "border-[var(--cat-border)] bg-white text-[var(--cat-muted)]"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }

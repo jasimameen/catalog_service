@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sessionNeedsEmailOtp, verifyEmailPath } from "@/lib/auth/email-verified";
 import { refreshSupabaseSession } from "@/lib/supabase/proxy-session";
 import { isRootHost } from "@/lib/tenant";
 
@@ -43,9 +44,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(signIn);
   }
 
+  const needsOtp = sessionNeedsEmailOtp(user);
+  if (needsOtp && (pathname.startsWith("/admin") || pathname.startsWith("/new"))) {
+    return NextResponse.redirect(new URL(verifyEmailPath(user?.email, pathname), request.nextUrl));
+  }
+
   // Callback must run even if a session already exists — recovery emails
   // exchange ?code= here. Forgot-password stays reachable while signed out.
-  if (pathname.startsWith("/auth") && user && !pathname.startsWith("/auth/callback")) {
+  // Unverified public users stay on /auth/verify instead of bouncing to admin.
+  if (
+    pathname.startsWith("/auth") &&
+    user &&
+    !pathname.startsWith("/auth/callback") &&
+    !pathname.startsWith("/auth/verify")
+  ) {
+    if (needsOtp) {
+      return NextResponse.redirect(new URL(verifyEmailPath(user.email), request.nextUrl));
+    }
     const admin = request.nextUrl.clone();
     admin.pathname = "/admin";
     admin.search = "";

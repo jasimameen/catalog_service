@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import type { OrderItemRow, OrderRow, SelectedOption } from "@/lib/supabase/types";
 import { formatSelectedOptions } from "@/lib/catalog/item-options";
 import { fulfillmentLabel } from "@/lib/catalog/checkout-form";
@@ -20,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   await requireAccount();
   const catalog = await getCatalogOrNotFound(catalogId);
   const statuses = parseOrderStatuses(catalog.order_statuses);
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
 
   const { data: ordersData } = await supabase
     .from("orders")

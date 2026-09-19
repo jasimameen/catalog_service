@@ -53,7 +53,7 @@ VERCEL_TEAM_ID=
 
 `VERCEL_TEAM_ID` only if the project lives on a team.
 
-Optional — Lemon Squeezy subscriptions ($19.99/month). Create the store, product, monthly variant, and webhook first (see [`SETUP.md`](SETUP.md)):
+Optional — Lemon Squeezy subscriptions ($24.99/month). Create the store, product, monthly variant, and webhook first (see [`SETUP.md`](SETUP.md)). Price change: update the **existing** variant to $24.99 in the Lemon Squeezy dashboard; keep `LEMONSQUEEZY_VARIANT_ID`.
 
 ```
 LEMONSQUEEZY_API_KEY=

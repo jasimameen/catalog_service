@@ -14,7 +14,7 @@ create table if not exists accounts (
   currency text not null default 'QAR',
   order_email text,
   order_email_cc text,
-  trial_ends_at timestamptz not null default (now() + interval '14 days'),
+  trial_ends_at timestamptz not null default (now() + interval '30 days'),
   ls_customer_id text,
   ls_subscription_id text,
   ls_status text check (ls_status is null or ls_status in ('trialing', 'active', 'past_due', 'cancelled')),
@@ -60,6 +60,9 @@ alter table catalogs
   add column if not exists geo_lat double precision,
   add column if not exists geo_lng double precision,
   add column if not exists placeholder_image_url text;
+
+alter table catalogs
+  add column if not exists transferred_at timestamptz;
 
 create index if not exists catalogs_account_id_idx on catalogs(account_id);
 
@@ -438,4 +441,6 @@ alter table catalogs
 -- Storage: public catalog-images bucket (item photo uploads).
 -- Existing projects: run supabase/catalog-images.sql once.
 -- Fresh projects can run that file after this schema (bucket + policies).
+-- Concierge setup inquiries: run supabase/setup-inquiries.sql (table + private bucket).
+-- Email OTP for public sign-up: run supabase/email-otp.sql (hashed codes, service role).
 -- ---------------------------------------------------------------------------

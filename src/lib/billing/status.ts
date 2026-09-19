@@ -9,7 +9,30 @@ export function isPaid(account: Pick<AccountRow, "ls_status">): boolean {
   return account.ls_status === "active" || account.ls_status === "trialing";
 }
 
-/** Paid or still on the 14-day trial. Past-due / cancelled / trial-ended cannot publish. */
+export type PlanKind = "subscribed" | "trial" | "none";
+
+/** Lemon Squeezy paid/trialing vs in-app trial vs expired. */
+export function planKind(
+  account: Pick<AccountRow, "ls_status" | "trial_ends_at">
+): PlanKind {
+  if (isPaid(account)) return "subscribed";
+  if (account.ls_status === "past_due" || account.ls_status === "cancelled") return "none";
+  return trialDaysLeft(account.trial_ends_at) > 0 ? "trial" : "none";
+}
+
+export function planLabel(
+  account: Pick<AccountRow, "ls_status" | "trial_ends_at">
+): string {
+  if (account.ls_status === "active") return "Subscribed";
+  if (account.ls_status === "trialing") return "Lemon trial";
+  if (account.ls_status === "past_due") return "Past due";
+  if (account.ls_status === "cancelled") return "Cancelled";
+  const days = trialDaysLeft(account.trial_ends_at);
+  if (days > 0) return `Trial · ${days}d`;
+  return "None";
+}
+
+/** Paid or still on the 30-day trial. Past-due / cancelled / trial-ended cannot publish. */
 export function canPublishNewCatalog(
   account: Pick<AccountRow, "ls_status" | "trial_ends_at">
 ): boolean {

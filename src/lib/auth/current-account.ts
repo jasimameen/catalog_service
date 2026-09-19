@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { AccountRow } from "@/lib/supabase/types";
+import { sessionNeedsEmailOtp, verifyEmailPath } from "./email-verified";
 import { accountDisplayName, companyNameFromUser, provisionAccount, safeNextPath } from "./provision";
 
 /** One auth.getUser() per request — shared by requireAccount and /new. */
@@ -52,6 +53,10 @@ const loadRequiredAccount = cache(async (next?: string): Promise<AccountRow> => 
 
   if (!user) {
     redirect(signIn);
+  }
+
+  if (sessionNeedsEmailOtp(user)) {
+    redirect(verifyEmailPath(user.email, next ?? "/admin"));
   }
 
   const account = await loadAccount(supabase, user.id);

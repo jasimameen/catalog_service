@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
+import { getCatalogAdminClient } from "@/app/admin/_lib/data";
 import { getServiceClient } from "@/lib/supabase/service";
 import { generateItemCode } from "@/app/admin/_lib/urls";
 import type { CatalogItemRow, CatalogRow, ItemOptionGroup } from "@/lib/supabase/types";
@@ -73,7 +73,7 @@ function revalidateItems(catalogId: string) {
 
 async function ownedCatalog(catalogId: string) {
   await requireAccount();
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalogs")
     .select("id")
@@ -85,7 +85,7 @@ async function ownedCatalog(catalogId: string) {
 }
 
 async function nextPosition(
-  supabase: Awaited<ReturnType<typeof getServerSupabase>>,
+  supabase: Awaited<ReturnType<typeof getCatalogAdminClient>>,
   catalogId: string,
 ): Promise<number> {
   const { data } = await supabase
@@ -136,7 +136,7 @@ export async function addItem(
   if (!name) return { error: "Name is required." };
   if (!priceRaw || Number.isNaN(price) || price < 0) return { error: "Enter a valid price." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const position = await nextPosition(supabase, catalogId);
   const rounded = Math.round(price * 100) / 100;
 
@@ -243,7 +243,7 @@ async function writeCombo(
   if (!priceRaw.trim() || Number.isNaN(price) || price < 0) return { error: "Enter a valid price." };
   if (lines.length === 0) return { error: "Pick at least one product." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data: productRows } = await supabase
     .from("catalog_items")
     .select("id, code, name, image, is_combo")
@@ -348,7 +348,7 @@ export async function toggleItemVisible(
   const catalog = await ownedCatalog(catalogId);
   if (!catalog) return { error: "Catalog not found." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalog_items")
     .update({ visible })
@@ -376,7 +376,7 @@ export async function updateItemOptions(
   const catalog = await ownedCatalog(catalogId);
   if (!catalog) return { error: "Catalog not found." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalog_items")
     .update({ options: parseOptionsFromForm(options) })
@@ -405,7 +405,7 @@ export async function toggleItemFeatured(
   const catalog = await ownedCatalog(catalogId);
   if (!catalog) return { error: "Catalog not found." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalog_items")
     .update({ featured })
@@ -458,7 +458,7 @@ export async function updateItem(
   if (!name) return { error: "Name is required." };
   if (!priceRaw || Number.isNaN(price) || price < 0) return { error: "Enter a valid price." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalog_items")
     .update({
@@ -499,7 +499,7 @@ export async function applyItemPlaceholder(
   const allowed = STOCK_PHOTOS.some((photo) => photo.url === imageUrl);
   if (!allowed && imageUrl !== "") return { error: "Pick one of the stock photos." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { data, error } = await supabase
     .from("catalog_items")
     .update({ image: imageUrl })
@@ -524,7 +524,7 @@ export async function deleteItem(
   const catalog = await ownedCatalog(catalogId);
   if (!catalog) return { error: "Catalog not found." };
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { error } = await supabase
     .from("catalog_items")
     .delete()
@@ -575,7 +575,7 @@ export async function pasteImportItems(
     return { error: "No valid rows found — use \"Name, Price\" per line." };
   }
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const start = await nextPosition(supabase, catalogId);
   const codes = uniqueCodes(rows.length);
   if (codes.length < rows.length) {
@@ -697,7 +697,7 @@ export async function fileImportItems(
     });
   }
 
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const replaceAll = options.mode === "replace";
   if (replaceAll) {
     const { error } = await supabase.from("catalog_items").delete().eq("catalog_id", catalogId);

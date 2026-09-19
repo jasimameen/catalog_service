@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import {
   parseTemplateSettings,
   publishedFloorPlan,
@@ -18,7 +17,7 @@ export async function saveFloorPlan(
   const settings = parseTemplateSettings(catalog.template_settings);
   const floor = publishedFloorPlan(plan);
   const next = { ...settings, floor };
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
   const { error } = await supabase
     .from("catalogs")
     .update({ template_settings: next })

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireAccount } from "@/lib/auth/current-account";
-import { getServerSupabase } from "@/lib/supabase/server";
-import { getCatalogOrNotFound } from "@/app/admin/_lib/data";
+import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { catalogUrl } from "@/app/admin/_lib/urls";
 import { formatMoney } from "@/lib/catalog/currency";
 import { templateMeta } from "@/lib/catalog/templates";
@@ -34,7 +33,7 @@ export default async function CatalogDashboardPage({
   params: Promise<{ catalogId: string }>;
 }) {
   const { catalogId } = await params;
-  const supabase = await getServerSupabase();
+  const supabase = await getCatalogAdminClient();
 
   const [
     account,

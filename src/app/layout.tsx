@@ -16,9 +16,9 @@ const plexSans = IBM_Plex_Sans({
   display: "swap",
 });
 
-const title = "HV Instant Catalog — Your catalog, live in five minutes";
+const title = "HV Instant Catalog — Live catalog, dine-in QR, reserve";
 const description =
-  "Add your items, pick a template, share the link. Customers browse, add quantities and send an order — straight to your inbox and dashboard. No storefront to build, no developer.";
+  "Your menu, live on a link. Dine-in QR, table reserve, pickup and delivery. Set it up yourself or we’ll build it for you. $24.99/month after 30 days free.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://catalog.hevyf.com"),

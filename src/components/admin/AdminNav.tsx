@@ -95,6 +95,29 @@ function IconDomains() {
   );
 }
 
+function IconInbox() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M2.6 4.2h10.8v8.2H2.6z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M2.6 4.2 8 8.4l5.4-4.2" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconOps() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <rect x="2.4" y="3.1" width="11.2" height="9.8" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5 6.2h6M5 8.6h4.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function IconAccount() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -128,11 +151,21 @@ function IconSettings() {
  * Mobile: horizontally scrolling pill bar from the design pack
  * (Admin Dashboard / Orders / Items).
  */
-export function AdminNav({ collapsed = false }: { collapsed?: boolean }) {
+export function AdminNav({
+  collapsed = false,
+  showInquiries = false,
+  showOps = false,
+}: {
+  collapsed?: boolean;
+  showInquiries?: boolean;
+  showOps?: boolean;
+}) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean); // ["admin", ...]
   const second = segments[1];
-  const inCatalog = Boolean(second) && second !== "settings" && second !== "account";
+  const reserved =
+    second === "settings" || second === "account" || second === "inquiries" || second === "ops";
+  const inCatalog = Boolean(second) && !reserved;
   const catalogId = inCatalog ? second : null;
   const scrollerRef = useRef<HTMLElement>(null);
 
@@ -147,6 +180,14 @@ export function AdminNav({ collapsed = false }: { collapsed?: boolean }) {
       { label: "Share", href: `/admin/${catalogId}/share`, icon: IconShare },
       { label: "Domains", href: `/admin/${catalogId}/domains`, icon: IconDomains },
     );
+  }
+
+  if (showOps) {
+    items.push({ label: "Ops", href: "/admin/ops", icon: IconOps });
+  }
+
+  if (showInquiries) {
+    items.push({ label: "Inquiries", href: "/admin/inquiries", icon: IconInbox });
   }
 
   items.push(

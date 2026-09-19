@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { COMPANY_NAME, COMPANY_URL, CONTACT_EMAIL } from "@/lib/brand";
+import { CompanyContact } from "@/components/brand/CompanyContact";
+import { COMPANY_NAME, COMPANY_URL } from "@/lib/brand";
 
 type MarketingFooterProps = {
   variant?: "home" | "inner";
@@ -7,33 +8,36 @@ type MarketingFooterProps = {
 
 export function MarketingFooter({ variant = "inner" }: MarketingFooterProps) {
   return (
-    <footer className="border-t border-[#e8e8ed] bg-white px-6 pb-16 pt-10">
+    <footer className="border-t border-[var(--cat-border)] bg-[var(--cat-surface)] px-6 pb-16 pt-10">
       <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4">
-        <p className="text-xs text-[#86868b]">
-          <a
-            href={COMPANY_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-[#1d1d1f] hover:underline"
-          >
-            Powered by {COMPANY_NAME}
-          </a>
-          <span> · </span>
-          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:underline">
-            Questions? {CONTACT_EMAIL}
-          </a>
-          <span> · Made for people who sell from a list.</span>
-        </p>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-[var(--cat-muted)]">
+            <a
+              href={COMPANY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[var(--cat-ink)] hover:underline"
+            >
+              Powered by {COMPANY_NAME}
+            </a>
+            <span> · Made for people who sell from a list.</span>
+          </p>
+          <CompanyContact className="text-xs text-[var(--cat-muted)]" />
+        </div>
         <div className="flex gap-5 text-xs">
           {variant === "home" ? (
             <>
+              <Link href="/live">See it live</Link>
               <a href="#templates">Templates</a>
               <a href="#pricing">Pricing</a>
+              <Link href="/setup">We’ll set it up</Link>
             </>
           ) : (
             <>
+              <Link href="/live">See it live</Link>
               <Link href="/templates">Templates</Link>
               <Link href="/#pricing">Pricing</Link>
+              <Link href="/setup">We’ll set it up</Link>
             </>
           )}
           <Link href="/admin">Dashboard</Link>

@@ -191,7 +191,7 @@ async function resolveCatalogByHostUncached(host: string): Promise<StorefrontCat
 
 const getCachedCatalogByHost = unstable_cache(
   async (host: string) => resolveCatalogByHostUncached(host),
-  ["storefront-catalog-by-host-v9"],
+  ["storefront-catalog-by-host-v10"],
   { revalidate: 45, tags: [STOREFRONT_CATALOG_CACHE_TAG] },
 );
 

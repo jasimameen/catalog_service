@@ -64,7 +64,7 @@ export default async function SettingsPage() {
             {paid ? `Pro · ${MONTHLY_PRICE_LABEL}` : `$${MONTHLY_PRICE_USD} / month`}
           </p>
           <p className="m-0 mb-3 mt-1 text-[12px] text-[#a1a1a6]">
-            Unlimited catalogs, items and team members.
+            Live menu, table QR, reservations, and orders.
           </p>
           {paid ? (
             <p className="m-0 text-[12px] text-[#a1a1a6]">
