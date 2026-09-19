@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAccount } from "@/lib/auth/current-account";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { getLastMailError, isMailConfigured, sendMail } from "@/lib/mail";
+import { PRODUCT_NAME } from "@/lib/brand";
 import { getServerSupabase } from "@/lib/supabase/server";
 
-export type SettingsState = { error?: string; saved?: boolean } | null;
+export type SettingsState = { error?: string; saved?: boolean; message?: string } | null;
 
 function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -65,4 +67,31 @@ export async function updateCompany(_prevState: SettingsState, formData: FormDat
 
   revalidatePath("/admin", "layout");
   return { saved: true };
+}
+
+export async function sendTestMail(
+  _prevState: SettingsState,
+  _formData: FormData,
+): Promise<SettingsState> {
+  await requireAccount();
+  const user = await getSessionUser();
+  const to = user?.email?.trim() ?? "";
+  if (!to) return { error: "Sign in again to send a test email." };
+  if (!isMailConfigured()) {
+    return { error: "Email is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS on this server." };
+  }
+
+  const sent = await sendMail({
+    to,
+    subject: `${PRODUCT_NAME} test email`,
+    text: `This is a test from ${PRODUCT_NAME}. If you received it, outgoing email is working.\n\n— ${PRODUCT_NAME}`,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:560px;">
+  <p style="margin:0 0 12px;">This is a test from ${PRODUCT_NAME}. If you received it, outgoing email is working.</p>
+  <p style="margin:0;color:#46505e;">— ${PRODUCT_NAME}</p>
+</div>`,
+  });
+  if (!sent) {
+    return { error: getLastMailError() || "Could not send the test email." };
+  }
+  return { saved: true, message: `Sent a test email to ${to}.` };
 }

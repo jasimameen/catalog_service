@@ -1,6 +1,7 @@
-import { getServerSupabase } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { sendRecoveryLinkEmail } from "@/lib/auth/recovery-mail";
 import { authCallbackUrl } from "@/lib/auth/request-origin";
+import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
+import { getServiceClient } from "@/lib/supabase/service";
 
 const GENERIC_OK = {
   ok: true as const,
@@ -12,7 +13,7 @@ function isEmail(value: string): boolean {
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
     return Response.json({ error: "Supabase isn't configured yet. See SETUP.md." }, { status: 500 });
   }
 
@@ -28,13 +29,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Enter a valid email." }, { status: 400 });
   }
 
-  const supabase = await getServerSupabase();
-  // Always return the same copy — do not reveal whether the address exists.
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: authCallbackUrl(request, "/reset-password"),
+  // Build the link ourselves and send via app SMTP. Supabase Auth's own
+  // mailer (resetPasswordForEmail) uses dashboard SMTP, which can fail
+  // without the form knowing — and we must not send a second copy.
+  const supabase = getServiceClient();
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo: authCallbackUrl(request, "/reset-password") },
   });
-  if (error) {
-    console.error("resetPasswordForEmail failed", error.message);
+  if (error || !data.properties?.action_link) {
+    if (error) console.error("generate recovery link failed", error.message);
+    return Response.json(GENERIC_OK);
+  }
+
+  const sent = await sendRecoveryLinkEmail({ to: email, resetUrl: data.properties.action_link });
+  if (!sent) {
+    console.error("Recovery email not sent (SMTP missing or rejected).");
   }
 
   return Response.json(GENERIC_OK);

@@ -10,7 +10,7 @@ Copy `.env.example` to `.env.local`. Then do this once:
    - Publishable key → `SUPABASE_PUBLISHABLE_KEY` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (same value)
    - Secret key → `SUPABASE_SECRET_KEY` (server-only; replace the `your-secret-key` placeholder with the real secret from the dashboard)
 5. Set `NEXT_PUBLIC_ROOT_DOMAIN` to `localhost:3000` locally, or `catalog.hevyf.com` in production.
-6. Optional — order email on checkout: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `ORDER_FROM_EMAIL`.
+6. Optional — order, welcome, password-changed, and reset emails: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `ORDER_FROM_EMAIL`. Checkout still saves without these. If messages do not arrive, see **Emails not arriving** below.
 7. Optional — item photo uploads: **SQL Editor** → run [`supabase/catalog-images.sql`](supabase/catalog-images.sql) (creates the public `catalog-images` bucket).
 8. Billing — **SQL Editor** → run [`supabase/billing.sql`](supabase/billing.sql) (Lemon Squeezy columns on `accounts`). Then see **Lemon Squeezy** below.
 9. Restaurant ordering — **SQL Editor** → run [`supabase/restaurant.sql`](supabase/restaurant.sql) (item variants, dine-in/pickup/delivery, kitchen status, custom checkout form). Safe to skip for trade catalogs.
@@ -27,6 +27,18 @@ Reset emails use the current site origin — no extra env vars. In Supabase **Au
 - `https://catalog.hevyf.com/reset-password`
 
 The app sends `redirectTo` as `{origin}/auth/callback?next=/reset-password` (same callback as sign-up confirm).
+
+## Emails not arriving
+
+App mail (orders, welcome, password-changed, forgot-password reset link) uses nodemailer + the `SMTP_*` vars. Signup confirmation still uses **Supabase Auth’s** mailer.
+
+If reset / confirm never shows up:
+
+1. Google Account for the SMTP user → **Security** → **2-Step Verification** → **App passwords** → create one for Mail. Copy the 16-character password.
+2. Put it in `.env.local` as `SMTP_PASS` (and keep `SMTP_HOST` / `SMTP_USER` / `ORDER_FROM_EMAIL`).
+3. Vercel project **catalog-service** → **Settings → Environment Variables** → set the same `SMTP_*` and `ORDER_FROM_EMAIL` on **Production and Preview** (Preview currently has none). Redeploy after saving.
+4. Supabase → **Authentication → Emails → SMTP Settings** → enable custom SMTP and paste the **same** host, user, and new app password. Signup confirm emails will keep failing with `535 Username and Password not accepted` until this matches.
+5. In admin **Settings**, use **Send test email**. If it arrives, app mail works; if confirm still fails, only the Supabase dashboard SMTP is stale.
 
 ## Lemon Squeezy ($19.99/month)
 

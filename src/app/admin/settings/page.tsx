@@ -6,7 +6,8 @@ import { formatRenewsAt, isPaid, trialDaysLeft } from "@/lib/billing/status";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
-import { NotificationsForm, CompanyForm } from "./SettingsForms";
+import { getLastMailError, isMailConfigured } from "@/lib/mail";
+import { NotificationsForm, CompanyForm, MailStatusCard } from "./SettingsForms";
 
 export default async function SettingsPage() {
   const account = await requireAccount();
@@ -76,6 +77,7 @@ export default async function SettingsPage() {
 
         <CompanyForm account={account} email={email} />
         <NotificationsForm account={account} />
+        <MailStatusCard configured={isMailConfigured()} lastError={getLastMailError()} email={email} />
       </div>
     </>
   );

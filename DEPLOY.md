@@ -32,7 +32,7 @@ DOMAIN_PROVIDER=manual
 
 Use the same Project URL / Publishable key / Secret key as in `.env.example`. Set both the new names and the `NEXT_PUBLIC_` aliases.
 
-Optional — order emails (checkout still saves without these):
+Optional — order / welcome / password-changed / reset emails (checkout still saves without these). Set these on **Production and Preview**:
 
 ```
 SMTP_HOST=

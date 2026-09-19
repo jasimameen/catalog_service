@@ -2,7 +2,54 @@
 
 import { useActionState } from "react";
 import type { AccountRow } from "@/lib/supabase/types";
-import { updateCompany, updateNotifications, type SettingsState } from "./actions";
+import { sendTestMail, updateCompany, updateNotifications, type SettingsState } from "./actions";
+
+export function MailStatusCard({
+  configured,
+  lastError,
+  email,
+}: {
+  configured: boolean;
+  lastError: string | null;
+  email: string;
+}) {
+  const [state, formAction, pending] = useActionState<SettingsState, FormData>(sendTestMail, null);
+
+  return (
+    <div className="rounded-xl border border-[var(--cat-border)] bg-white p-4">
+      <h3 className="m-0 mb-1.5 text-[14px] font-semibold text-[var(--cat-ink)]">Outgoing email</h3>
+      {configured ? (
+        <p className="m-0 mb-2.5 text-[12px] leading-snug text-[var(--cat-muted)]">
+          Server SMTP is set. Order, welcome, password-changed, and reset emails use it. Send a test to{" "}
+          {email || "your signed-in address"} if a message did not arrive.
+        </p>
+      ) : (
+        <p className="m-0 mb-2.5 text-[12px] leading-snug text-[#b2432b]">
+          Email is not configured on this server. Orders still save, but no mail will send until SMTP_HOST,
+          SMTP_USER, and SMTP_PASS are set (Vercel Production and Preview).
+        </p>
+      )}
+      {lastError && !state?.error ? (
+        <p className="m-0 mb-2.5 text-[12px] leading-snug text-[#b2432b]">{lastError}</p>
+      ) : null}
+      {state?.error ? <p className="m-0 mb-2.5 text-[12px] leading-snug text-[#b2432b]">{state.error}</p> : null}
+      {state?.saved ? (
+        <p className="m-0 mb-2.5 text-[12px] leading-snug text-[var(--cat-success-ink)]">
+          {state.message || "Test email sent."}
+        </p>
+      ) : null}
+      <form action={formAction}>
+        <button
+          type="submit"
+          disabled={pending || !configured || !email}
+          className="min-h-11 w-full self-stretch rounded-[10px] bg-[var(--cat-ink)] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-50 sm:w-auto sm:self-start"
+        >
+          {pending ? "Sending…" : "Send test email"}
+        </button>
+      </form>
+    </div>
+  );
+}
 
 export function NotificationsForm({ account }: { account: AccountRow }) {
   const [state, formAction, pending] = useActionState<SettingsState, FormData>(updateNotifications, null);
