@@ -1,13 +1,11 @@
 import { sendMail } from "@/lib/mail";
-import { PRODUCT_NAME } from "@/lib/brand";
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import {
+  EMAIL_PRODUCT_NAME,
+  emailButton,
+  emailP,
+  escapeHtml,
+  renderCatalogEmail,
+} from "@/lib/email/catalog-email";
 
 function changedAtUtc(): string {
   return `${new Intl.DateTimeFormat("en-GB", {
@@ -28,21 +26,24 @@ export async function notifyPasswordChanged(options: {
   const when = changedAtUtc();
   const resetUrl = options.forgotPasswordUrl;
   const subject = "Your password was changed";
-  const text = `Your ${PRODUCT_NAME} password was changed on ${when}.
+  const { html, text } = renderCatalogEmail({
+    title: "Your password was changed",
+    preheader: "If this wasn’t you, reset it now.",
+    text: `Your ${EMAIL_PRODUCT_NAME} password was changed on ${when}.
 
 If you made this change, you can ignore this email.
 
 If you did not change your password, reset it now:
-${resetUrl}
-
-— ${PRODUCT_NAME}`;
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:560px;">
-  <p style="margin:0 0 12px;">Your ${escapeHtml(PRODUCT_NAME)} password was changed on <strong>${escapeHtml(when)}</strong>.</p>
-  <p style="margin:0 0 12px;">If you made this change, you can ignore this email.</p>
-  <p style="margin:0 0 12px;">If you did not change your password, reset it now:</p>
-  <p style="margin:0 0 16px;"><a href="${escapeHtml(resetUrl)}">${escapeHtml(resetUrl)}</a></p>
-  <p style="margin:0;color:#46505e;">— ${escapeHtml(PRODUCT_NAME)}</p>
-</div>`;
+${resetUrl}`,
+    bodyHtml: [
+      emailP(
+        `Your ${EMAIL_PRODUCT_NAME} password was changed on <strong>${escapeHtml(when)}</strong>.`,
+      ),
+      emailP("If you made this change, you can ignore this email."),
+      emailP("If you did not change your password, reset it now."),
+      emailButton(resetUrl, "Reset password"),
+    ].join(""),
+  });
 
   try {
     await sendMail({ to, subject, text, html });

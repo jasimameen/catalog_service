@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { getLastMailError, isMailConfigured, sendMail } from "@/lib/mail";
-import { PRODUCT_NAME } from "@/lib/brand";
+import {
+  EMAIL_PRODUCT_NAME,
+  emailP,
+  renderCatalogEmail,
+} from "@/lib/email/catalog-email";
 import { getServerSupabase } from "@/lib/supabase/server";
 
 export type SettingsState = { error?: string; saved?: boolean; message?: string } | null;
@@ -81,14 +85,21 @@ export async function sendTestMail(
     return { error: "Email is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS on this server." };
   }
 
+  const { html, text } = renderCatalogEmail({
+    title: "Test email",
+    preheader: "Outgoing email is working.",
+    text: `This is a test from ${EMAIL_PRODUCT_NAME}. If you received it, outgoing email is working.`,
+    bodyHtml: emailP(
+      `This is a test from ${EMAIL_PRODUCT_NAME}. If you received it, outgoing email is working.`,
+      true,
+    ),
+  });
+
   const sent = await sendMail({
     to,
-    subject: `${PRODUCT_NAME} test email`,
-    text: `This is a test from ${PRODUCT_NAME}. If you received it, outgoing email is working.\n\n— ${PRODUCT_NAME}`,
-    html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#15140f;max-width:560px;">
-  <p style="margin:0 0 12px;">This is a test from ${PRODUCT_NAME}. If you received it, outgoing email is working.</p>
-  <p style="margin:0;color:#46505e;">— ${PRODUCT_NAME}</p>
-</div>`,
+    subject: `${EMAIL_PRODUCT_NAME} test email`,
+    text,
+    html,
   });
   if (!sent) {
     return { error: getLastMailError() || "Could not send the test email." };

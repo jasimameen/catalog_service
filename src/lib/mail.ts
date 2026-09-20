@@ -60,7 +60,7 @@ export async function sendMail(options: {
       cc: options.cc || undefined,
       subject: options.subject,
       text: options.text,
-      html: options.html,
+      ...(options.html ? { html: options.html } : {}),
     });
     lastMailError = null;
     return true;
