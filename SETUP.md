@@ -31,15 +31,15 @@ The app sends `redirectTo` as `{origin}/auth/callback?next=/reset-password` (sam
 
 ## Emails not arriving
 
-App mail (orders, welcome, password-changed, forgot-password reset link) uses nodemailer + the `SMTP_*` vars. Signup confirmation still uses **Supabase Auth’s** mailer.
+App mail (orders, welcome, password-changed, forgot-password reset, and signup OTP) uses nodemailer + the `SMTP_*` vars — not Supabase Auth’s mailer.
 
-If reset / confirm never shows up:
+Use Google Workspace SMTP relay (`smtp-relay.gmail.com`, port 587, STARTTLS) and turn on **Require SMTP Authentication** in Admin Console → Apps → Google Workspace → Gmail → Routing → SMTP relay service. `ORDER_FROM_EMAIL` must be an address in your Workspace domain.
 
-1. Google Account for the SMTP user → **Security** → **2-Step Verification** → **App passwords** → create one for Mail. Copy the 16-character password.
-2. Put it in `.env.local` as `SMTP_PASS` (and keep `SMTP_HOST` / `SMTP_USER` / `ORDER_FROM_EMAIL`).
-3. Vercel project **catalog-service** → **Settings → Environment Variables** → set the same `SMTP_*` and `ORDER_FROM_EMAIL` on **Production and Preview** (Preview currently has none). Redeploy after saving.
-4. Supabase → **Authentication → Emails → SMTP Settings** → enable custom SMTP and paste the **same** host, user, and new app password. Signup confirm emails will keep failing with `535 Username and Password not accepted` until this matches.
-5. In admin **Settings**, use **Send test email**. If it arrives, app mail works; if confirm still fails, only the Supabase dashboard SMTP is stale.
+If messages do not arrive:
+
+1. Set `SMTP_HOST=smtp-relay.gmail.com`, `SMTP_PORT=587`, `SMTP_SECURE=false`, and keep `SMTP_USER` / `SMTP_PASS` / `ORDER_FROM_EMAIL`.
+2. Vercel project **catalog-service** → **Settings → Environment Variables** → set the same `SMTP_*` and `ORDER_FROM_EMAIL` on **Production and Preview**. Redeploy after saving.
+3. In admin **Settings**, use **Send test email**. If it arrives, app mail (including signup OTP) works.
 
 ## Lemon Squeezy ($24.99/month)
 

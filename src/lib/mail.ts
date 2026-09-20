@@ -18,7 +18,7 @@ export function getLastMailError(): string | null {
 export function publicMailError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   if (/535|BadCredentials|Username and Password not accepted/i.test(raw)) {
-    return "The mail server rejected the username or password. Create a new Google App Password and update SMTP_PASS in Vercel and in Supabase Authentication → SMTP Settings.";
+    return "The mail server rejected the username or password. Check SMTP_USER / SMTP_PASS and that SMTP authentication is required on smtp-relay.gmail.com.";
   }
   if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNECTION/i.test(raw)) {
     return "Could not reach the mail server. Check SMTP_HOST and SMTP_PORT.";
@@ -38,7 +38,7 @@ export async function sendMail(options: {
   const pass = env("SMTP_PASS");
   const port = env("SMTP_PORT") ? Number(env("SMTP_PORT")) : 587;
   const secure = env("SMTP_SECURE") === "true" || port === 465;
-  const from = env("ORDER_FROM_EMAIL") || user;
+  const from = env("ORDER_FROM_EMAIL") || env("MAIL_FROM") || user;
 
   if (!host || !user || !pass) {
     lastMailError = "Email is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS.";

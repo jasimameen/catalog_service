@@ -31,10 +31,16 @@ export async function POST(request: Request) {
       const user = await findUserByEmail(email);
       if (user) {
         const sent = await sendEmailOtpForUser(user);
+        if (!sent.ok) {
+          return Response.json(
+            { error: sent.error, cooldownSeconds: sent.cooldownSeconds ?? OTP_COOLDOWN_SECONDS },
+            { status: sent.cooldownSeconds ? 429 : 500 },
+          );
+        }
         return Response.json({
           ok: true,
           needsVerification: true,
-          cooldownSeconds: sent.ok ? sent.cooldownSeconds : sent.cooldownSeconds ?? OTP_COOLDOWN_SECONDS,
+          cooldownSeconds: sent.cooldownSeconds,
         });
       }
     }
@@ -44,10 +50,16 @@ export async function POST(request: Request) {
   if (sessionNeedsEmailOtp(data.user)) {
     const sent = await sendEmailOtpForUser(data.user);
     await supabase.auth.signOut();
+    if (!sent.ok) {
+      return Response.json(
+        { error: sent.error, cooldownSeconds: sent.cooldownSeconds ?? OTP_COOLDOWN_SECONDS },
+        { status: sent.cooldownSeconds ? 429 : 500 },
+      );
+    }
     return Response.json({
       ok: true,
       needsVerification: true,
-      cooldownSeconds: sent.ok ? sent.cooldownSeconds : sent.cooldownSeconds ?? OTP_COOLDOWN_SECONDS,
+      cooldownSeconds: sent.cooldownSeconds,
     });
   }
 

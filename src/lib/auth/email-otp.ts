@@ -3,6 +3,7 @@ import { createHash, randomInt, timingSafeEqual } from "crypto";
 import type { EmailOtpType, User } from "@supabase/supabase-js";
 import { sendEmailOtpMail } from "@/lib/auth/otp-mail";
 import { findUserByEmail } from "@/lib/auth/find-user";
+import { getLastMailError } from "@/lib/mail";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 
@@ -116,20 +117,6 @@ async function clearStoredOtp(email: string, user: User): Promise<void> {
   await writeAppMeta(user, null);
 }
 
-async function issueSupabaseEmailOtp(email: string): Promise<string | null> {
-  const service = getServiceClient();
-  for (const type of ["magiclink", "invite"] as const) {
-    const { data, error } = await service.auth.admin.generateLink({ type, email });
-    if (error) {
-      console.error("generateLink otp failed", error.message);
-      continue;
-    }
-    const otp = data.properties?.email_otp;
-    if (otp && /^\d{6}$/.test(otp)) return otp;
-  }
-  return null;
-}
-
 export async function sendEmailOtpForUser(user: User): Promise<
   { ok: true; cooldownSeconds: number } | { ok: false; error: string; cooldownSeconds?: number }
 > {
@@ -143,7 +130,7 @@ export async function sendEmailOtpForUser(user: User): Promise<
     return { ok: false, error: `Wait ${wait}s before requesting another code.`, cooldownSeconds: wait };
   }
 
-  const code = (await issueSupabaseEmailOtp(email)) ?? newOtpCode();
+  const code = newOtpCode();
   await writeStoredOtp(email, user, {
     hash: hashOtp(email, code),
     expiresAt: now + OTP_TTL_MS,
@@ -154,6 +141,11 @@ export async function sendEmailOtpForUser(user: User): Promise<
   const sent = await sendEmailOtpMail({ to: email, code });
   if (!sent) {
     console.error("Email OTP not sent (SMTP missing or rejected).");
+    await clearStoredOtp(email, user);
+    return {
+      ok: false,
+      error: getLastMailError() || "We couldn't send the confirmation code. Try again in a moment.",
+    };
   }
 
   return { ok: true, cooldownSeconds: OTP_COOLDOWN_SECONDS };
