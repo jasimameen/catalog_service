@@ -30,6 +30,7 @@ export function MarketingFooter({ variant = "inner" }: MarketingFooterProps) {
               <Link href="/live">See it live</Link>
               <a href="#templates">Templates</a>
               <a href="#pricing">Pricing</a>
+              <a href="#faq">Questions</a>
               <Link href="/setup">We’ll set it up</Link>
             </>
           ) : (
@@ -37,6 +38,7 @@ export function MarketingFooter({ variant = "inner" }: MarketingFooterProps) {
               <Link href="/live">See it live</Link>
               <Link href="/templates">Templates</Link>
               <Link href="/#pricing">Pricing</Link>
+              <Link href="/#faq">Questions</Link>
               <Link href="/setup">We’ll set it up</Link>
             </>
           )}

@@ -4,15 +4,15 @@ import Link from "next/link";
 import { StorefrontApp } from "@/components/storefront/StorefrontApp";
 import { darken } from "@/lib/catalog/color";
 import { loadHarborDemoCatalog } from "@/lib/catalog/load-harbor";
+import { LIVE_DESCRIPTION, LIVE_TITLE, marketingMetadata } from "@/lib/seo/marketing";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Harbor Kitchen — Instant Catalog demo",
-  description:
-    "A sample Brooklyn restaurant catalog. Live menu, dine-in QR, pickup, delivery, and reserve.",
-  robots: { index: false, follow: false },
-};
+export const metadata = marketingMetadata({
+  title: LIVE_TITLE,
+  description: LIVE_DESCRIPTION,
+  path: "/live",
+});
 
 export default async function LiveDemoPage() {
   const { catalog } = await loadHarborDemoCatalog();

@@ -1,0 +1,29 @@
+# Instant Catalog
+
+Instant Catalog is a live catalog guests open on their phone. Restaurants use it as a QR menu with table reservations, pickup, and delivery. Shops use it as a product list. It is made by HEVYF.
+
+- Product: Instant Catalog
+- Company: HEVYF (https://hevyf.com)
+- Site: https://catalog.hevyf.com
+- Contact: hello@hevyf.com
+- WhatsApp: +1 415 872 2751 (https://wa.me/14158722751)
+
+## What it is
+Live catalog on a phone. Restaurant QR menu, table reservations, pickup, delivery. Shops can use the same product as a price list.
+
+## What it is not
+Not a POS. Not a marketplace. Not a local SEO agency. We do not claim Instant Catalog ranks in every city. Harbor Kitchen on /live is a sample restaurant, not a real venue and not HEVYF's office.
+
+## Price and doors
+30 days free, then $24.99/mo. One live shop.
+- Do it yourself: https://catalog.hevyf.com/auth/sign-up
+- We’ll set it up: https://catalog.hevyf.com/setup
+
+## Pages
+- https://catalog.hevyf.com — product
+- https://catalog.hevyf.com/live — Harbor Kitchen demo
+- https://catalog.hevyf.com/setup — concierge setup
+- https://catalog.hevyf.com/auth/sign-up — start free
+- https://catalog.hevyf.com/templates — layouts
+
+Host: catalog.hevyf.com

@@ -5,12 +5,14 @@ import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { MONTHLY_PRICE_LABEL, TRIAL_DAYS } from "@/lib/billing/plan";
 import { countryFromRequestHeaders } from "@/lib/inquiries/countries";
+import { SETUP_DESCRIPTION, SETUP_TITLE, marketingMetadata } from "@/lib/seo/marketing";
 import { SetupInquiryForm } from "./SetupInquiryForm";
 
-export const metadata = {
-  title: "We’ll set it up for you — HV Instant Catalog",
-  description: "Send your menu, logo, and how to reach you. We publish your catalog and write back.",
-};
+export const metadata = marketingMetadata({
+  title: SETUP_TITLE,
+  description: SETUP_DESCRIPTION,
+  path: "/setup",
+});
 
 export default async function SetupPage() {
   const suggestedCountry = countryFromRequestHeaders(await headers());

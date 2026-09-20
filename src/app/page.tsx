@@ -1,11 +1,25 @@
 import Link from "next/link";
 import { HarborPreview } from "@/components/marketing/HarborPreview";
+import { JsonLd } from "@/components/marketing/JsonLd";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { MONTHLY_PRICE_LABEL, MONTHLY_PRICE_USD, TRIAL_DAYS, TRIAL_DAYS_LABEL } from "@/lib/billing/plan";
 import { CompanyContact } from "@/components/brand/CompanyContact";
 import { PRODUCT_DOMAIN, PRODUCT_NAME_LONG } from "@/lib/brand";
 import { TEMPLATES } from "@/lib/catalog/templates";
+import {
+  HOME_DESCRIPTION,
+  HOME_TITLE,
+  MARKETING_FAQS,
+  marketingJsonLd,
+  marketingMetadata,
+} from "@/lib/seo/marketing";
+
+export const metadata = marketingMetadata({
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  path: "/",
+});
 
 const PLAN_INCLUDES = [
   "Live menu on your link",
@@ -17,6 +31,7 @@ const PLAN_INCLUDES = [
 export default function LandingPage() {
   return (
     <div className="w-full overflow-x-hidden bg-[var(--cat-surface)] text-[var(--cat-ink)]">
+      <JsonLd data={marketingJsonLd()} />
       <MarketingHeader variant="home" />
 
       <section className="mx-auto max-w-[1120px] px-5 pt-16 text-center sm:px-6 sm:pt-24">
@@ -30,8 +45,9 @@ export default function LandingPage() {
           Guests order from it.
         </h1>
         <p className="mx-auto mt-5 max-w-[620px] text-pretty text-[clamp(16px,2.4vw,20px)] leading-[1.45] text-[var(--cat-muted)]">
-          A catalog customers open on their phone. Dine-in QR at the table, reserve a seat,
-          pickup or delivery. We can publish it for you, or you set it up yourself.
+          Instant Catalog is a live catalog guests open on their phone — restaurant QR menu,
+          table reservations, pickup and delivery. We can publish it for you, or you set it
+          up yourself.
         </p>
         <p className="mt-4 text-[13px] text-[var(--cat-muted)]">
           {TRIAL_DAYS} days free, then {MONTHLY_PRICE_LABEL}.
@@ -143,6 +159,20 @@ export default function LandingPage() {
         <p className="mx-auto mt-5 max-w-[460px] text-center text-[13px] text-[var(--cat-muted)]">
           Need a second shop? Add it when you’re ready.
         </p>
+      </section>
+
+      <section id="faq" className="mx-auto max-w-[720px] px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="font-catalog-display text-center text-[clamp(28px,4vw,44px)] font-semibold tracking-tight">
+          Questions
+        </h2>
+        <dl className="mt-10 flex flex-col gap-6">
+          {MARKETING_FAQS.map((item) => (
+            <div key={item.q}>
+              <dt className="text-[17px] font-semibold tracking-tight">{item.q}</dt>
+              <dd className="mt-2 text-[15px] leading-relaxed text-[var(--cat-muted)]">{item.a}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <p className="mx-auto mt-10 max-w-[1120px] px-5 text-center text-[13px] text-[var(--cat-muted)] sm:px-6">

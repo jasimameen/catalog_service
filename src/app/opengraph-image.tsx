@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { BrandMarkOg } from "@/components/brand/BrandMarkOg";
 import { PRODUCT_DOMAIN, PRODUCT_NAME_LONG } from "@/lib/brand";
 
-export const alt = "HV Instant Catalog — Your catalog, live in five minutes";
+export const alt = "Instant Catalog — restaurant QR menu and table reservations. 30 days free, then $24.99/month.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -35,7 +35,7 @@ export default function OpenGraphImage() {
               {PRODUCT_NAME_LONG}
             </div>
             <div style={{ fontSize: 28, color: "#8b93a0", letterSpacing: "-0.01em" }}>
-              Your catalog, live in five minutes.
+              Restaurant QR menu and table reservations. 30 days free, then $24.99/mo.
             </div>
           </div>
         </div>

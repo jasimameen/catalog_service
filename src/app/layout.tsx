@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, IBM_Plex_Sans } from "next/font/google";
+import { HOME_DESCRIPTION, HOME_TITLE, SEO_PRODUCT } from "@/lib/seo/marketing";
 import "./globals.css";
 
 const archivo = Archivo({
@@ -16,26 +17,26 @@ const plexSans = IBM_Plex_Sans({
   display: "swap",
 });
 
-const title = "HV Instant Catalog — Live catalog, dine-in QR, reserve";
-const description =
-  "Your menu, live on a link. Dine-in QR, table reserve, pickup and delivery. Set it up yourself or we’ll build it for you. $24.99/month after 30 days free.";
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://catalog.hevyf.com"),
-  title,
-  description,
-  applicationName: "HV Catalog",
+  title: {
+    default: HOME_TITLE,
+    template: "%s",
+  },
+  description: HOME_DESCRIPTION,
+  applicationName: SEO_PRODUCT,
   robots: { index: true, follow: true },
   openGraph: {
-    title,
-    description,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     type: "website",
-    siteName: "HV Instant Catalog",
+    siteName: SEO_PRODUCT,
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title,
-    description,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
   },
 };
 
