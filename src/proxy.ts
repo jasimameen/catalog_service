@@ -19,6 +19,17 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
+    const catalogIconPath = tenantCatalogIconPath(pathname);
+    if (catalogIconPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/s/${encodeURIComponent(host)}${catalogIconPath}`;
+      return NextResponse.rewrite(url);
+    }
+
+    if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/i.test(pathname)) {
+      return NextResponse.next();
+    }
+
     // Any other Host header is a tenant storefront — either {slug}.<root> or
     // a fully custom domain that's been added under Domains. Internally
     // rewrite to the catch-all storefront route; the visible URL in the
@@ -70,8 +81,17 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+function tenantCatalogIconPath(pathname: string): string | null {
+  if (pathname === "/favicon.ico" || pathname === "/icon" || pathname === "/icon.svg") return "/icon";
+  if (pathname.startsWith("/icon/")) return pathname;
+  if (pathname === "/apple-icon" || pathname.startsWith("/apple-icon")) return pathname;
+  if (pathname === "/opengraph-image" || pathname.startsWith("/opengraph-image")) return pathname;
+  if (pathname === "/twitter-image" || pathname.startsWith("/twitter-image")) return pathname;
+  return null;
+}
+
 export const config = {
   matcher: [
-    "/((?!_next/|api/|catalog/|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mp4|webm|txt|csv)$).*)",
+    "/((?!_next/|api/|catalog/|robots.txt|sitemap.xml|llms.txt|.*\\.(?:jpg|jpeg|gif|webp|mp4|webm|txt|csv)$).*)",
   ],
 };

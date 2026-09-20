@@ -21,10 +21,31 @@ import type { OrderItemRow, OrderRow, OrderStatusEventRow, SelectedOption } from
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Order status",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ host: string }>;
+}): Promise<Metadata> {
+  const { host } = await params;
+  if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
+    return { title: { absolute: "Order status" }, robots: { index: false, follow: false } };
+  }
+  try {
+    const catalog = await resolveCatalogByHost(decodeURIComponent(host));
+    if (!catalog) return { title: { absolute: "Order status" }, robots: { index: false, follow: false } };
+    return {
+      title: { absolute: `Order status — ${catalog.name}` },
+      description: catalog.about.trim() || catalog.tagline.trim() || `${catalog.name} order status.`,
+      applicationName: catalog.name,
+      robots: { index: false, follow: false },
+      icons: catalog.logo.trim()
+        ? { icon: [{ url: catalog.logo }], apple: [{ url: catalog.logo }] }
+        : undefined,
+    };
+  } catch {
+    return { title: { absolute: "Order status" }, robots: { index: false, follow: false } };
+  }
+}
 
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],

@@ -1,51 +1,10 @@
 import type { CSSProperties } from "react";
-import { cache } from "react";
-import type { Metadata } from "next";
-import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
-import { resolveCatalogByHost, recordCatalogView } from "@/lib/catalog/resolve";
+import { recordCatalogView } from "@/lib/catalog/resolve";
 import { darken } from "@/lib/catalog/color";
 import { StorefrontApp } from "@/components/storefront/StorefrontApp";
+import { decodeStorefrontHost, loadStorefrontCatalog, storefrontReady } from "@/lib/catalog/load-storefront";
 
 export const dynamic = "force-dynamic";
-
-function decodeHost(hostParam: string): string {
-  try {
-    return decodeURIComponent(hostParam);
-  } catch {
-    return hostParam;
-  }
-}
-
-function storefrontReady(): boolean {
-  return isSupabaseConfigured() && hasSupabaseSecretKey();
-}
-
-const loadCatalog = cache(async (hostParam: string) => {
-  const host = decodeHost(hostParam);
-  if (!storefrontReady()) return { host, catalog: null, configured: false as const };
-  try {
-    const catalog = await resolveCatalogByHost(host);
-    return { host, catalog, configured: true as const };
-  } catch (error) {
-    console.error("Storefront: failed to load catalog", error);
-    return { host, catalog: null, configured: true as const };
-  }
-});
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ host: string }>;
-}): Promise<Metadata> {
-  const { host: hostParam } = await params;
-  const { catalog, configured } = await loadCatalog(hostParam);
-  if (!configured) return { title: "Not configured" };
-  if (!catalog) return { title: "Catalog not found" };
-  return {
-    title: `${catalog.name} — Order online`,
-    robots: { index: false, follow: false },
-  };
-}
 
 export default async function StorefrontPage({
   params,
@@ -53,7 +12,9 @@ export default async function StorefrontPage({
   params: Promise<{ host: string }>;
 }) {
   const { host: hostParam } = await params;
-  const { host, catalog, configured } = await loadCatalog(hostParam);
+  const host = decodeStorefrontHost(hostParam);
+  const configured = storefrontReady();
+  const catalog = configured ? await loadStorefrontCatalog(hostParam) : null;
 
   if (!configured) {
     return (

@@ -1,18 +1,33 @@
 import type { CSSProperties } from "react";
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { StorefrontApp } from "@/components/storefront/StorefrontApp";
 import { darken } from "@/lib/catalog/color";
 import { loadHarborDemoCatalog } from "@/lib/catalog/load-harbor";
+import { storefrontMetadata } from "@/lib/seo/catalog-meta";
 import { LIVE_DESCRIPTION, LIVE_TITLE, marketingMetadata } from "@/lib/seo/marketing";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = marketingMetadata({
-  title: LIVE_TITLE,
-  description: LIVE_DESCRIPTION,
-  path: "/live",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  const { catalog } = await loadHarborDemoCatalog();
+  const marketing = marketingMetadata({
+    title: LIVE_TITLE,
+    description: LIVE_DESCRIPTION,
+    path: "/live",
+  });
+  const fromCatalog = storefrontMetadata(catalog);
+  return {
+    ...marketing,
+    applicationName: catalog.name,
+    icons: fromCatalog.icons,
+    openGraph: {
+      ...marketing.openGraph,
+      siteName: catalog.name,
+    },
+  };
+}
 
 export default async function LiveDemoPage() {
   const { catalog } = await loadHarborDemoCatalog();

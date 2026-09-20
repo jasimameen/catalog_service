@@ -1,34 +1,25 @@
 import type { CSSProperties } from "react";
-import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
-import { resolveCatalogByHost } from "@/lib/catalog/resolve";
 import { darken } from "@/lib/catalog/color";
+import { loadStorefrontCatalog } from "@/lib/catalog/load-storefront";
+import { storefrontMetadata } from "@/lib/seo/catalog-meta";
 import { ReserveClient } from "./ReserveClient";
 
 export const dynamic = "force-dynamic";
 
-function decodeHost(hostParam: string): string {
-  try {
-    return decodeURIComponent(hostParam);
-  } catch {
-    return hostParam;
-  }
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ host: string }>;
+}): Promise<Metadata> {
+  const { host } = await params;
+  return storefrontMetadata(await loadStorefrontCatalog(host), { titleExtra: "Reserve" });
 }
-
-const loadCatalog = cache(async (hostParam: string) => {
-  const host = decodeHost(hostParam);
-  if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) return null;
-  try {
-    return await resolveCatalogByHost(host);
-  } catch {
-    return null;
-  }
-});
 
 export default async function ReservePage({ params }: { params: Promise<{ host: string }> }) {
   const { host } = await params;
-  const catalog = await loadCatalog(host);
+  const catalog = await loadStorefrontCatalog(host);
   if (!catalog) notFound();
   if (!catalog.settings.restaurant.enableReserve) notFound();
   const style = {
