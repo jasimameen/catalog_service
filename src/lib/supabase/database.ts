@@ -18,6 +18,7 @@ import type {
   ServiceRequestRow,
   SetupInquiryRow,
   EmailOtpChallengeRow,
+  MobilePushTokenRow,
 } from "./types";
 
 type TableDef<Row> = {
@@ -44,6 +45,7 @@ export interface Database {
       service_requests: TableDef<ServiceRequestRow>;
       setup_inquiries: TableDef<SetupInquiryRow>;
       email_otp_challenges: TableDef<EmailOtpChallengeRow>;
+      mobile_push_tokens: TableDef<MobilePushTokenRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

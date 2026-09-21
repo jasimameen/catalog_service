@@ -1,6 +1,7 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { parseTemplateSettings } from "@/lib/catalog/template-settings";
+import { sendPushToAccount } from "@/lib/push/send";
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
@@ -13,7 +14,11 @@ export async function POST(request: Request) {
   if (!catalogId) return Response.json({ error: "Missing catalog." }, { status: 400 });
 
   const supabase = getServiceClient();
-  const { data: catalog } = await supabase.from("catalogs").select("template_settings, status").eq("id", catalogId).maybeSingle();
+  const { data: catalog } = await supabase
+    .from("catalogs")
+    .select("template_settings, status, account_id")
+    .eq("id", catalogId)
+    .maybeSingle();
   if (!catalog || catalog.status !== "live") return Response.json({ error: "Not available." }, { status: 404 });
   const settings = parseTemplateSettings(catalog.template_settings);
   if (kind === "waiter" && !settings.restaurant.callWaiter) {
@@ -34,5 +39,12 @@ export async function POST(request: Request) {
     }
     return Response.json({ error: "Could not send." }, { status: 500 });
   }
+
+  void sendPushToAccount(catalog.account_id, {
+    title: kind === "bill" ? "Request bill" : "Call waiter",
+    body: tableNo ? `Table ${tableNo}` : "A table needs you",
+    data: { kind: "service_request", requestKind: kind, tableNo: tableNo || "" },
+  });
+
   return Response.json({ ok: true });
 }

@@ -24,6 +24,7 @@ import { resolveIncomingOrderStatus } from "@/lib/catalog/order-statuses";
 import { newTrackToken, trackingPath, trackingUrl } from "@/lib/catalog/order-tracking";
 import { parseNotifyEmails, parseTemplateSettings } from "@/lib/catalog/template-settings";
 import type { CatalogItemRow, CatalogRow, OrderFulfillment } from "@/lib/supabase/types";
+import { sendPushToAccount } from "@/lib/push/send";
 
 function clean(value: unknown, max = 300): string {
   if (typeof value !== "string") return "";
@@ -269,6 +270,14 @@ export async function POST(request: Request) {
     from_status: null,
     to_status: status,
     actor: "customer",
+  });
+
+  const fulfillmentLabel =
+    fulfillment === "dine_in" ? "Dine-in" : fulfillment === "delivery" ? "Delivery" : "Pickup";
+  void sendPushToAccount(catalog.account_id, {
+    title: `New ${fulfillmentLabel.toLowerCase()}`,
+    body: tableNo ? `Table ${tableNo} · ${items.length} items` : `${shopName} · ${items.length} items`,
+    data: { kind: "new_order", orderId: orderRow.id, fulfillment: fulfillment ?? "" },
   });
 
   const { data: domainRows } = await supabase

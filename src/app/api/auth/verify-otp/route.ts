@@ -43,12 +43,24 @@ export async function POST(request: Request) {
 
   await sendWelcomeEmail(email, companyNameFromUser(verified.user));
 
+  // verifyEmailOtpChallenge() established the session on this same (cached)
+  // client — hand its tokens to the mobile app, which has no cookies to
+  // read a session back from. Harmless extra field for the web client.
+  const supabase = await getServerSupabase();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session
+    ? {
+        access_token: sessionData.session.access_token,
+        refresh_token: sessionData.session.refresh_token,
+        expires_at: sessionData.session.expires_at,
+      }
+    : undefined;
+
   const requested = safeNextPath(body.next, "");
   if (requested) {
-    return Response.json({ ok: true, next: requested });
+    return Response.json({ ok: true, next: requested, session });
   }
 
-  const supabase = await getServerSupabase();
   const { count } = await supabase.from("catalogs").select("id", { count: "exact", head: true });
-  return Response.json({ ok: true, next: (count ?? 0) === 0 ? "/new" : "/admin" });
+  return Response.json({ ok: true, next: (count ?? 0) === 0 ? "/new" : "/admin", session });
 }

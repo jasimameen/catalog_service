@@ -114,6 +114,7 @@ export type CatalogRow = {
   instagram?: string | null;
   email?: string | null;
   accept_orders?: boolean | null;
+  kitchen_open?: boolean | null;
   show_map?: boolean | null;
   show_hours?: boolean | null;
   show_contact?: boolean | null;
@@ -242,6 +243,16 @@ export type ServiceRequestRow = {
   kind: string;
   note: string | null;
   created_at: string;
+  resolved_at?: string | null;
+};
+
+export type MobilePushTokenRow = {
+  id: string;
+  account_id: string;
+  token: string;
+  platform: "ios" | "android";
+  created_at: string;
+  updated_at: string;
 };
 
 export type OrderStatusEventRow = {

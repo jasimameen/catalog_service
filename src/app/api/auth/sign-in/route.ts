@@ -74,14 +74,25 @@ export async function POST(request: Request) {
     );
   }
 
+  // The mobile app has no cookies to read a session back from — hand it
+  // the Supabase access/refresh tokens directly. Harmless extra field for
+  // the web client, which only ever reads `next`.
+  const session = data.session
+    ? {
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+        expires_at: data.session.expires_at,
+      }
+    : undefined;
+
   const requested = safeNextPath(body.next, "");
   if (requested) {
-    return Response.json({ ok: true, next: requested });
+    return Response.json({ ok: true, next: requested, session });
   }
 
   const { count } = await supabase
     .from("catalogs")
     .select("id", { count: "exact", head: true });
 
-  return Response.json({ ok: true, next: (count ?? 0) === 0 ? "/new" : "/admin" });
+  return Response.json({ ok: true, next: (count ?? 0) === 0 ? "/new" : "/admin", session });
 }
