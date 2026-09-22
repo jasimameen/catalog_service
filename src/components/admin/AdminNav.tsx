@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { catalogNavLabel } from "@/app/admin/[catalogId]/actions";
+import { catalogNavMeta } from "@/app/admin/[catalogId]/actions";
 
 type NavItem = {
   label: string;
@@ -170,6 +170,7 @@ export function AdminNav({
   const catalogId = inCatalog ? second : null;
   const scrollerRef = useRef<HTMLElement>(null);
   const [shopLabel, setShopLabel] = useState("This shop");
+  const [enableFloor, setEnableFloor] = useState(false);
 
   const rootItems: NavItem[] = [{ label: "Catalogs", href: "/admin", exact: true, icon: IconGrid }];
 
@@ -178,7 +179,9 @@ export function AdminNav({
         { label: "Dashboard", href: `/admin/${catalogId}`, exact: true, icon: IconHome },
         { label: "Orders", href: `/admin/${catalogId}/orders`, icon: IconOrders },
         { label: "Items", href: `/admin/${catalogId}/items`, icon: IconItems },
-        { label: "Floor", href: `/admin/${catalogId}/floor`, icon: IconFloor },
+        ...(enableFloor
+          ? [{ label: "Floor", href: `/admin/${catalogId}/floor`, icon: IconFloor } satisfies NavItem]
+          : []),
         { label: "Settings", href: `/admin/${catalogId}#settings`, exact: true, icon: IconSettings },
         { label: "Share", href: `/admin/${catalogId}/share`, icon: IconShare },
         { label: "Domains", href: `/admin/${catalogId}/domains`, icon: IconDomains },
@@ -197,14 +200,22 @@ export function AdminNav({
   useEffect(() => {
     if (!catalogId) {
       setShopLabel("This shop");
+      setEnableFloor(false);
       return;
     }
     let cancelled = false;
-    void catalogNavLabel(catalogId).then((name) => {
-      if (!cancelled && name) setShopLabel(name);
-    });
+    function load() {
+      void catalogNavMeta(catalogId!).then((meta) => {
+        if (cancelled || !meta) return;
+        if (meta.name) setShopLabel(meta.name);
+        setEnableFloor(meta.enableFloor);
+      });
+    }
+    load();
+    window.addEventListener("catalog-nav-meta", load);
     return () => {
       cancelled = true;
+      window.removeEventListener("catalog-nav-meta", load);
     };
   }, [catalogId]);
 

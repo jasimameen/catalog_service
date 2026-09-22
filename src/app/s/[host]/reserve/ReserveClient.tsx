@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { flattenGuestTables } from "@/lib/catalog/floor-plan";
+import { isFloorPlanEnabled } from "@/lib/catalog/template-settings";
 import { CartProvider, useCart } from "@/lib/catalog/cart-context";
 import { formatOrderDateTime } from "@/lib/catalog/order-statuses";
 import {
@@ -43,14 +44,16 @@ export function ReserveClient({ catalog }: { catalog: StorefrontCatalog }) {
 
 function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
   const rest = catalog.settings.restaurant;
+  const floorOn = isFloorPlanEnabled(catalog.settings);
   const floors = catalog.settings.floor.floors;
   const { lines, itemCount, subtotal, clear } = useCart();
   const tables = useMemo(() => {
+    if (!floorOn) return [];
     const fromPlan = flattenGuestTables({ floors });
     const source = fromPlan.length > 0 ? fromPlan : catalog.settings.floor.tables;
     return source.filter((t) => t.bookable && t.status === "open");
-  }, [floors, catalog.settings.floor.tables]);
-  const hasPublishedPlan = floors.some((f) => f.tables.length > 0 || f.items.length > 0);
+  }, [floorOn, floors, catalog.settings.floor.tables]);
+  const hasPublishedPlan = floorOn && floors.some((f) => f.tables.length > 0 || f.items.length > 0);
   const days = useMemo(() => {
     const out: { iso: string; label: string }[] = [];
     const now = new Date();
@@ -298,8 +301,12 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
           <StepCue n={1} label="Details" accent={catalog.accent} />
           <span className="text-[var(--cat-border)]">→</span>
           <StepCue n={2} label="Time" accent={catalog.accent} />
-          <span className="text-[var(--cat-border)]">→</span>
-          <StepCue n={3} label="Table" muted />
+          {floorOn ? (
+            <>
+              <span className="text-[var(--cat-border)]">→</span>
+              <StepCue n={3} label="Table" muted />
+            </>
+          ) : null}
         </ol>
 
         <section className="rounded-[14px] border border-[var(--cat-border)] bg-white p-4">
@@ -350,6 +357,7 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
           <Picker label="2 · Time" options={rest.timeSlots.map((t) => ({ id: t, label: t }))} value={slot} onChange={setSlot} accent={catalog.accent} />
         </div>
 
+        {floorOn ? (
         <section className="mt-4">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--cat-muted)]">3 · Table · optional</div>
           <p className="mb-3 text-[13px] text-[var(--cat-muted)]">
@@ -415,6 +423,7 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
             </p>
           ) : null}
         </section>
+        ) : null}
 
         <ReserveMenu catalog={catalog} />
       </main>

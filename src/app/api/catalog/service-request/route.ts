@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   void sendPushToAccount(catalog.account_id, {
     title: kind === "bill" ? "Request bill" : "Call waiter",
     body: tableNo ? `Table ${tableNo}` : "A table needs you",
-    data: { kind: "service_request", requestKind: kind, tableNo: tableNo || "" },
+    data: { kind: "service_request", requestKind: kind, tableNo: tableNo || "", catalogId },
   });
 
   return Response.json({ ok: true });

@@ -34,11 +34,30 @@ export function incomingOrderHref(catalogId: string, orderId: string): string {
 }
 
 export function incomingReservationHref(catalogId: string, reservationId: string): string {
-  return `/admin/${catalogId}/orders?inbox=reservations&reservation=${encodeURIComponent(reservationId)}`;
+  return `/admin/${catalogId}/orders?reservation=${encodeURIComponent(reservationId)}`;
 }
 
 export function incomingServiceHref(catalogId: string): string {
   return `/admin/${catalogId}/orders`;
+}
+
+export function incomingHrefFromPushData(data: {
+  kind?: string;
+  catalogId?: string;
+  orderId?: string;
+  reservationId?: string;
+  href?: string;
+}): string {
+  if (data.href && data.href.startsWith("/admin")) return data.href;
+  const catalogId = data.catalogId;
+  if (!catalogId) return "/admin";
+  if ((data.kind === "new_order" || data.kind === "order") && data.orderId) {
+    return incomingOrderHref(catalogId, data.orderId);
+  }
+  if ((data.kind === "new_reservation" || data.kind === "reservation") && data.reservationId) {
+    return incomingReservationHref(catalogId, data.reservationId);
+  }
+  return incomingServiceHref(catalogId);
 }
 
 export function ticketFromOrder(catalogId: string, order: OrderRow, currency: string): IncomingTicket {

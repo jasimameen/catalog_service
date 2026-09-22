@@ -91,6 +91,26 @@ export function reservationTone(status: unknown): ReservationTone {
   return "booked";
 }
 
+/** Today's still-open bookings for the orders-board rail. Floor is not required. */
+export function reservationRailRows(rows: ReservationRow[], dayIso: string): ReservationRow[] {
+  return rows
+    .filter((row) => String(row.day) === dayIso && reservationTone(row.status) !== "ended")
+    .sort((a, b) => {
+      const rank = (row: ReservationRow) => (reservationTone(row.status) === "booked" ? 0 : 1);
+      const byTone = rank(a) - rank(b);
+      if (byTone !== 0) return byTone;
+      return String(a.slot).localeCompare(String(b.slot));
+    });
+}
+
+export function reservationRailActionLabel(next: ReservationStatus): string {
+  if (next === "seated") return "Seat";
+  if (next === "confirmed") return "Confirm";
+  if (next === "completed") return "Done";
+  if (next === "no_show") return "No-show";
+  return reservationActionLabel(next);
+}
+
 export const RESERVATION_TONE: Record<ReservationTone, { ink: string; wash: string; label: string }> = {
   booked: { ink: "#0b5fce", wash: "#eef4fd", label: "Booked" },
   seated: { ink: "#1e9e4a", wash: "#dff5e6", label: "Seated" },

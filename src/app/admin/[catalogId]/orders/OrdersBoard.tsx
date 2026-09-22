@@ -27,11 +27,13 @@ import {
   StatusCue,
 } from "@/components/admin/ops/OpsChrome";
 import { TypeMark } from "@/components/orders/FulfillmentTypeBadge";
-import { LANE_TONE, orderIdentity } from "@/lib/catalog/order-identity";
-import type { CheckoutFormField, OrderItemRow, OrderRow } from "@/lib/supabase/types";
+import { enableAdminPush } from "@/lib/pwa/admin-push";
+import { LANE_TONE, orderIdentity, orderTicketIntensity, ticketSurface } from "@/lib/catalog/order-identity";
+import type { CheckoutFormField, OrderItemRow, OrderRow, ReservationRow } from "@/lib/supabase/types";
 import type { OrderStatusEventRow } from "@/lib/supabase/types";
 import { claimOrder, setOrderStatus } from "./actions";
 import { OrderDetailDrawer } from "./OrderDetailDrawer";
+import { ReservationsBoardRail } from "./ReservationsInbox";
 import {
   asCatalogOrder,
   fetchCatalogOrders,
@@ -74,14 +76,6 @@ function itemsSummary(lines: OrderItemRow[]): string {
   return shown.join(" · ");
 }
 
-function statusTint(hex?: string) {
-  return hex ? `${hex}1a` : "#fbfbfd";
-}
-
-function statusEdge(hex?: string) {
-  return hex ? `${hex}40` : "#e2e7ee";
-}
-
 function columnAtPoint(x: number, y: number): string | null {
   const node = document.elementFromPoint(x, y);
   if (!(node instanceof Element)) return null;
@@ -114,7 +108,10 @@ export function OrdersBoard({
   checkoutForm,
   enableClaim,
   hasDineIn = false,
+  enableReserve = false,
+  initialReservations = [],
   initialOpenId = null,
+  initialReservationId = null,
   children,
 }: {
   catalogId: string;
@@ -130,7 +127,10 @@ export function OrdersBoard({
   checkoutForm: CheckoutFormField[];
   enableClaim: boolean;
   hasDineIn?: boolean;
+  enableReserve?: boolean;
+  initialReservations?: ReservationRow[];
   initialOpenId?: string | null;
+  initialReservationId?: string | null;
   children?: ReactNode;
 }) {
   const router = useRouter();
@@ -145,7 +145,7 @@ export function OrdersBoard({
   const [openId, setOpenId] = useState<string | null>(initialOpenId);
   const [fulfillFilter, setFulfillFilter] = useState<OrderFulfillment | "all" | "unclaimed">("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [view, setView] = useState<ViewMode>("table");
+  const [view, setView] = useState<ViewMode>("board");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [notifyPermission, setNotifyPermission] = useState<NotificationPermission | "unsupported">(
@@ -273,8 +273,7 @@ export function OrdersBoard({
   }, [catalogId]);
 
   async function enableNotify() {
-    if (typeof Notification === "undefined") return;
-    const next = await Notification.requestPermission();
+    const next = await enableAdminPush();
     setNotifyPermission(next);
   }
 
@@ -472,7 +471,7 @@ export function OrdersBoard({
       return;
     }
     const col = columnAtPoint(event.clientX, event.clientY);
-    if (col && col !== order.status) {
+    if (col && col !== order.status && col !== "reservations") {
       void updateStatus(order, col);
     }
   }
@@ -517,6 +516,7 @@ export function OrdersBoard({
                 : "Nothing matches these filters."
       : "";
   const boardColumns = filterStatuses.filter((status) => filter.includes(status.id));
+  const showReservations = enableReserve || initialReservations.length > 0;
   const openCount = orders.filter((row) => !filterStatuses.find((s) => s.id === row.status)?.is_done).length;
   const filterActive = !isOpenFilter || fulfillFilter !== "all";
   const filterSummary = [
@@ -632,7 +632,16 @@ export function OrdersBoard({
       ) : null}
 
       {view === "board" ? (
-        <div className="-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-1.5 [scrollbar-width:thin]">
+        <div className="-mx-1 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto px-1 pb-1.5 [scrollbar-width:thin]">
+          {showReservations ? (
+            <ReservationsBoardRail
+              catalogId={catalogId}
+              currency={currency}
+              initial={initialReservations}
+              initialOpenId={initialReservationId}
+              variant="column"
+            />
+          ) : null}
           {boardColumns.map((status) => {
             const cards = visible.filter((order) => order.status === status.id);
             const dropping = overCol === status.id && drag?.active === true && drag.fromStatus !== status.id;
@@ -642,7 +651,7 @@ export function OrdersBoard({
               <section
                 key={status.id}
                 data-board-col={status.id}
-                className="max-w-[360px] min-w-[264px] flex-1 overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)] transition-[box-shadow,background-color]"
+                className="max-w-[360px] min-w-[264px] flex-1 snap-start overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)] transition-[box-shadow,background-color]"
                 style={{
                   background: dropping ? tone.wash : "#fff",
                   boxShadow: dropping ? `inset 0 0 0 2px ${tone.ink}` : undefined,
@@ -699,6 +708,15 @@ export function OrdersBoard({
 
       {view === "table" ? (
         <>
+          {showReservations ? (
+            <ReservationsBoardRail
+              catalogId={catalogId}
+              currency={currency}
+              initial={initialReservations}
+              initialOpenId={initialReservationId}
+              variant="strip"
+            />
+          ) : null}
           <section className="hidden overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)] md:block">
             <div className="overflow-x-auto">
               <div className="min-w-[720px]">
@@ -801,10 +819,12 @@ function NextActionButton({
   order,
   statuses,
   onStatus,
+  pill = false,
 }: {
   order: OrderRow;
   statuses: OrderStatusDef[];
   onStatus: (next: string) => void;
+  pill?: boolean;
 }) {
   const action = nextWorkflowAction(order.status, statuses);
   if (!action) {
@@ -815,12 +835,14 @@ function NextActionButton({
       </span>
     );
   }
+  const lane = workflowLane(order.status, statuses);
+  const label =
+    order.fulfillment === "delivery" && lane === "ready" && action.label === "Done"
+      ? "Out for delivery"
+      : action.label;
   return (
-    <OpsPrimaryButton
-      onClick={() => onStatus(action.nextId)}
-      className="w-full"
-    >
-      {action.label}
+    <OpsPrimaryButton pill={pill} onClick={() => onStatus(action.nextId)} className="w-full">
+      {label}
     </OpsPrimaryButton>
   );
 }
@@ -852,9 +874,9 @@ function DesktopRow({
 }) {
   const current = statuses.find((row) => row.id === order.status);
   const lane = workflowLane(order.status, statuses);
-  const tone = LANE_TONE[lane];
-  const units = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
   const identity = orderIdentity(order);
+  const surface = ticketSurface(identity.kind, orderTicketIntensity(lane));
+  const units = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
   void showFulfillment;
 
   return (
@@ -868,10 +890,10 @@ function DesktopRow({
           onOpen();
         }
       }}
-      className="ops-press flex cursor-pointer items-center gap-3 border-l-[3px] px-4 py-2.5 last:border-b-0"
+      className="ops-press flex cursor-pointer items-center gap-3 px-4 py-2.5 last:border-b-0"
       style={{
-        background: selected ? tone.wash : "#fff",
-        borderLeftColor: tone.ink,
+        background: surface.wash,
+        boxShadow: selected ? `inset 0 0 0 2px ${surface.ink}` : `inset 0 0 0 1px ${surface.ink}14`,
       }}
     >
       <div className="min-w-0 flex-1">
@@ -930,7 +952,8 @@ function MobileCard({
 }) {
   const current = statuses.find((row) => row.id === order.status);
   const lane = workflowLane(order.status, statuses);
-  const tone = LANE_TONE[lane];
+  const identity = orderIdentity(order);
+  const surface = ticketSurface(identity.kind, orderTicketIntensity(lane));
   const units = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
   void showFulfillment;
 
@@ -938,8 +961,11 @@ function MobileCard({
     <article
       role="button"
       tabIndex={0}
-      className="ops-press cursor-pointer overflow-hidden rounded-[14px] border-l-[3px] bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(16,23,32,0.04)]"
-      style={{ borderLeftColor: tone.ink }}
+      className="ops-press cursor-pointer overflow-hidden rounded-[14px] px-3.5 py-3 shadow-[0_1px_2px_rgba(16,23,32,0.04)]"
+      style={{
+        background: surface.wash,
+        boxShadow: `inset 0 0 0 1px ${surface.ink}22`,
+      }}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -950,25 +976,28 @@ function MobileCard({
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
+          <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: surface.ink }}>
+            {surface.label}
+          </span>
           <OrderHero order={order} />
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-[#86868b]">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-[#5a6472]">
             <StatusCue lane={lane} label={current?.label || statusLabel(statuses, order.status)} />
-            <span>{units} items</span>
+            <span>{units} {units === 1 ? "item" : "items"}</span>
             <span suppressHydrationWarning>{formatOrderTime(order.created_at)}</span>
           </div>
         </div>
-        <span className="shrink-0 text-[15px] font-semibold tabular-nums tracking-tight">
+        <span className="shrink-0 text-[15px] font-semibold tabular-nums tracking-tight text-[var(--cat-ink)]">
           {formatMoney(Number(order.subtotal), currency)}
         </span>
       </div>
       <div className="mt-2 truncate text-[12px] text-[#5a6472]">{itemsSummary(lines)}</div>
-      <div className="mt-2.5 flex items-center gap-2">
+      <div className="mt-2.5 flex flex-col gap-1.5">
         {enableClaim ? <ClaimControl order={order} onTake={onTake} /> : null}
         {duplicateRefs.length > 0 ? (
           <span className="text-[11px] text-[#8a5a00]">Duplicate</span>
         ) : null}
-        <div className="ml-auto w-[7.5rem]" onClick={(event) => event.stopPropagation()}>
-          <NextActionButton order={order} statuses={statuses} onStatus={onStatus} />
+        <div onClick={(event) => event.stopPropagation()}>
+          <NextActionButton pill order={order} statuses={statuses} onStatus={onStatus} />
         </div>
       </div>
     </article>
@@ -1008,18 +1037,22 @@ function BoardCard({
   onStatus: (next: string) => void;
   onTake: () => void;
 }) {
+  const current = statuses.find((row) => row.id === order.status);
   const lane = workflowLane(order.status, statuses);
-  const tone = LANE_TONE[lane];
+  const identity = orderIdentity(order);
+  const surface = ticketSurface(identity.kind, orderTicketIntensity(lane));
+  const units = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
 
   return (
     <article
       role="button"
       tabIndex={0}
-      className={`flex flex-col gap-1.5 rounded-[12px] border-l-[3px] bg-[#fbfbfd] px-3 py-2.5 touch-none ${
+      className={`flex flex-col gap-1 rounded-[12px] px-3 py-2.5 touch-none ${
         dragging ? "cursor-grabbing" : "cursor-grab"
       }`}
       style={{
-        borderLeftColor: tone.ink,
+        background: surface.wash,
+        boxShadow: `inset 0 0 0 1px ${surface.ink}22`,
         opacity: dragging ? 0.35 : 1,
       }}
       onPointerDown={onPointerDown}
@@ -1034,27 +1067,41 @@ function BoardCard({
       }}
     >
       <div className="flex items-start justify-between gap-2">
-        <OrderHero order={order} />
-        <span suppressHydrationWarning className="shrink-0 text-[12px] tabular-nums text-[#86868b]">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: surface.ink }}>
+          {current?.label || statusLabel(statuses, order.status)}
+        </span>
+        <span suppressHydrationWarning className="shrink-0 text-[12px] tabular-nums text-[#5a6472]">
           {formatOrderTime(order.created_at)}
         </span>
       </div>
-      <div className="truncate text-[12px] leading-snug text-[#5a6472]">{itemsSummary(lines)}</div>
+      <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: surface.ink }}>
+        {surface.label}
+      </span>
+      <span className="truncate text-[1.375rem] font-semibold leading-[1.1] tracking-[-0.02em] text-[var(--cat-ink)]">
+        {identity.title}
+      </span>
+      {identity.kind === "dine_in" && identity.meta && identity.meta !== identity.title ? (
+        <span className="truncate text-[12px] text-[#5a6472]">{identity.meta}</span>
+      ) : null}
+      <div className="truncate text-[12px] leading-snug text-[#5a6472]">
+        {units} {units === 1 ? "item" : "items"}
+        {lines.length > 0 ? ` · ${itemsSummary(lines)}` : ""}
+      </div>
       {showFulfillment && order.location && order.fulfillment === "delivery" ? (
-        <div className="truncate text-[11px] text-[#86868b]">{order.location}</div>
+        <div className="truncate text-[11px] text-[#5a6472]">{order.location}</div>
       ) : null}
       {enableClaim ? <ClaimControl order={order} onTake={onTake} /> : null}
       {duplicateRefs.length > 0 ? (
         <span className="text-[11px] text-[#8a5a00]">Possible duplicate · {duplicateRefs.join(", ")}</span>
       ) : null}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[15px] font-semibold tabular-nums tracking-tight">
+      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+        <span className="text-[15px] font-semibold tabular-nums tracking-tight text-[var(--cat-ink)]">
           {formatMoney(Number(order.subtotal), currency)}
         </span>
-        <span className="font-mono text-[11px] text-[#a3abb8]">{order.reference}</span>
+        <span className="font-mono text-[11px] text-[#8a93a2]">{order.reference}</span>
       </div>
-      <div onPointerDown={(event) => event.stopPropagation()}>
-        <NextActionButton order={order} statuses={statuses} onStatus={onStatus} />
+      <div className="mt-0.5" onPointerDown={(event) => event.stopPropagation()}>
+        <NextActionButton pill order={order} statuses={statuses} onStatus={onStatus} />
       </div>
     </article>
   );
@@ -1090,29 +1137,32 @@ function DragGhost({
   drag: DragState;
 }) {
   if (!order) return null;
-  const current = statuses.find((row) => row.id === order.status);
-  const color = current?.color || "#86868b";
+  const identity = orderIdentity(order);
+  const lane = workflowLane(order.status, statuses);
+  const surface = ticketSurface(identity.kind, orderTicketIntensity(lane));
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed z-[70] rounded-xl border border-l-4 px-3 py-[11px] shadow-[0_12px_32px_rgba(16,23,32,0.22)]"
+      className="pointer-events-none fixed z-[70] rounded-xl px-3 py-[11px] shadow-[0_12px_32px_rgba(16,23,32,0.22)]"
       style={{
         left: drag.x - drag.offsetX,
         top: drag.y - drag.offsetY,
         width: drag.width,
-        background: statusTint(color),
-        borderColor: statusEdge(color),
-        borderLeftColor: color,
+        background: surface.wash,
+        boxShadow: `inset 0 0 0 1px ${surface.ink}33, 0 12px 32px rgba(16,23,32,0.22)`,
         transform: "rotate(2deg) scale(1.02)",
       }}
     >
-      <div className="flex items-baseline gap-2">
-        <span className="min-w-0 flex-1 font-mono text-[13px] font-medium">{order.reference}</span>
-        <span className="text-[15px] font-semibold tabular-nums">
+      <div className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: surface.ink }}>
+        {surface.label}
+      </div>
+      <div className="mt-0.5 text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">{identity.title}</div>
+      <div className="mt-1 flex items-baseline justify-between gap-2">
+        <span className="min-w-0 flex-1 font-mono text-[12px] text-[#8a93a2]">{order.reference}</span>
+        <span className="text-[15px] font-semibold tabular-nums text-[var(--cat-ink)]">
           {formatMoney(Number(order.subtotal), currency)}
         </span>
       </div>
-      <div className="mt-1 text-[14px]">{order.shop_name || "Guest"}</div>
     </div>
   );
 }

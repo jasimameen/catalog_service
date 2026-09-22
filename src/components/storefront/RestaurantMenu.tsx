@@ -6,7 +6,7 @@ import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
 import { checkoutAllowsItemNotes, fulfillmentLabel, FULFILLMENTS } from "@/lib/catalog/checkout-form";
 import { submitCatalogOrder } from "@/lib/catalog/place-order";
-import { isDineInTableSession, orderCtaLabel } from "@/lib/catalog/template-settings";
+import { isDineInTableSession, isFloorPlanEnabled, orderCtaLabel } from "@/lib/catalog/template-settings";
 import { TableTicketList, useTableTicket } from "./TableTicket";
 import { needsOptionPick, optionsCue } from "@/lib/catalog/item-options";
 import { imageFitClass, isItemAvailable, telHref, mailtoHref, whatsappHref } from "@/lib/catalog/merchandising";
@@ -48,14 +48,15 @@ export function RestaurantMenu({
   const [ticketOpen, setTicketOpen] = useState(false);
 
   const modes = session.visibleModes;
-  const tables = settings.floor.tables.filter((t) => t.status === "open");
+  const floorOn = isFloorPlanEnabled(settings);
+  const tables = floorOn ? settings.floor.tables.filter((t) => t.status === "open") : [];
   const atTable = session.fulfillment === "dine_in" && Boolean(session.tableNo);
   const tableSession = isDineInTableSession({
     dineInQr: rest.dineInQr,
     tableNo: session.tableNo,
     fulfillment: session.fulfillment,
   });
-  const needsTable = rest.dineInQr && session.fulfillment === "dine_in" && !session.tableNo;
+  const needsTable = floorOn && rest.dineInQr && session.fulfillment === "dine_in" && !session.tableNo;
   const kitchenCta = orderCtaLabel(settings, session.fulfillment);
   const { ticket, refresh: refreshTicket } = useTableTicket(catalog.id, tableSession ? session.tableNo : "");
 
@@ -388,7 +389,7 @@ export function RestaurantMenu({
                   Table {session.tableNo}
                 </div>
                 <div className="mt-1 text-[12.5px] text-white/70">
-                  {settings.floor.name}
+                  {floorOn ? settings.floor.name : "Dine-in"}
                   {ticket && ticket.itemCount > 0 ? ` · ${ticket.itemCount} sent` : ""}
                 </div>
               </div>
@@ -403,9 +404,11 @@ export function RestaurantMenu({
                     Request bill
                   </button>
                 ) : null}
-                <button type="button" onClick={() => setTableOpen(true)} className="h-11 rounded-[9px] px-3.5 text-[13px] font-bold text-white" style={{ background: catalog.accent }}>
-                  Change table
-                </button>
+                {floorOn ? (
+                  <button type="button" onClick={() => setTableOpen(true)} className="h-11 rounded-[9px] px-3.5 text-[13px] font-bold text-white" style={{ background: catalog.accent }}>
+                    Change table
+                  </button>
+                ) : null}
               </div>
             </div>
             <div className="mt-3 border-t border-white/15 pt-3">

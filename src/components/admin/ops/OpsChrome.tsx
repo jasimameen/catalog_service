@@ -57,18 +57,22 @@ export function OpsPrimaryButton({
   onClick,
   disabled,
   className = "",
+  pill = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
+  pill?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`ops-press inline-flex min-h-10 min-w-[4.5rem] cursor-pointer items-center justify-center rounded-[10px] bg-[var(--cat-accent)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--cat-accent-dark)] ${className}`}
+      className={`ops-press inline-flex min-h-10 min-w-[4.5rem] cursor-pointer items-center justify-center bg-[var(--cat-accent)] px-3.5 text-[13px] font-semibold text-white hover:bg-[var(--cat-accent-dark)] ${
+        pill ? "rounded-full" : "rounded-[10px]"
+      } ${className}`}
     >
       {children}
     </button>

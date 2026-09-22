@@ -7,12 +7,15 @@ export type SettingsPanelId =
   | "hours"
   | "contact"
   | "locations"
+  | "floor"
   | "ordering"
   | "look"
   | "discovery"
   | "danger";
 
-export type SettingsPanels = Record<SettingsPanelId, ReactNode>;
+export type SettingsPanels = Record<Exclude<SettingsPanelId, "floor">, ReactNode> & {
+  floor?: ReactNode | null;
+};
 
 const GROUPS: {
   title: string;
@@ -24,6 +27,7 @@ const GROUPS: {
       { id: "hours", title: "Hours", subtitle: "Open and close" },
       { id: "contact", title: "Contact", subtitle: "Phone, address, map" },
       { id: "locations", title: "Locations", subtitle: "Branches of this shop" },
+      { id: "floor", title: "Floor plan", subtitle: "Draw rooms and tables" },
     ],
   },
   {
@@ -49,6 +53,7 @@ const HASH_TO_PANEL: Record<string, SettingsPanelId> = {
   contact: "contact",
   branches: "locations",
   locations: "locations",
+  floor: "floor",
   ordering: "ordering",
   look: "look",
   discovery: "discovery",
@@ -59,6 +64,10 @@ const PANEL_COPY: Record<SettingsPanelId, { title: string; subtitle: string }> =
   hours: { title: "Hours", subtitle: "Open and close for each day" },
   contact: { title: "Contact", subtitle: "Main number and address" },
   locations: { title: "Locations", subtitle: "Branches of this shop only" },
+  floor: {
+    title: "Floor plan",
+    subtitle: "Draw rooms and tables. Reservations work without this.",
+  },
   ordering: { title: "Ordering", subtitle: "How guests place an order" },
   look: { title: "Look", subtitle: "Theme, cover, and display" },
   discovery: { title: "Discovery", subtitle: "Metadata, SEO, and share preview" },
@@ -73,6 +82,7 @@ export function SettingsHub({
   mobile: SettingsPanels;
 }) {
   const [open, setOpen] = useState<SettingsPanelId | null>(null);
+  const showFloor = Boolean(desktop.floor);
 
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 768px)");
@@ -83,7 +93,7 @@ export function SettingsHub({
       }
       const key = window.location.hash.replace("#", "");
       const panel = HASH_TO_PANEL[key];
-      if (panel) setOpen(panel);
+      if (panel && (panel !== "floor" || showFloor)) setOpen(panel);
     };
     apply();
     window.addEventListener("hashchange", apply);
@@ -92,7 +102,7 @@ export function SettingsHub({
       window.removeEventListener("hashchange", apply);
       desktop.removeEventListener("change", apply);
     };
-  }, []);
+  }, [showFloor]);
 
   return (
     <section
@@ -113,13 +123,16 @@ export function SettingsHub({
       </div>
 
       <div className="flex flex-col gap-4 md:hidden">
-        {GROUPS.map((group) => (
+        {GROUPS.map((group) => {
+          const rows = group.rows.filter((row) => row.id !== "floor" || showFloor);
+          if (rows.length === 0) return null;
+          return (
           <div key={group.title}>
             <p className="mb-1.5 px-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#8a93a2]">
               {group.title}
             </p>
             <div className="settings-inset">
-              {group.rows.map((row) => (
+              {rows.map((row) => (
                 <button
                   key={row.id}
                   type="button"
@@ -139,7 +152,8 @@ export function SettingsHub({
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="hidden flex-col gap-5 md:flex">
@@ -149,6 +163,7 @@ export function SettingsHub({
             {desktop.contact}
           </div>
           {desktop.locations}
+          {desktop.floor}
         </DesktopGroup>
         <DesktopGroup title="Ordering">{desktop.ordering}</DesktopGroup>
         <DesktopGroup title="Look">{desktop.look}</DesktopGroup>

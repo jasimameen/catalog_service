@@ -56,15 +56,21 @@ export function reservationItemsCount(items: ReservationItemSnap[]): number {
   return items.reduce((sum, line) => sum + line.qty, 0);
 }
 
+export function localDayIso(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function formatReserveDay(iso: string): string {
   if (!iso) return "";
   const date = new Date(`${iso}T12:00:00`);
   if (!Number.isFinite(date.getTime())) return iso;
-  const today = new Date();
-  const todayIso = today.toISOString().slice(0, 10);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const tomorrowIso = tomorrow.toISOString().slice(0, 10);
+  const todayIso = localDayIso();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowIso = localDayIso(tomorrow);
   if (iso === todayIso) return "Today";
   if (iso === tomorrowIso) return "Tomorrow";
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });

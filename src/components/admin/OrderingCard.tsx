@@ -17,7 +17,11 @@ import {
 import { updateCatalogOrdering, type OrderingState } from "@/app/admin/[catalogId]/actions";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 import type { TemplateSettings } from "@/lib/catalog/template-settings";
-import { isRestaurantCatalog, parseTemplateSettings } from "@/lib/catalog/template-settings";
+import {
+  catalogOffersFloorSettings,
+  isRestaurantCatalog,
+  parseTemplateSettings,
+} from "@/lib/catalog/template-settings";
 import { RestaurantSettingsFields } from "./RestaurantSettingsFields";
 import {
   dashBtnPrimary,
@@ -260,6 +264,7 @@ export function OrderingCard({
                     modes={modes}
                     onChange={setTplSettings}
                     catalogAddress={catalogAddress}
+                    canEnableFloor={catalogOffersFloorSettings(template, tplSettings)}
                   />
                 </div>
               ) : null}

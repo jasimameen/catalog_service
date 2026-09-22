@@ -1,4 +1,6 @@
 import "server-only";
+import { PRODUCT_DOMAIN } from "@/lib/brand";
+import { incomingHrefFromPushData } from "@/lib/catalog/incoming-ticket";
 import { getServiceClient } from "@/lib/supabase/service";
 
 let appPromise: Promise<import("firebase-admin/app").App | null> | null = null;
@@ -58,14 +60,22 @@ export async function sendPushToAccount(accountId: string, notification: PushNot
       .eq("account_id", accountId);
     if (!tokens || tokens.length === 0) return;
 
+    const data = withPushHref(notification.data);
     const { getMessaging } = await import("firebase-admin/messaging");
     const messaging = getMessaging(app);
     const response = await messaging.sendEachForMulticast({
       tokens: tokens.map((row) => row.token),
       notification: { title: notification.title, body: notification.body },
-      data: notification.data ?? {},
+      data,
       apns: { payload: { aps: { sound: "default" } } },
       android: { priority: "high" },
+      webpush: {
+        fcmOptions: { link: absoluteAdminUrl(data.href) },
+        notification: {
+          icon: absoluteAdminUrl("/icons/icon-192.png"),
+          badge: absoluteAdminUrl("/icons/badge-96.png"),
+        },
+      },
     });
 
     const stale = response.responses
@@ -77,4 +87,16 @@ export async function sendPushToAccount(accountId: string, notification: PushNot
   } catch (error) {
     console.error("push send failed", error);
   }
+}
+
+function withPushHref(data?: Record<string, string>): Record<string, string> {
+  const next = { ...(data ?? {}) };
+  next.href = incomingHrefFromPushData(next);
+  return next;
+}
+
+function absoluteAdminUrl(path: string): string {
+  const host = process.env.NEXT_PUBLIC_ROOT_DOMAIN || PRODUCT_DOMAIN;
+  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+  return `${proto}://${host}${path.startsWith("/") ? path : `/${path}`}`;
 }

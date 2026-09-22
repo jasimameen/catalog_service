@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import { formatOrderDateTime, statusById, workflowLane, type OrderStatusDef } from "@/lib/catalog/order-statuses";
+import { enableAdminPush } from "@/lib/pwa/admin-push";
 import type { OrderRow } from "@/lib/supabase/types";
 import { OrderHero, StatusCue } from "@/components/admin/ops/OpsChrome";
 import {
@@ -116,7 +117,7 @@ export function LiveRecentOrders({
             <button
               type="button"
               onClick={() => {
-                void Notification.requestPermission().then((permission) => {
+                void enableAdminPush().then((permission) => {
                   setNotifyAsk(permission === "granted" ? "on" : "hidden");
                 });
               }}

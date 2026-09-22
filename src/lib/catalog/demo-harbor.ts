@@ -196,6 +196,7 @@ export function buildHarborKitchenCatalog(): StorefrontCatalog {
         requestBill: true,
         kitchenRounds: true,
         enableReserve: true,
+        enableFloor: true,
         skipDineInDetails: true,
         requireInRestaurantCheck: true,
         kitchenOpen: true,

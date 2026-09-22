@@ -257,7 +257,7 @@ export function LookSettingsForm({
           <div className={dashSection}>
             <p className={dashKicker}>Accent colour</p>
             <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-              Pick a theme swatch or any custom colour. Buttons, selected states, and the floor default follow this.
+              Pick a theme swatch or any custom colour. Buttons and selected states follow this.
             </p>
             <AccentPicker name="accent" value={pickedAccent} onChange={setPickedAccent} />
           </div>

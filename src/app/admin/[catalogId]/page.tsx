@@ -14,6 +14,7 @@ import { LiveRecentOrders } from "./LiveRecentOrders";
 import { LiveRecentReservations } from "./LiveRecentReservations";
 import { OrderingCard } from "@/components/admin/OrderingCard";
 import { FloorPlanCard } from "@/components/admin/FloorPlanCard";
+import { FloorPlanSettings } from "./FloorPlanSettings";
 import { DayOpsStrip } from "./DayOpsStrip";
 import { SettingsHub } from "./SettingsHub";
 import { DiscoveryCard } from "./DiscoveryCard";
@@ -22,7 +23,12 @@ import { DangerCard } from "./DangerCard";
 import { reservationTone } from "@/lib/catalog/reservation-status";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
-import { parseTemplateSettings } from "@/lib/catalog/template-settings";
+import {
+  catalogOffersFloorSettings,
+  isFloorPlanEnabled,
+  parseTemplateSettings,
+} from "@/lib/catalog/template-settings";
+import { planStats } from "@/lib/catalog/floor-plan";
 import { parseBanners, parseImageFit } from "@/lib/catalog/merchandising";
 import { parseCoord, parseLocations } from "@/lib/catalog/locations";
 import type { OrderRow, ReservationRow } from "@/lib/supabase/types";
@@ -118,6 +124,9 @@ export default async function CatalogDashboardPage({
   const locations = parseLocations(catalog.locations);
   const settings = parseTemplateSettings(catalog.template_settings);
   const showReservations = settings.restaurant.enableReserve || recentReservations.length > 0;
+  const showFloor = isFloorPlanEnabled(settings);
+  const showFloorSettings = catalogOffersFloorSettings(catalog.template, settings);
+  const floorStats = planStats({ floors: settings.floor.floors });
   const acceptOrders = catalog.accept_orders !== false;
   const showAlert = catalog.show_storefront_alert === true;
   const isLive = catalog.status === "live";
@@ -199,6 +208,15 @@ export default async function CatalogDashboardPage({
           embedded={embedded}
         />
       ),
+      floor: showFloorSettings ? (
+        <FloorPlanSettings
+          catalogId={catalogId}
+          enabled={showFloor}
+          tableCount={floorStats.tables}
+          coverCount={floorStats.covers}
+          embedded={embedded}
+        />
+      ) : null,
       ordering: (
         <OrderingCard
           catalogId={catalogId}
@@ -347,12 +365,7 @@ export default async function CatalogDashboardPage({
           </section>
         </div>
 
-        <FloorPlanCard
-          catalogId={catalogId}
-          template={catalog.template}
-          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
-          settings={parseTemplateSettings(catalog.template_settings)}
-        />
+        {showFloor ? <FloorPlanCard catalogId={catalogId} settings={settings} /> : null}
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {stats.map((stat) => (

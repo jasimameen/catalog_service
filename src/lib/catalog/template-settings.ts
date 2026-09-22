@@ -80,6 +80,8 @@ export type RestaurantSettings = {
   reopenCopy: string;
   scheduleWhenClosed: boolean;
   enableReserve: boolean;
+  /** Draw rooms and tables. Independent of reservations. */
+  enableFloor: boolean;
   holdPolicy: string;
   guestMin: number;
   guestMax: number;
@@ -173,6 +175,7 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
     reopenCopy: "",
     scheduleWhenClosed: true,
     enableReserve: true,
+    enableFloor: false,
     holdPolicy: "We hold the table for 20 minutes past your time. Free to cancel by phone.",
     guestMin: 1,
     guestMax: 12,
@@ -314,6 +317,35 @@ function asFloorPlan(raw: unknown): FloorPlan {
   return publishedFloorPlan(emptyPlan(name));
 }
 
+export function floorPlanHasContent(floor: FloorPlan): boolean {
+  if (floor.tables.length > 0) return true;
+  // Default studio floors ship a blank tile rectangle. Tiles alone are not a plan.
+  return floor.floors.some((f) => f.tables.length > 0 || f.items.length > 0);
+}
+
+function asEnableFloor(raw: unknown, floor: FloorPlan): boolean {
+  if (typeof raw === "boolean") return raw;
+  // Legacy catalogs that already drew rooms keep the studio. Reservations alone do not.
+  return floorPlanHasContent(floor);
+}
+
+/** Restaurant Menu may include a floor. Retail / grid / cafe-style looks do not offer one. */
+export function templateOffersFloor(template: CatalogTemplateKey): boolean {
+  return template === "menu";
+}
+
+export function isFloorPlanEnabled(settings: TemplateSettings): boolean {
+  return settings.restaurant.enableFloor;
+}
+
+/** Settings row: menu templates, or a catalog that already opted in. */
+export function catalogOffersFloorSettings(
+  template: CatalogTemplateKey,
+  settings: TemplateSettings,
+): boolean {
+  return templateOffersFloor(template) || settings.restaurant.enableFloor;
+}
+
 export function parseTemplateSettings(raw: unknown): TemplateSettings {
   const root = asObj(raw);
   const grid = asObj(root.grid);
@@ -325,7 +357,7 @@ export function parseTemplateSettings(raw: unknown): TemplateSettings {
   const pricelist = asObj(root.pricelist);
   const restaurant = asObj(root.restaurant);
   const notify = asObj(root.notify);
-  const floor = asObj(root.floor);
+  const floor = asFloorPlan(root.floor);
   const d = DEFAULT_TEMPLATE_SETTINGS;
 
   return {
@@ -375,6 +407,7 @@ export function parseTemplateSettings(raw: unknown): TemplateSettings {
       reopenCopy: asStr(restaurant.reopenCopy, ""),
       scheduleWhenClosed: asBool(restaurant.scheduleWhenClosed, true),
       enableReserve: asBool(restaurant.enableReserve, true),
+      enableFloor: asEnableFloor(restaurant.enableFloor, floor),
       holdPolicy: asStr(restaurant.holdPolicy, d.restaurant.holdPolicy, 280),
       guestMin: asNum(restaurant.guestMin, 1, 1, 20),
       guestMax: asNum(restaurant.guestMax, 12, 1, 40),
@@ -401,7 +434,7 @@ export function parseTemplateSettings(raw: unknown): TemplateSettings {
       delivery: asBool(notify.delivery, true),
       emailCc: asStr(notify.emailCc, "", 400),
     },
-    floor: asFloorPlan(floor),
+    floor,
   };
 }
 

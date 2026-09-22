@@ -92,6 +92,6 @@ function tenantCatalogIconPath(pathname: string): string | null {
 
 export const config = {
   matcher: [
-    "/((?!_next/|api/|catalog/|robots.txt|sitemap.xml|llms.txt|.*\\.(?:jpg|jpeg|gif|webp|mp4|webm|txt|csv)$).*)",
+    "/((?!_next/|api/|catalog/|sw\\.js|manifest\\.webmanifest|admin-offline\\.html|robots.txt|sitemap.xml|llms.txt|.*\\.(?:jpg|jpeg|gif|webp|png|svg|mp4|webm|txt|csv)$).*)",
   ],
 };

@@ -250,7 +250,7 @@ export type MobilePushTokenRow = {
   id: string;
   account_id: string;
   token: string;
-  platform: "ios" | "android";
+  platform: "ios" | "android" | "web";
   created_at: string;
   updated_at: string;
 };

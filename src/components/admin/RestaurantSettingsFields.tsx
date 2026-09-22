@@ -29,11 +29,13 @@ export function RestaurantSettingsFields({
   modes,
   onChange,
   catalogAddress,
+  canEnableFloor = false,
 }: {
   settings: TemplateSettings;
   modes: OrderFulfillment[];
   onChange: (next: TemplateSettings) => void;
   catalogAddress?: string;
+  canEnableFloor?: boolean;
 }) {
   const r = settings.restaurant;
   const n = settings.notify;
@@ -122,6 +124,11 @@ export function RestaurantSettingsFields({
         <div className="mt-2 flex flex-wrap gap-2">
           <Toggle label="Guests can reserve" checked={r.enableReserve} onChange={(v) => patch({ enableReserve: v })} />
         </div>
+        <p className={`mt-2 ${dashHint}`}>
+          {canEnableFloor
+            ? "Reservations work without a floor plan. Turn Floor plan on under Place if you want rooms and tables."
+            : "Reservations work without a floor plan."}
+        </p>
         <label className="mt-2 flex flex-col gap-1.5">
           <span className={dashLabel}>Hold policy</span>
           <textarea value={r.holdPolicy} onChange={(e) => patch({ holdPolicy: e.target.value })} rows={2} className={dashTextarea} />

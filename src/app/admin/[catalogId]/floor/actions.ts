@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import {
+  isFloorPlanEnabled,
   parseTemplateSettings,
   publishedFloorPlan,
   TEMPLATE_SETTINGS_SQL_HINT,
@@ -15,6 +16,9 @@ export async function saveFloorPlan(
 ): Promise<{ error?: string; saved?: boolean }> {
   const catalog = await getCatalogOrNotFound(catalogId);
   const settings = parseTemplateSettings(catalog.template_settings);
+  if (!isFloorPlanEnabled(settings)) {
+    return { error: "Floor plan is off. Turn it on under Place settings." };
+  }
   const floor = publishedFloorPlan(plan);
   const next = { ...settings, floor };
   const supabase = await getCatalogAdminClient();

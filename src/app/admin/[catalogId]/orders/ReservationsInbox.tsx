@@ -5,16 +5,20 @@ import { formatMoney } from "@/lib/catalog/currency";
 import { formatOrderDateTime } from "@/lib/catalog/order-statuses";
 import {
   formatReserveDay,
+  localDayIso,
   parseReservationItems,
   reservationItemsCount,
   reservationItemsSummary,
   reservationItemsTotal,
 } from "@/lib/catalog/reservation-items";
+import { ticketSurface } from "@/lib/catalog/order-identity";
 import {
   merchantReservationActions,
   nextReservationAction,
   parseReservationStatus,
   reservationActionLabel,
+  reservationRailActionLabel,
+  reservationRailRows,
   reservationTone,
   RESERVATION_STATUS_META,
   RESERVATION_TONE,
@@ -289,7 +293,257 @@ function ReservationRowCard({
   );
 }
 
-function ReservationDetail({
+export function ReservationsBoardRail({
+  catalogId,
+  currency,
+  initial,
+  initialOpenId = null,
+  variant = "column",
+}: {
+  catalogId: string;
+  currency: string;
+  initial: ReservationRow[];
+  initialOpenId?: string | null;
+  variant?: "column" | "strip";
+}) {
+  const [rows, setRows] = useState(initial.filter((row) => row.catalog_id === catalogId));
+  const [openId, setOpenId] = useState<string | null>(initialOpenId);
+  const [loadError, setLoadError] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const today = localDayIso();
+
+  const refresh = useCallback(async () => {
+    try {
+      const next = await fetchCatalogReservations(catalogId);
+      setRows(next);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    }
+  }, [catalogId]);
+
+  const onRealtime = useCallback(
+    (table: "orders" | "service_requests" | "reservations", eventType: string, row: unknown) => {
+      if (table !== "reservations") return;
+      const cid = rowCatalogId(row);
+      if (cid && cid !== catalogId) return;
+      if (eventType === "INSERT") {
+        const incoming = asCatalogReservation(row, catalogId);
+        if (incoming) {
+          setRows((prev) => [incoming, ...prev.filter((item) => item.id !== incoming.id)]);
+          return;
+        }
+      }
+      if (eventType === "DELETE") {
+        const id = rowId(row);
+        if (id) setRows((prev) => prev.filter((item) => item.id !== id));
+        return;
+      }
+      void refresh();
+    },
+    [catalogId, refresh],
+  );
+
+  useCatalogLiveChannel(catalogId, ["reservations"], onRealtime);
+  useLiveRefresh(refresh);
+
+  useEffect(() => {
+    function onOpenTicket(event: Event) {
+      const detail = (event as CustomEvent<OpenIncomingTicketDetail>).detail;
+      if (!detail || detail.catalogId !== catalogId || detail.kind !== "reservation") return;
+      setOpenId(detail.id);
+    }
+    window.addEventListener(OPEN_INCOMING_TICKET_EVENT, onOpenTicket);
+    return () => window.removeEventListener(OPEN_INCOMING_TICKET_EVENT, onOpenTicket);
+  }, [catalogId]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  const open = openId ? rows.find((row) => row.id === openId) ?? null : null;
+  const visible = useMemo(() => reservationRailRows(rows, today), [rows, today]);
+
+  function applyRow(next: ReservationRow) {
+    setRows((prev) => prev.map((row) => (row.id === next.id ? next : row)));
+  }
+
+  async function setStatus(row: ReservationRow, next: ReservationStatus) {
+    const result = await setReservationStatus(catalogId, row.id, next);
+    if (result.error || !result.row) {
+      setToast(result.error || "Could not update booking.");
+      return;
+    }
+    applyRow(result.row);
+  }
+
+  const cards = (
+    <>
+      {visible.map((row) => (
+        <ReservationTicketCard
+          key={row.id}
+          row={row}
+          currency={currency}
+          selected={openId === row.id}
+          onOpen={() => setOpenId(row.id)}
+          onStatus={(next) => void setStatus(row, next)}
+        />
+      ))}
+      {visible.length === 0 ? (
+        <div className="px-2 py-[22px] text-center text-[12px] text-[#a3abb8]">
+          {loadError ? "Could not refresh bookings." : "No bookings today"}
+        </div>
+      ) : null}
+    </>
+  );
+
+  return (
+    <>
+      {variant === "column" ? (
+        <section className="max-w-[360px] min-w-[264px] flex-[0.92] snap-start overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
+          <div className="flex items-center gap-2.5 px-3.5 py-3">
+            <span className="text-[var(--cat-accent)]" aria-hidden>
+              <TypeMark kind="reservation" size={15} />
+            </span>
+            <span className="min-w-0 flex-1 text-[14px] font-semibold tracking-tight">Reservations</span>
+            <span className="text-[13px] tabular-nums text-[#86868b]">{visible.length}</span>
+          </div>
+          <div className="flex min-h-[88px] flex-col gap-2.5 p-2.5">{cards}</div>
+        </section>
+      ) : (
+        <section className="overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
+          <div className="flex items-center gap-2.5 px-3.5 py-3">
+            <span className="text-[var(--cat-accent)]" aria-hidden>
+              <TypeMark kind="reservation" size={15} />
+            </span>
+            <span className="min-w-0 flex-1 text-[14px] font-semibold tracking-tight">Reservations today</span>
+            <span className="text-[13px] tabular-nums text-[#86868b]">{visible.length}</span>
+          </div>
+          <div className="-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-3.5 pb-3.5 [scrollbar-width:thin]">
+            {visible.length === 0 ? (
+              <div className="w-full px-2 py-6 text-center text-[12px] text-[#a3abb8]">
+                {loadError ? "Could not refresh bookings." : "No bookings today"}
+              </div>
+            ) : (
+              visible.map((row) => (
+                <div key={row.id} className="w-[240px] shrink-0 snap-start">
+                  <ReservationTicketCard
+                    row={row}
+                    currency={currency}
+                    selected={openId === row.id}
+                    onOpen={() => setOpenId(row.id)}
+                    onStatus={(next) => void setStatus(row, next)}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+
+      {open ? (
+        <ReservationDetail
+          row={open}
+          catalogId={catalogId}
+          currency={currency}
+          onClose={() => setOpenId(null)}
+          onUpdated={applyRow}
+        />
+      ) : null}
+
+      {toast ? (
+        <div className="pointer-events-none fixed bottom-6 left-1/2 z-[80] max-w-[92vw] -translate-x-1/2">
+          <div className="rounded-full bg-[var(--cat-ink)] px-[18px] py-3 text-[13px] text-white shadow-[0_10px_30px_rgba(16,23,32,0.25)]">
+            {toast}
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function ReservationTicketCard({
+  row,
+  currency,
+  selected,
+  onOpen,
+  onStatus,
+}: {
+  row: ReservationRow;
+  currency: string;
+  selected: boolean;
+  onOpen: () => void;
+  onStatus: (next: ReservationStatus) => void;
+}) {
+  const items = useMemo(() => parseReservationItems(row.items), [row.items]);
+  const count = reservationItemsCount(items);
+  const tables = reservationTablesLabel(row);
+  const tone = reservationTone(row.status);
+  const surface = ticketSurface("reservation", tone === "booked" ? "strong" : tone === "ended" ? "muted" : "normal");
+  const next = nextReservationAction(row.status);
+  const canNoShow = merchantReservationActions(row.status).includes("no_show");
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      className="ops-press flex cursor-pointer flex-col gap-1.5 rounded-[12px] px-3 py-2.5"
+      style={{
+        background: surface.wash,
+        boxShadow: selected ? `inset 0 0 0 2px ${surface.ink}` : `inset 0 0 0 1px ${surface.ink}22`,
+      }}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: surface.ink }}>
+          {RESERVATION_STATUS_META[parseReservationStatus(row.status)].label}
+        </span>
+        <span className="shrink-0 text-[13px] font-semibold tabular-nums tracking-tight text-[var(--cat-ink)]">
+          {row.slot}
+        </span>
+      </div>
+      <span className="text-[11px] font-medium uppercase tracking-[0.05em]" style={{ color: surface.ink }}>
+        {surface.label}
+      </span>
+      <span className="truncate text-[1.125rem] font-semibold leading-tight tracking-[-0.02em] text-[var(--cat-ink)]">
+        {row.name || "Guest"}
+      </span>
+      <span className="truncate text-[12px] text-[#5a6472]">
+        {row.guests} {row.guests === 1 ? "guest" : "guests"}
+        {tables !== "No preference" ? ` · ${tables}` : ""}
+        {count > 0 ? ` · ${count} ${count === 1 ? "item" : "items"}` : ""}
+        {count > 0 ? ` · ${formatMoney(reservationItemsTotal(items), currency)}` : ""}
+      </span>
+      <div className="mt-0.5 flex flex-col gap-1" onClick={(event) => event.stopPropagation()}>
+        {next ? (
+          <OpsPrimaryButton pill className="w-full" onClick={() => onStatus(next)}>
+            {reservationRailActionLabel(next)}
+          </OpsPrimaryButton>
+        ) : (
+          <span className="inline-flex w-full items-center justify-center gap-1 text-[12px] text-[#86868b]">
+            <TypeMark kind="done" size={13} />
+            {RESERVATION_TONE[tone].label}
+          </span>
+        )}
+        {canNoShow ? (
+          <OpsGhostButton className="w-full text-[#86868b]" onClick={() => onStatus("no_show")}>
+            No-show
+          </OpsGhostButton>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+export function ReservationDetail({
   row,
   catalogId,
   currency,

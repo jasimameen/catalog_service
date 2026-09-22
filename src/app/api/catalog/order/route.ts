@@ -277,7 +277,12 @@ export async function POST(request: Request) {
   void sendPushToAccount(catalog.account_id, {
     title: `New ${fulfillmentLabel.toLowerCase()}`,
     body: tableNo ? `Table ${tableNo} · ${items.length} items` : `${shopName} · ${items.length} items`,
-    data: { kind: "new_order", orderId: orderRow.id, fulfillment: fulfillment ?? "" },
+    data: {
+      kind: "new_order",
+      orderId: orderRow.id,
+      catalogId,
+      fulfillment: fulfillment ?? "",
+    },
   });
 
   const { data: domainRows } = await supabase

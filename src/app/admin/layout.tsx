@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { PRODUCT_NAME } from "@/lib/brand";
 import { isBillingConfigured } from "@/lib/billing/config";
 import { MONTHLY_PRICE_LABEL } from "@/lib/billing/plan";
 import {
@@ -13,6 +15,18 @@ import {
 import { canOperatePlatform } from "@/lib/auth/platform";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
+
+export const metadata: Metadata = {
+  applicationName: PRODUCT_NAME,
+  appleWebApp: {
+    capable: true,
+    title: PRODUCT_NAME,
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+};
 
 async function TrialCard() {
   const account = await requireAccount();

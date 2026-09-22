@@ -80,6 +80,7 @@ export default async function OrdersPage({
   const hasDineIn =
     fulfillmentModes.includes("dine_in") || orders.some((order) => order.fulfillment === "dine_in");
   const settings = parseTemplateSettings(catalog.template_settings);
+  const showReservations = settings.restaurant.enableReserve || reservations.length > 0;
   const checkoutForm = resolveCheckoutForm(catalog.checkout_form, parseCheckoutFields(catalog.checkout_fields));
   const { data: thumbRows } = await supabase
     .from("catalog_items")
@@ -100,35 +101,38 @@ export default async function OrdersPage({
   const serviceRequests = ((requestRows ?? []) as ServiceRequestRow[]).filter(
     (row) => row.catalog_id === catalogId,
   );
+  const activeInbox = showReservations && inbox === "reservations" ? "reservations" : "orders";
 
   return (
     <>
       <PageHeader
-        title={inbox === "reservations" ? "Reservations" : "Orders"}
+        title={activeInbox === "reservations" ? "Reservations" : "Orders"}
         subtitle={
-          inbox === "reservations"
+          activeInbox === "reservations"
             ? `${catalog.name} · ${reservations.length} ${reservations.length === 1 ? "booking" : "bookings"}`
             : `${catalog.name} · what to cook and send out`
         }
         account={account}
       />
       <div className="mx-auto flex w-full max-w-[1180px] flex-col px-4 pb-14 pt-3">
-        <div className="mb-2">
-          <OpsSegmented label="Inbox">
-            <OpsSegment selected={inbox === "orders"} href={`/admin/${catalogId}/orders`}>
-              <TypeMark kind="orders" size={14} />
-              Orders{orders.length > 0 ? ` ${orders.length}` : ""}
-            </OpsSegment>
-            <OpsSegment
-              selected={inbox === "reservations"}
-              href={`/admin/${catalogId}/orders?inbox=reservations`}
-            >
-              <TypeMark kind="reservation" size={14} />
-              Reservations{reservations.length > 0 ? ` ${reservations.length}` : ""}
-            </OpsSegment>
-          </OpsSegmented>
-        </div>
-        {inbox === "reservations" ? (
+        {showReservations ? (
+          <div className="mb-2">
+            <OpsSegmented label="Inbox">
+              <OpsSegment selected={activeInbox === "orders"} href={`/admin/${catalogId}/orders`}>
+                <TypeMark kind="orders" size={14} />
+                Orders{orders.length > 0 ? ` ${orders.length}` : ""}
+              </OpsSegment>
+              <OpsSegment
+                selected={activeInbox === "reservations"}
+                href={`/admin/${catalogId}/orders?inbox=reservations`}
+              >
+                <TypeMark kind="reservation" size={14} />
+                All bookings{reservations.length > 0 ? ` ${reservations.length}` : ""}
+              </OpsSegment>
+            </OpsSegmented>
+          </div>
+        ) : null}
+        {activeInbox === "reservations" ? (
           <ReservationsInbox
             catalogId={catalogId}
             currency={catalog.currency}
@@ -150,7 +154,10 @@ export default async function OrdersPage({
             checkoutForm={checkoutForm}
             enableClaim={settings.restaurant.enableClaim}
             hasDineIn={hasDineIn}
+            enableReserve={settings.restaurant.enableReserve}
+            initialReservations={reservations}
             initialOpenId={openOrderId ?? null}
+            initialReservationId={openReservationId ?? null}
           >
             <LiveServiceRequests catalogId={catalogId} initial={serviceRequests} />
             <StatusSettings

@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
+import { redirect } from "next/navigation";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import { darken } from "@/lib/catalog/color";
-import { parseTemplateSettings } from "@/lib/catalog/template-settings";
+import { isFloorPlanEnabled, parseTemplateSettings } from "@/lib/catalog/template-settings";
 import type { ServiceRequestRow } from "@/lib/supabase/types";
 import { LiveServiceRequests } from "../LiveServiceRequests";
 import { FloorEditor } from "./FloorEditor";
@@ -15,6 +16,9 @@ export default async function FloorPage({ params }: { params: Promise<{ catalogI
   const [account, catalog] = await Promise.all([requireAccount(), getCatalogOrNotFound(catalogId)]);
   void account;
   const settings = parseTemplateSettings(catalog.template_settings);
+  if (!isFloorPlanEnabled(settings)) {
+    redirect(`/admin/${catalogId}`);
+  }
   const { data: requestRows } = await supabase
     .from("service_requests")
     .select("*")

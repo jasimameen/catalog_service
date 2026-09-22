@@ -1,6 +1,8 @@
+import { incomingReservationHref } from "@/lib/catalog/incoming-ticket";
+import { sendPushToAccount } from "@/lib/push/send";
 import { getServiceClient } from "@/lib/supabase/service";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
-import { parseTemplateSettings } from "@/lib/catalog/template-settings";
+import { isFloorPlanEnabled, parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { generateOrderReference } from "@/lib/catalog/currency";
 import {
@@ -281,7 +283,9 @@ export async function POST(request: Request) {
   if (guests < settings.restaurant.guestMin || guests > settings.restaurant.guestMax) {
     return Response.json({ error: "Guest count is outside the allowed range." }, { status: 400 });
   }
-  const resolvedTables = resolveBookableTables(wanted, settings.floor.tables);
+  const resolvedTables = isFloorPlanEnabled(settings)
+    ? resolveBookableTables(wanted, settings.floor.tables)
+    : { tables: [] };
   if (resolvedTables.error) return Response.json({ error: resolvedTables.error }, { status: 400 });
   const chosen = resolvedTables.tables;
   const tableRefs = chosen.map((t) => ({ id: t.id, no: t.no }));
@@ -367,6 +371,7 @@ export async function POST(request: Request) {
         if (last.error) {
           return Response.json({ error: "Could not save the reservation." }, { status: 500 });
         }
+        notifyNewReservation(catalog, last.data);
         return Response.json({
           ok: true,
           reservationId: last.data?.id ?? null,
@@ -377,6 +382,7 @@ export async function POST(request: Request) {
           sqlHint: RESERVATIONS_ITEMS_SQL_HINT,
         });
       }
+      notifyNewReservation(catalog, fallback.data);
       return Response.json({
         ok: true,
         reservationId: fallback.data?.id ?? null,
@@ -397,6 +403,8 @@ export async function POST(request: Request) {
     actor: "customer",
   });
 
+  notifyNewReservation(catalog, first.data);
+
   return Response.json({
     ok: true,
     reservationId: first.data.id,
@@ -404,6 +412,24 @@ export async function POST(request: Request) {
     orderId,
     orderReference,
     items: parseReservationItems(snaps),
+  });
+}
+
+function notifyNewReservation(
+  catalog: CatalogRow,
+  reservation: { id?: string | null; name?: string | null; slot?: string | null; guests?: number | null } | null,
+) {
+  if (!reservation?.id) return;
+  const guests = reservation.guests ? `${reservation.guests} ${reservation.guests === 1 ? "guest" : "guests"}` : "";
+  void sendPushToAccount(catalog.account_id, {
+    title: "New booking",
+    body: [reservation.name || "Guest", reservation.slot, guests].filter(Boolean).join(" · "),
+    data: {
+      kind: "new_reservation",
+      reservationId: reservation.id,
+      catalogId: catalog.id,
+      href: incomingReservationHref(catalog.id, reservation.id),
+    },
   });
 }
 

@@ -12,6 +12,7 @@ import {
   parseTemplateSettings,
   parseTemplateSettingsFromForm,
   TEMPLATE_SETTINGS_SQL_HINT,
+  type TemplateSettings,
 } from "@/lib/catalog/template-settings";
 import { getServiceClient } from "@/lib/supabase/service";
 import type { CatalogTemplate } from "@/lib/supabase/types";
@@ -75,9 +76,24 @@ async function uploadLogo(
 
 function revalidateCatalog(catalogId: string, slug: string) {
   revalidatePath(`/admin/${catalogId}`);
+  revalidatePath(`/admin/${catalogId}/floor`);
   revalidatePath("/admin");
   revalidatePath(`/s/${slug}`);
+  revalidatePath(`/s/${slug}/reserve`);
   revalidateStorefrontCatalog();
+}
+
+/** Look and ordering forms send the whole blob; floor is owned by Place / the studio. */
+function withPreservedFloor(incoming: TemplateSettings, current: unknown): TemplateSettings {
+  const existing = parseTemplateSettings(current);
+  return {
+    ...incoming,
+    floor: existing.floor,
+    restaurant: {
+      ...incoming.restaurant,
+      enableFloor: existing.restaurant.enableFloor,
+    },
+  };
 }
 
 export async function updateCatalogLook(
@@ -121,9 +137,13 @@ export async function updateCatalogLook(
   const placeholderImageUrl = STOCK_PHOTOS.some((photo) => photo.url === placeholderRaw)
     ? placeholderRaw
     : "";
-  const templateSettings = parseTemplateSettingsFromForm(formData.get("template_settings"));
-
   const supabase = await getCatalogAdminClient();
+  const current = await supabase.from("catalogs").select("template_settings").eq("id", catalogId).maybeSingle();
+  const templateSettings = withPreservedFloor(
+    parseTemplateSettingsFromForm(formData.get("template_settings")),
+    current.data?.template_settings,
+  );
+
   const { data, error } = await supabase
     .from("catalogs")
     .update({
@@ -293,10 +313,64 @@ export async function updateCatalogLocations(
 }
 
 export async function catalogNavLabel(catalogId: string): Promise<string | null> {
+  const meta = await catalogNavMeta(catalogId);
+  return meta?.name ?? null;
+}
+
+export async function catalogNavMeta(
+  catalogId: string,
+): Promise<{ name: string | null; enableFloor: boolean } | null> {
   await requireAccount();
   const supabase = await getCatalogAdminClient();
-  const { data } = await supabase.from("catalogs").select("name").eq("id", catalogId).maybeSingle();
-  return typeof data?.name === "string" && data.name.trim() ? data.name : null;
+  const { data } = await supabase
+    .from("catalogs")
+    .select("name, template_settings")
+    .eq("id", catalogId)
+    .maybeSingle();
+  if (!data) return null;
+  const settings = parseTemplateSettings(data.template_settings);
+  return {
+    name: typeof data.name === "string" && data.name.trim() ? data.name : null,
+    enableFloor: settings.restaurant.enableFloor,
+  };
+}
+
+export async function setCatalogFloorPlan(
+  catalogId: string,
+  enableFloor: boolean,
+): Promise<{ error?: string; saved?: boolean }> {
+  await requireAccount();
+  const supabase = await getCatalogAdminClient();
+  const { data: current } = await supabase
+    .from("catalogs")
+    .select("slug, template_settings")
+    .eq("id", catalogId)
+    .maybeSingle();
+  if (!current) return { error: "Catalog not found." };
+
+  const settings = parseTemplateSettings(current.template_settings);
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update({
+      template_settings: {
+        ...settings,
+        restaurant: { ...settings.restaurant, enableFloor },
+      },
+    })
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("setCatalogFloorPlan failed", error);
+    if (error?.message?.includes("template_settings") || error?.code === "PGRST204") {
+      return { error: TEMPLATE_SETTINGS_SQL_HINT };
+    }
+    return { error: "Could not save floor plan." };
+  }
+
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
 }
 
 export async function catalogIncomingMeta(
@@ -380,7 +454,7 @@ export async function updateCatalogOrdering(
   const current = await supabase.from("catalogs").select("template_settings").eq("id", catalogId).maybeSingle();
   const merged = parseTemplateSettings(current.data?.template_settings);
   const nextSettings = incomingSettings
-    ? parseTemplateSettingsFromForm(incomingSettings)
+    ? withPreservedFloor(parseTemplateSettingsFromForm(incomingSettings), merged)
     : merged;
 
   const { data, error } = await supabase

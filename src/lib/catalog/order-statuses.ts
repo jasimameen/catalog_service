@@ -381,7 +381,7 @@ export function nextWorkflowAction(
 function nextActionLabel(current: string, next: OrderStatusDef): string {
   const from = current.toLowerCase();
   const to = `${next.id} ${next.label}`.toLowerCase();
-  if (/(new|pending|receiv|hold|wait)/.test(from)) return "Accept";
+  if (/(new|pending|receiv|hold|wait)/.test(from)) return "Accept & start";
   if (/(prepar|kitchen|progress|confirm|pack|schedul)/.test(from)) {
     if (/(ready|collect)/.test(to) || next.is_done) return "Ready";
     return "Start";

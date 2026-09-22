@@ -151,6 +151,7 @@ export function buildLookPreviewCatalog(input: {
         deliveryFee: restaurant ? 8 : 0,
         minOrder: restaurant ? 25 : 0,
         kitchenOpen: true,
+        enableFloor: restaurant,
       },
       floor: publishedFloorPlan(
         restaurant

@@ -8,6 +8,21 @@ import type { AccountRow } from "@/lib/supabase/types";
 import { sessionNeedsEmailOtp, verifyEmailPath } from "./email-verified";
 import { accountDisplayName, companyNameFromUser, provisionAccount, safeNextPath } from "./provision";
 
+/** Signed-in account for Route Handlers. Null instead of redirect. */
+export async function getSessionAccount(): Promise<AccountRow | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const user = await getSessionUser();
+    if (!user || sessionNeedsEmailOtp(user)) return null;
+    const supabase = await getServerSupabase();
+    const account = await loadAccount(supabase, user.id);
+    if (!account) return null;
+    return { ...account, name: accountDisplayName(account.name, user) };
+  } catch {
+    return null;
+  }
+}
+
 /** One auth.getUser() per request — shared by requireAccount and /new. */
 export const getSessionUser = cache(async (): Promise<User | null> => {
   if (!isSupabaseConfigured()) return null;
