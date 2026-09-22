@@ -1,5 +1,6 @@
 import { mobileErrorResponse, requireMobileAccount, requireMobileCatalog } from "@/lib/auth/mobile-account";
 import { catalogStatuses, shapeOrder } from "../_lib/shape";
+import { findDuplicateRefs } from "@/lib/catalog/order-statuses";
 import type { OrderItemRow, OrderRow } from "@/lib/supabase/types";
 
 /** Recent tickets for the board/list — newest first, capped so a busy day doesn't send everything ever. */
@@ -34,7 +35,21 @@ export async function GET(request: Request) {
       }
     }
 
-    const shaped = orderRows.map((row) => shapeOrder(row, itemsByOrder.get(row.id) ?? [], statuses));
+    const duplicates = findDuplicateRefs(
+      orderRows.map((row) => ({ id: row.id, reference: row.reference, status: row.status, created_at: row.created_at })),
+      new Map(
+        [...itemsByOrder.entries()].map(([orderId, items]) => [
+          orderId,
+          items.map((item) => ({ code: item.code, qty: item.qty })),
+        ]),
+      ),
+      statuses,
+    );
+
+    const shaped = orderRows.map((row) => ({
+      ...shapeOrder(row, itemsByOrder.get(row.id) ?? [], statuses),
+      duplicate_refs: duplicates.get(row.id) ?? [],
+    }));
     return Response.json({ orders: shaped, statuses });
   } catch (error) {
     return mobileErrorResponse(error);
