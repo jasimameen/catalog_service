@@ -22,10 +22,12 @@ export function HoursCard({
   catalogId,
   hours,
   showHours,
+  embedded = false,
 }: {
   catalogId: string;
   hours: string;
   showHours: boolean;
+  embedded?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<HoursState, FormData>(
     updateCatalogHours.bind(null, catalogId),
@@ -60,13 +62,15 @@ export function HoursCard({
   }
 
   return (
-    <section id="hours" className={dashCard}>
-      <div className="px-4 pb-1 pt-4">
-        <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Hours</p>
-        <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-          Open and close for each day. Guests see this on the menu.
-        </p>
-      </div>
+    <section id={embedded ? undefined : "hours"} className={embedded ? "min-w-0" : dashCard}>
+      {embedded ? null : (
+        <div className="px-4 pb-1 pt-4">
+          <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Hours</p>
+          <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
+            Open and close for each day. Guests see this on the menu.
+          </p>
+        </div>
+      )}
 
       <form action={formAction} className="flex min-w-0 flex-col">
         <input type="hidden" name="hoursJson" value={JSON.stringify(week)} />

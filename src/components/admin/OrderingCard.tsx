@@ -19,7 +19,6 @@ import type { CatalogTemplate } from "@/lib/supabase/types";
 import type { TemplateSettings } from "@/lib/catalog/template-settings";
 import { isRestaurantCatalog, parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { RestaurantSettingsFields } from "./RestaurantSettingsFields";
-import { useDashboardSection } from "@/components/admin/dashboard/useDashboardSection";
 import {
   dashBtnPrimary,
   dashCard,
@@ -58,6 +57,7 @@ export function OrderingCard({
   templateSettings,
   orderEmail,
   catalogAddress,
+  embedded = false,
 }: {
   catalogId: string;
   fulfillmentModes: OrderFulfillment[];
@@ -71,8 +71,8 @@ export function OrderingCard({
   templateSettings: TemplateSettings;
   orderEmail: string;
   catalogAddress?: string;
+  embedded?: boolean;
 }) {
-  const [open, setOpen] = useDashboardSection("ordering");
   const builtIn = checkoutFields ?? DEFAULT_CHECKOUT_FIELDS;
   const [modes, setModes] = useState<OrderFulfillment[]>(fulfillmentModes);
   const [fields, setFields] = useState<CheckoutFormField[]>(checkoutForm);
@@ -111,31 +111,17 @@ export function OrderingCard({
   }
 
   return (
-    <section id="ordering" className={dashCard}>
-      <button
-        type="button"
-        className="flex min-h-11 w-full items-start justify-between gap-3 px-4 py-4 text-left md:hidden"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="min-w-0">
-          <span className="block text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">
-            Ordering
-          </span>
-          <span className="mt-1 block text-[13px] leading-snug text-[#5a6472]">
-            Order types, built-in fields, and extra fields guests fill in.
-          </span>
-        </span>
-        <span className="mt-0.5 shrink-0 text-[13px] text-[#0b5fce]">{open ? "Hide" : "Show"}</span>
-      </button>
-      <div className="hidden border-b border-[#edf0f4] px-4 py-4 md:block">
-        <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Ordering</p>
-        <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-          Order types, built-in fields, and extra fields guests fill in.
-        </p>
-      </div>
+    <section id={embedded ? undefined : "ordering"} className={embedded ? "min-w-0" : dashCard}>
+      {embedded ? null : (
+        <div className="px-4 pb-1 pt-4">
+          <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Ordering</p>
+          <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
+            Form fields and notify. Pause is at the top of this page.
+          </p>
+        </div>
+      )}
 
-      <div className={open ? "block" : "hidden md:block"}>
+      <div>
         <form action={formAction} className="flex flex-col">
           <input type="hidden" name="fulfillment_modes" value={JSON.stringify(modes)} />
           <input type="hidden" name="checkout_form" value={JSON.stringify(fields)} />
@@ -280,41 +266,55 @@ export function OrderingCard({
             </div>
 
             <div className={dashSection}>
-              <p className={dashKicker}>Order form</p>
-              <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-                Required fields must be filled. Hidden fields are not shown to the shop. Empty extra
-                fields use these built-in settings.
-              </p>
-              <div className="overflow-hidden rounded-xl border border-[#e2e7ee]">
-                {CHECKOUT_FIELD_KEYS.map((key) => (
-                  <div
-                    key={key}
-                    className="flex flex-col gap-2 border-b border-[#f1f4f8] px-3.5 py-2.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <label htmlFor={`cf_${key}`} className="min-w-0 text-[14px] text-[var(--cat-ink)]">
-                      {FIELD_UI_LABEL[key]}
-                      <span className="sr-only"> ({CHECKOUT_FIELD_LABELS[key]})</span>
-                    </label>
-                    <div className="flex gap-1 self-start rounded-[10px] border border-[#e2e7ee] bg-[#fbfbfd] p-0.5 sm:self-auto">
-                      {FIELD_MODES.map((mode) => (
-                        <label key={mode.value} className="cursor-pointer">
-                          <input
-                            type="radio"
-                            id={mode.value === builtIn[key] ? `cf_${key}` : undefined}
-                            name={`cf_${key}`}
-                            value={mode.value}
-                            defaultChecked={builtIn[key] === mode.value}
-                            className="peer sr-only"
-                          />
-                          <span className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[12px] text-[#5a6472] peer-checked:bg-[#101720] peer-checked:text-white">
-                            {mode.label}
-                          </span>
-                        </label>
-                      ))}
+              <p className={dashKicker}>{fields.length > 0 ? "Extra questions" : "Guest checkout fields"}</p>
+              {fields.length > 0 ? (
+                <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
+                  These are the questions guests answer at checkout. They replace the simple
+                  name / phone / address switches.
+                </p>
+              ) : (
+                <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
+                  Built-in guest fields. Required must be filled. Hidden is not shown. Add extra
+                  questions only if you need more than these five — that custom form then replaces
+                  this list.
+                </p>
+              )}
+              {fields.length > 0
+                ? CHECKOUT_FIELD_KEYS.map((key) => (
+                    <input key={key} type="hidden" name={`cf_${key}`} value={builtIn[key]} />
+                  ))
+                : (
+                <div className="overflow-hidden rounded-xl border border-[#e2e7ee]">
+                  {CHECKOUT_FIELD_KEYS.map((key) => (
+                    <div
+                      key={key}
+                      className="flex flex-col gap-2 border-b border-[#f1f4f8] px-3.5 py-2.5 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <label htmlFor={`cf_${key}`} className="min-w-0 text-[14px] text-[var(--cat-ink)]">
+                        {FIELD_UI_LABEL[key]}
+                        <span className="sr-only"> ({CHECKOUT_FIELD_LABELS[key]})</span>
+                      </label>
+                      <div className="flex gap-1 self-start rounded-[10px] border border-[#e2e7ee] bg-[#fbfbfd] p-0.5 sm:self-auto">
+                        {FIELD_MODES.map((mode) => (
+                          <label key={mode.value} className="cursor-pointer">
+                            <input
+                              type="radio"
+                              id={mode.value === builtIn[key] ? `cf_${key}` : undefined}
+                              name={`cf_${key}`}
+                              value={mode.value}
+                              defaultChecked={builtIn[key] === mode.value}
+                              className="peer sr-only"
+                            />
+                            <span className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-[12px] text-[#5a6472] peer-checked:bg-[var(--cat-accent)] peer-checked:text-white">
+                              {mode.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className={dashLabel}>Phone prefix</span>
@@ -343,8 +343,17 @@ export function OrderingCard({
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
                 <p className="m-0 min-w-0 flex-1 text-[13px] font-medium text-[#46505e]">
-                  Extra fields
+                  {fields.length > 0 ? "Questions guests see" : "Need more than these five?"}
                 </p>
+                {fields.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setFields([])}
+                    className="min-h-10 rounded-[10px] border border-[#e2e7ee] bg-white px-3.5 text-[13px] hover:border-[var(--cat-accent)] hover:text-[var(--cat-accent)]"
+                  >
+                    Use simple guest fields
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() =>
@@ -355,12 +364,12 @@ export function OrderingCard({
                   }
                   className="min-h-10 rounded-[10px] border border-dashed border-[#c3ccd9] bg-white px-3.5 text-[13px] hover:border-[#0b5fce] hover:text-[#0b5fce]"
                 >
-                  Add field
+                  Add question
                 </button>
               </div>
               {fields.length === 0 ? (
                 <p className={`m-0 ${dashHint}`}>
-                  Empty extra fields use the built-in settings above.
+                  Adding a question switches to a custom form and hides the switches above.
                 </p>
               ) : (
                 <div className="flex flex-col gap-2.5">

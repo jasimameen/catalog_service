@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { catalogNavLabel } from "@/app/admin/[catalogId]/actions";
 
 type NavItem = {
   label: string;
@@ -168,32 +169,44 @@ export function AdminNav({
   const inCatalog = Boolean(second) && !reserved;
   const catalogId = inCatalog ? second : null;
   const scrollerRef = useRef<HTMLElement>(null);
+  const [shopLabel, setShopLabel] = useState("This shop");
 
-  const items: NavItem[] = [{ label: "Catalogs", href: "/admin", exact: true, icon: IconGrid }];
+  const rootItems: NavItem[] = [{ label: "Catalogs", href: "/admin", exact: true, icon: IconGrid }];
 
-  if (catalogId) {
-    items.push(
-      { label: "Dashboard", href: `/admin/${catalogId}`, exact: true, icon: IconHome },
-      { label: "Orders", href: `/admin/${catalogId}/orders`, icon: IconOrders },
-      { label: "Items", href: `/admin/${catalogId}/items`, icon: IconItems },
-      { label: "Floor", href: `/admin/${catalogId}/floor`, icon: IconFloor },
-      { label: "Share", href: `/admin/${catalogId}/share`, icon: IconShare },
-      { label: "Domains", href: `/admin/${catalogId}/domains`, icon: IconDomains },
-    );
-  }
+  const catalogItems: NavItem[] = catalogId
+    ? [
+        { label: "Dashboard", href: `/admin/${catalogId}`, exact: true, icon: IconHome },
+        { label: "Orders", href: `/admin/${catalogId}/orders`, icon: IconOrders },
+        { label: "Items", href: `/admin/${catalogId}/items`, icon: IconItems },
+        { label: "Floor", href: `/admin/${catalogId}/floor`, icon: IconFloor },
+        { label: "Settings", href: `/admin/${catalogId}#settings`, exact: true, icon: IconSettings },
+        { label: "Share", href: `/admin/${catalogId}/share`, icon: IconShare },
+        { label: "Domains", href: `/admin/${catalogId}/domains`, icon: IconDomains },
+      ]
+    : [];
 
-  if (showOps) {
-    items.push({ label: "Ops", href: "/admin/ops", icon: IconOps });
-  }
-
-  if (showInquiries) {
-    items.push({ label: "Inquiries", href: "/admin/inquiries", icon: IconInbox });
-  }
-
-  items.push(
+  const accountItems: NavItem[] = [
+    ...(showOps ? [{ label: "Ops", href: "/admin/ops", icon: IconOps } satisfies NavItem] : []),
+    ...(showInquiries
+      ? [{ label: "Inquiries", href: "/admin/inquiries", icon: IconInbox } satisfies NavItem]
+      : []),
     { label: "Account", href: "/admin/account", icon: IconAccount },
     { label: "Settings", href: "/admin/settings", icon: IconSettings },
-  );
+  ];
+
+  useEffect(() => {
+    if (!catalogId) {
+      setShopLabel("This shop");
+      return;
+    }
+    let cancelled = false;
+    void catalogNavLabel(catalogId).then((name) => {
+      if (!cancelled && name) setShopLabel(name);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogId]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -213,30 +226,75 @@ export function AdminNav({
         collapsed ? "md:items-center" : ""
       }`}
     >
-      {items.map((item) => {
-        const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            data-nav-active={active ? "true" : undefined}
-            aria-current={active ? "page" : undefined}
-            title={collapsed ? item.label : undefined}
-            className={`flex min-h-11 shrink-0 touch-manipulation items-center px-3.5 text-[13px] transition-colors duration-150 md:px-3 md:text-[14px] ${
-              collapsed ? "md:w-11 md:justify-center md:px-0" : ""
-            } ${
-              active
-                ? "rounded-full border border-[var(--cat-ink)] bg-[var(--cat-ink)] font-medium text-white md:rounded-[9px] md:border-transparent md:bg-[#eef1f6] md:text-[var(--cat-ink)]"
-                : "rounded-full border border-[#e2e7ee] bg-white font-normal text-[#5a6472] hover:border-[#c3ccd9] md:rounded-[9px] md:border-transparent md:bg-transparent md:hover:bg-[#f0f2f6] md:hover:text-[var(--cat-ink)]"
-            }`}
-          >
-            <span className={collapsed ? "hidden md:inline-flex" : "hidden"} aria-hidden>
-              <item.icon />
-            </span>
-            <span className={collapsed ? "md:sr-only" : undefined}>{item.label}</span>
-          </Link>
-        );
-      })}
+      {rootItems.map((item) => (
+        <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+      ))}
+
+      {catalogId ? (
+        <>
+          <p className="hidden md:block md:mt-3 md:mb-1 md:px-3 md:text-[11px] md:font-semibold md:uppercase md:tracking-[0.08em] md:text-[#8a93a2] md:group-data-[collapsed=true]/shell:sr-only">
+            {shopLabel}
+          </p>
+          <span className="self-center px-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#86868b] md:hidden">
+            {shopLabel}
+          </span>
+          <div className="flex shrink-0 gap-1.5 md:ml-3 md:flex-col md:gap-0.5 md:border-l md:border-[#e2e7ee] md:pl-2.5 md:group-data-[collapsed=true]/shell:ml-0 md:group-data-[collapsed=true]/shell:border-l-0 md:group-data-[collapsed=true]/shell:pl-0">
+            {catalogItems.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                collapsed={collapsed}
+                nested
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      <div className="hidden md:my-2 md:block md:h-px md:bg-[#e2e7ee] md:group-data-[collapsed=true]/shell:w-8" />
+
+      {accountItems.map((item) => (
+        <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+      ))}
     </nav>
+  );
+}
+
+function NavLink({
+  item,
+  pathname,
+  collapsed,
+  nested = false,
+}: {
+  item: NavItem;
+  pathname: string;
+  collapsed: boolean;
+  nested?: boolean;
+}) {
+  const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  return (
+    <Link
+      href={item.href}
+      data-nav-active={active ? "true" : undefined}
+      aria-current={active ? "page" : undefined}
+      title={collapsed ? item.label : undefined}
+      className={`ops-press flex min-h-11 shrink-0 touch-manipulation items-center px-3.5 transition-colors duration-150 md:px-3 ${
+        nested ? "text-[13px] md:text-[13px]" : "text-[13px] md:text-[14px]"
+      } ${collapsed ? "md:w-11 md:justify-center md:px-0" : ""} ${
+        active
+          ? nested
+            ? "rounded-full border border-[var(--cat-ink)] bg-[var(--cat-ink)] font-medium text-white md:rounded-[9px] md:border-transparent md:bg-[#e8eef8] md:text-[var(--cat-ink)]"
+            : "rounded-full border border-[var(--cat-ink)] bg-[var(--cat-ink)] font-medium text-white md:rounded-[9px] md:border-transparent md:bg-[#eef1f6] md:text-[var(--cat-ink)]"
+          : nested
+            ? "rounded-full border border-[#edf0f4] bg-[#fbfbfd] font-normal text-[#86868b] hover:border-[#c3ccd9] md:rounded-[9px] md:border-transparent md:bg-transparent md:hover:bg-[#f0f2f6] md:hover:text-[var(--cat-ink)]"
+            : "rounded-full border border-[#e2e7ee] bg-white font-normal text-[#5a6472] hover:border-[#c3ccd9] md:rounded-[9px] md:border-transparent md:bg-transparent md:hover:bg-[#f0f2f6] md:hover:text-[var(--cat-ink)]"
+      }`}
+    >
+      <span className={collapsed ? "hidden md:inline-flex" : "hidden"} aria-hidden>
+        <item.icon />
+      </span>
+      <span className={collapsed ? "md:sr-only" : undefined}>{item.label}</span>
+    </Link>
   );
 }

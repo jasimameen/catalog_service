@@ -62,28 +62,23 @@ export function LiveServiceRequests({
   if (rows.length === 0) return null;
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-[#e2e7ee] bg-white">
-      <div className="flex items-center gap-2 border-b border-[#edf0f4] px-4 py-3">
-        <span className="relative flex h-2 w-2 shrink-0">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#c27c0e] opacity-40" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#c27c0e]" />
-        </span>
-        <h3 className="m-0 text-[14px] font-semibold">Table requests</h3>
+    <section className="overflow-hidden rounded-[14px] bg-[#fff8e8]">
+      <div className="flex items-center gap-2 px-4 py-2.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#c27c0e]" aria-hidden />
+        <h3 className="m-0 text-[13px] font-semibold text-[#8a5a00]">Table needs you</h3>
       </div>
       <ul className="m-0 list-none p-0">
         {rows.map((row) => (
           <li
             key={row.id}
-            className="flex items-center gap-3 border-b border-[#f1f4f8] px-4 py-2.5 last:border-b-0"
+            className="flex items-center gap-3 px-4 py-2 last:pb-3"
           >
-            <span className="rounded-full bg-[#fff3d6] px-2 py-0.5 text-[11px] font-semibold text-[#8a5a00]">
-              {kindLabel(row.kind)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[13px]">
+            <span className="text-[13px] font-medium text-[#8a5a00]">{kindLabel(row.kind)}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--cat-ink)]">
               {row.table_no ? `Table ${row.table_no}` : "No table"}
               {row.note ? ` · ${row.note}` : ""}
             </span>
-            <span suppressHydrationWarning className="shrink-0 text-[11px] text-[#8a93a2]">
+            <span suppressHydrationWarning className="shrink-0 text-[12px] text-[#86868b]">
               {formatOrderDateTime(row.created_at)}
             </span>
           </li>

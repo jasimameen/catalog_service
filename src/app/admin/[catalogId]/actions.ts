@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
 import { requireAccount } from "@/lib/auth/current-account";
 import { getCatalogAdminClient } from "@/app/admin/_lib/data";
@@ -21,7 +22,7 @@ import {
   parseBannersFromForm,
   parseImageFit,
 } from "@/lib/catalog/merchandising";
-import { parseCoord, parseLocationsFromText } from "@/lib/catalog/locations";
+import { parseCoord, parseLocations } from "@/lib/catalog/locations";
 import { formatCatalogHours, parseHoursState } from "@/lib/catalog/hours";
 import { canPublishNewCatalog } from "@/lib/billing/status";
 import { isValidSlug, slugFromName, suggestSlugCandidates } from "@/lib/catalog/slug";
@@ -92,8 +93,6 @@ export async function updateCatalogLook(
   const accentRaw = String(formData.get("accent") ?? "").trim();
   const accent = parseAccentHex(accentRaw) ?? ACCENT_COLORS[0]!;
 
-  const tagline = String(formData.get("tagline") ?? "").trim().slice(0, 160);
-  const about = String(formData.get("about") ?? "").trim().slice(0, 400);
   let logo = String(formData.get("logo") ?? "").trim();
   if (formData.get("clearLogo") === "1") logo = "";
 
@@ -118,21 +117,10 @@ export async function updateCatalogLook(
   }
 
   const imageFit = parseImageFit(formData.get("imageFit"));
-  const phone = String(formData.get("companyPhone") ?? "").trim().slice(0, 40);
-  const email = String(formData.get("companyEmail") ?? "").trim().slice(0, 120);
-  const address = String(formData.get("companyAddress") ?? "").trim().slice(0, 200);
-  const whatsapp = String(formData.get("companyWhatsapp") ?? "").trim().slice(0, 40);
-  const instagram = String(formData.get("companyInstagram") ?? "").trim().slice(0, 80);
-  const locations = parseLocationsFromText(String(formData.get("companyLocations") ?? ""));
-  const geoLat = parseCoord(formData.get("companyLat"));
-  const geoLng = parseCoord(formData.get("companyLng"));
   const placeholderRaw = String(formData.get("placeholderImageUrl") ?? "").trim();
   const placeholderImageUrl = STOCK_PHOTOS.some((photo) => photo.url === placeholderRaw)
     ? placeholderRaw
     : "";
-  const showContact = formData.get("showContact") === "1";
-  const showSocial = formData.get("showSocial") === "1";
-  const showMap = formData.get("showMap") === "1";
   const templateSettings = parseTemplateSettingsFromForm(formData.get("template_settings"));
 
   const supabase = await getCatalogAdminClient();
@@ -143,22 +131,9 @@ export async function updateCatalogLook(
       template_settings: templateSettings,
       accent,
       logo: logo || null,
-      tagline: tagline || null,
-      about: about || null,
       banners,
       image_fit: imageFit,
-      phone: phone || null,
-      email: email || null,
-      address: address || null,
-      whatsapp: whatsapp || null,
-      instagram: instagram || null,
-      locations,
-      geo_lat: geoLat,
-      geo_lng: geoLng,
       placeholder_image_url: placeholderImageUrl || null,
-      show_contact: showContact,
-      show_social: showSocial,
-      show_map: showMap,
     })
     .eq("id", catalogId)
     .select("slug")
@@ -203,6 +178,155 @@ export async function updateCatalogLook(
 
   revalidateCatalog(catalogId, data.slug);
   return { saved: true };
+}
+
+export type DiscoveryState = { error?: string; saved?: boolean } | null;
+
+export async function updateCatalogDiscovery(
+  catalogId: string,
+  _prevState: DiscoveryState,
+  formData: FormData,
+): Promise<DiscoveryState> {
+  await requireAccount();
+  const tagline = String(formData.get("tagline") ?? "").trim().slice(0, 160);
+  const about = String(formData.get("about") ?? "").trim().slice(0, 400);
+
+  const supabase = await getCatalogAdminClient();
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update({
+      tagline: tagline || null,
+      about: about || null,
+    })
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateCatalogDiscovery failed", error);
+    return { error: "Could not save discovery. Try again." };
+  }
+
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
+}
+
+export type PlaceState = { error?: string; saved?: boolean } | null;
+
+export async function updateCatalogPlace(
+  catalogId: string,
+  _prevState: PlaceState,
+  formData: FormData,
+): Promise<PlaceState> {
+  await requireAccount();
+  const phone = String(formData.get("companyPhone") ?? "").trim().slice(0, 40);
+  const email = String(formData.get("companyEmail") ?? "").trim().slice(0, 120);
+  const address = String(formData.get("companyAddress") ?? "").trim().slice(0, 200);
+  const whatsapp = String(formData.get("companyWhatsapp") ?? "").trim().slice(0, 40);
+  const instagram = String(formData.get("companyInstagram") ?? "").trim().slice(0, 80);
+  const geoLat = parseCoord(formData.get("companyLat"));
+  const geoLng = parseCoord(formData.get("companyLng"));
+  const showContact = formData.get("showContact") === "1";
+  const showSocial = formData.get("showSocial") === "1";
+  const showMap = formData.get("showMap") === "1";
+
+  const supabase = await getCatalogAdminClient();
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update({
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      whatsapp: whatsapp || null,
+      instagram: instagram || null,
+      geo_lat: geoLat,
+      geo_lng: geoLng,
+      show_contact: showContact,
+      show_social: showSocial,
+      show_map: showMap,
+    })
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateCatalogPlace failed", error);
+    if (
+      error?.message?.includes("show_map") ||
+      error?.message?.includes("geo_lat") ||
+      error?.message?.includes("email")
+    ) {
+      return { error: STOREFRONT_SETTINGS_SQL_HINT };
+    }
+    return { error: "Could not save place details. Try again." };
+  }
+
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
+}
+
+export async function updateCatalogLocations(
+  catalogId: string,
+  raw: unknown,
+): Promise<{ error?: string; saved?: boolean }> {
+  await requireAccount();
+  const locations = parseLocations(raw);
+
+  const supabase = await getCatalogAdminClient();
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update({ locations })
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateCatalogLocations failed", error);
+    if (error?.message?.includes("locations")) {
+      return { error: STOREFRONT_SETTINGS_SQL_HINT };
+    }
+    return { error: "Could not save locations. Try again." };
+  }
+
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
+}
+
+export async function catalogNavLabel(catalogId: string): Promise<string | null> {
+  await requireAccount();
+  const supabase = await getCatalogAdminClient();
+  const { data } = await supabase.from("catalogs").select("name").eq("id", catalogId).maybeSingle();
+  return typeof data?.name === "string" && data.name.trim() ? data.name : null;
+}
+
+export async function deleteCatalog(
+  catalogId: string,
+  typedName: string,
+): Promise<{ error?: string }> {
+  await requireAccount();
+  const supabase = await getCatalogAdminClient();
+  const { data: catalog } = await supabase
+    .from("catalogs")
+    .select("id, name, slug")
+    .eq("id", catalogId)
+    .maybeSingle();
+
+  if (!catalog) return { error: "Catalog not found." };
+  if (typedName.trim().toLowerCase() !== catalog.name.trim().toLowerCase()) {
+    return { error: `Type ${catalog.name} to confirm.` };
+  }
+
+  const { error } = await supabase.from("catalogs").delete().eq("id", catalogId);
+  if (error) {
+    console.error("deleteCatalog failed", error);
+    return { error: "Could not delete this catalog. Try again." };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/${catalogId}`);
+  revalidatePath(`/s/${catalog.slug}`);
+  revalidateStorefrontCatalog();
+  redirect("/admin");
 }
 
 export type OrderingState = { error?: string; saved?: boolean } | null;

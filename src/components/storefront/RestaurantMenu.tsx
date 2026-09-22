@@ -10,6 +10,7 @@ import { isDineInTableSession, orderCtaLabel } from "@/lib/catalog/template-sett
 import { TableTicketList, useTableTicket } from "./TableTicket";
 import { needsOptionPick, optionsCue } from "@/lib/catalog/item-options";
 import { imageFitClass, isItemAvailable, telHref, mailtoHref, whatsappHref } from "@/lib/catalog/merchandising";
+import { websiteHref } from "@/lib/catalog/locations";
 import { ComboBadge } from "./ComboBadge";
 import { ComboIncludes } from "./ComboIncludes";
 import { ProductDetailModal } from "./ProductDetailModal";
@@ -519,10 +520,49 @@ export function RestaurantMenu({
 
         <section className="rounded-[18px] border border-[var(--cat-border)] bg-white px-5 py-7 text-[var(--cat-ink)]">
           <div className="grid grid-cols-1 gap-6 @md:grid-cols-2 @3xl:grid-cols-4">
-            {catalog.showContact && (catalog.address || catalog.phone) ? (
+            {catalog.showContact && (catalog.address || catalog.phone || catalog.locations.length > 0) ? (
               <div>
                 <div className="font-catalog-display mb-2 text-[22px] font-semibold">Visit us</div>
                 {catalog.address ? <p className="m-0 text-[14px] leading-relaxed text-[var(--cat-muted)]">{catalog.address}</p> : null}
+                {catalog.locations.length > 0 ? (
+                  <ul className="mt-3 list-none space-y-3 p-0">
+                    {catalog.locations.map((row) => {
+                      const site = websiteHref(row.website);
+                      const mail = mailtoHref(row.email);
+                      const tel = telHref(row.phone);
+                      return (
+                        <li key={`${row.name}-${row.phone}-${row.address}`} className="text-[14px] leading-snug">
+                          <span className="font-semibold text-[var(--cat-ink)]">{row.name}</span>
+                          {row.address ? <span className="mt-0.5 block text-[var(--cat-muted)]">{row.address}</span> : null}
+                          {row.phone ? (
+                            tel ? (
+                              <a href={tel} className="mt-0.5 block text-[var(--cat-accent)]">{row.phone}</a>
+                            ) : (
+                              <span className="mt-0.5 block text-[var(--cat-muted)]">{row.phone}</span>
+                            )
+                          ) : null}
+                          {row.email ? (
+                            mail ? (
+                              <a href={mail} className="mt-0.5 block text-[var(--cat-accent)]">{row.email}</a>
+                            ) : (
+                              <span className="mt-0.5 block text-[var(--cat-muted)]">{row.email}</span>
+                            )
+                          ) : null}
+                          {row.website ? (
+                            site ? (
+                              <a href={site} target="_blank" rel="noopener noreferrer" className="mt-0.5 block text-[var(--cat-accent)]">
+                                {row.website}
+                              </a>
+                            ) : (
+                              <span className="mt-0.5 block text-[var(--cat-muted)]">{row.website}</span>
+                            )
+                          ) : null}
+                          {row.notes ? <span className="mt-0.5 block text-[var(--cat-muted)]">{row.notes}</span> : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
               </div>
             ) : null}
             {catalog.showContact ? (

@@ -65,6 +65,7 @@ export function CartPanel({
   const [locating, setLocating] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   const cartItems = lines
     .map((line) => {
@@ -136,6 +137,42 @@ export function CartPanel({
     if (saved.lat != null) setGeoLat(saved.lat);
     if (saved.lng != null) setGeoLng(saved.lng);
   }, [catalogId, phoneValue]);
+
+  const displayFields = useMemo(
+    () =>
+      visibleFields.map((field) =>
+        field.id === "shopName" && fulfillmentModes.length > 0 && field.label === "Shop name"
+          ? { ...field, label: "Your name" }
+          : field,
+      ),
+    [fulfillmentModes.length, visibleFields],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const sync = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardInset(inset);
+    };
+    viewport.addEventListener("resize", sync);
+    viewport.addEventListener("scroll", sync);
+    sync();
+    return () => {
+      viewport.removeEventListener("resize", sync);
+      viewport.removeEventListener("scroll", sync);
+    };
+  }, [open]);
 
   function submitLabel() {
     if (status === "submitting") return "Sending order…";
@@ -240,14 +277,30 @@ export function CartPanel({
 
   const detailsTitle = fulfillmentModes.length > 0 ? "Your details" : "Delivery details";
   const cta = orderCtaLabel(settings, fulfillment);
-  const shopNameField = visibleFields.find((f) => f.id === "shopName");
-  if (shopNameField && fulfillmentModes.length > 0) {
-    shopNameField.label = shopNameField.label === "Shop name" ? "Your name" : shopNameField.label;
+
+  function focusFirstMissing() {
+    if (availableModes.length > 0 && !fulfillment) {
+      setErrorMessage("Choose dine in, pickup, or delivery.");
+      setStatus("error");
+      return;
+    }
+    const first = displayFields.find((field) => field.required && !(formValues[field.id] ?? "").trim());
+    if (!first) return;
+    document.getElementById(`checkout-${first.id}`)?.focus();
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/40">
-      <div className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[90] flex justify-end bg-black/40">
+      <button
+        type="button"
+        className="absolute inset-0 hidden sm:block"
+        aria-label="Close cart"
+        onClick={onClose}
+      />
+      <div
+        className="relative flex h-[100dvh] w-full max-w-md flex-col bg-white shadow-2xl"
+        style={keyboardInset > 0 ? { height: `calc(100dvh - ${keyboardInset}px)` } : undefined}
+      >
         <div className="flex items-center justify-between border-b border-[var(--cat-border)] px-4 py-3.5">
           <div className="flex items-center gap-2">
             {step === "delivery" && (
@@ -351,7 +404,7 @@ export function CartPanel({
                   </div>
                 </div>
               ) : null}
-              {visibleFields.map((field) => (
+              {displayFields.map((field) => (
                 <CheckoutFieldInput
                   key={field.id}
                   field={field}
@@ -372,7 +425,7 @@ export function CartPanel({
         </div>
 
         {cartItems.length > 0 && (
-          <div className="sticky bottom-0 border-t border-[var(--cat-border)] bg-white px-4 py-3.5">
+          <div className="sticky bottom-0 border-t border-[var(--cat-border)] bg-white px-4 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
             <div className="mb-3 space-y-1 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--cat-muted)]">
@@ -437,8 +490,18 @@ export function CartPanel({
               <button
                 type="submit"
                 form="delivery-form"
-                disabled={!canSubmit || status === "submitting"}
-                className="min-h-11 w-full rounded-[9px] bg-[var(--cat-accent)] text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300"
+                aria-disabled={!canSubmit || status === "submitting"}
+                onClick={(event) => {
+                  if (canSubmit && status !== "submitting") return;
+                  event.preventDefault();
+                  if (status === "submitting") return;
+                  focusFirstMissing();
+                }}
+                className={`ops-press min-h-12 w-full rounded-[9px] text-sm font-semibold text-white transition ${
+                  !canSubmit || status === "submitting"
+                    ? "bg-slate-300 text-slate-600"
+                    : "bg-[var(--cat-accent)]"
+                }`}
               >
                 {status === "submitting" || missing.length > 0 || belowMin
                   ? belowMin
@@ -481,6 +544,7 @@ function CheckoutFieldInput({
           {requiredMark}
         </label>
         <select
+          id={`checkout-${field.id}`}
           required={field.required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -516,6 +580,7 @@ function CheckoutFieldInput({
           ) : null}
         </div>
         <textarea
+          id={`checkout-${field.id}`}
           required={field.required}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -540,6 +605,7 @@ function CheckoutFieldInput({
             </span>
           ) : null}
           <input
+            id={`checkout-${field.id}`}
             required={field.required}
             type="tel"
             value={value}
@@ -572,6 +638,7 @@ function CheckoutFieldInput({
         ) : null}
       </div>
       <input
+        id={`checkout-${field.id}`}
         required={field.required}
         type={field.type === "number" ? "number" : "text"}
         value={value}

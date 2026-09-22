@@ -15,13 +15,16 @@ import { LiveRecentReservations } from "./LiveRecentReservations";
 import { OrderingCard } from "@/components/admin/OrderingCard";
 import { FloorPlanCard } from "@/components/admin/FloorPlanCard";
 import { DayOpsStrip } from "./DayOpsStrip";
-import { SettingsFold } from "./SettingsFold";
+import { SettingsHub } from "./SettingsHub";
+import { DiscoveryCard } from "./DiscoveryCard";
+import { PlaceContactCard } from "./PlaceContactCard";
+import { DangerCard } from "./DangerCard";
 import { reservationTone } from "@/lib/catalog/reservation-status";
 import { parseCheckoutFields } from "@/lib/catalog/checkout-fields";
 import { parseCheckoutForm, parseFulfillmentModes } from "@/lib/catalog/checkout-form";
 import { parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { parseBanners, parseImageFit } from "@/lib/catalog/merchandising";
-import { locationsToText, parseCoord, parseLocations } from "@/lib/catalog/locations";
+import { parseCoord, parseLocations } from "@/lib/catalog/locations";
 import type { OrderRow, ReservationRow } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +55,6 @@ export default async function CatalogDashboardPage({
     catalogItemsRes,
     reservationsRes,
     todayReservationsRes,
-    shopsRes,
     ownerAccountRes,
   ] = await Promise.all([
     requireAccount(),
@@ -92,11 +94,6 @@ export default async function CatalogDashboardPage({
       .eq("catalog_id", catalogId)
       .eq("day", todayIso),
     supabase
-      .from("catalogs")
-      .select("id, name, slug, status")
-      .eq("account_id", (await getCatalogOrNotFound(catalogId)).account_id)
-      .order("created_at", { ascending: true }),
-    supabase
       .from("accounts")
       .select("ls_status, trial_ends_at")
       .eq("id", (await getCatalogOrNotFound(catalogId)).account_id)
@@ -117,13 +114,8 @@ export default async function CatalogDashboardPage({
   const visibleItemCount = visibleItemsCountRes.count ?? 0;
   const recentOrders = (recentOrdersRes.data ?? []) as OrderRow[];
   const recentReservations = (reservationsRes.data ?? []) as ReservationRow[];
-  const shops = (shopsRes.data ?? []).map((row) => ({
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    status: row.status,
-  }));
-  const canAddBranch = canPublishNewCatalog(ownerAccountRes.data ?? account);
+  const canAddShop = canPublishNewCatalog(ownerAccountRes.data ?? account);
+  const locations = parseLocations(catalog.locations);
   const settings = parseTemplateSettings(catalog.template_settings);
   const showReservations = settings.restaurant.enableReserve || recentReservations.length > 0;
   const acceptOrders = catalog.accept_orders !== false;
@@ -172,6 +164,94 @@ export default async function CatalogDashboardPage({
       note: itemCount === visibleItemCount ? "All visible" : `${visibleItemCount} visible`,
     },
   ];
+
+  function panels(embedded: boolean) {
+    return {
+      hours: (
+        <HoursCard
+          catalogId={catalogId}
+          hours={catalog.hours ?? ""}
+          showHours={catalog.show_hours !== false}
+          embedded={embedded}
+        />
+      ),
+      contact: (
+        <PlaceContactCard
+          catalogId={catalogId}
+          phone={catalog.phone ?? ""}
+          email={catalog.email ?? ""}
+          address={catalog.address ?? ""}
+          whatsapp={catalog.whatsapp ?? ""}
+          instagram={catalog.instagram ?? ""}
+          geoLat={parseCoord(catalog.geo_lat)}
+          geoLng={parseCoord(catalog.geo_lng)}
+          showContact={catalog.show_contact !== false}
+          showSocial={catalog.show_social !== false}
+          showMap={Boolean(catalog.show_map)}
+          embedded={embedded}
+        />
+      ),
+      locations: (
+        <BranchesCard
+          catalogId={catalogId}
+          catalogName={catalog.name}
+          locations={locations}
+          embedded={embedded}
+        />
+      ),
+      ordering: (
+        <OrderingCard
+          catalogId={catalogId}
+          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
+          checkoutFields={parseCheckoutFields(catalog.checkout_fields)}
+          checkoutForm={parseCheckoutForm(catalog.checkout_form)}
+          template={catalog.template}
+          templateSettings={parseTemplateSettings(catalog.template_settings)}
+          acceptOrders={acceptOrders}
+          ordersPausedMessage={catalog.orders_paused_message ?? ""}
+          storefrontAlert={catalog.storefront_alert ?? ""}
+          showStorefrontAlert={showAlert}
+          orderEmail={catalog.order_email ?? ""}
+          catalogAddress={catalog.address ?? ""}
+          embedded={embedded}
+        />
+      ),
+      look: (
+        <LookSettingsForm
+          catalogId={catalogId}
+          catalogName={catalog.name}
+          template={catalog.template}
+          accent={catalog.accent}
+          logo={catalog.logo ?? ""}
+          banners={parseBanners(catalog.banners)}
+          imageFit={parseImageFit(catalog.image_fit)}
+          placeholderImageUrl={catalog.placeholder_image_url ?? ""}
+          templateSettings={parseTemplateSettings(catalog.template_settings)}
+          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
+          embedded={embedded}
+        />
+      ),
+      discovery: (
+        <DiscoveryCard
+          catalogId={catalogId}
+          catalogName={catalog.name}
+          tagline={catalog.tagline ?? ""}
+          about={catalog.about ?? ""}
+          logo={catalog.logo ?? ""}
+          embedded={embedded}
+        />
+      ),
+      danger: (
+        <DangerCard
+          catalogId={catalogId}
+          catalogName={catalog.name}
+          canAddShop={canAddShop}
+          subscribeHref="/admin/settings"
+          embedded={embedded}
+        />
+      ),
+    };
+  }
 
   return (
     <>
@@ -275,68 +355,16 @@ export default async function CatalogDashboardPage({
           settings={parseTemplateSettings(catalog.template_settings)}
         />
 
-        <SettingsFold>
-            <div className="grid grid-cols-2 gap-2 px-2 sm:grid-cols-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="rounded-[12px] bg-[#f4f6f9] px-3 py-2.5">
-                  <p className="m-0 text-[11px] text-[#86868b]">{stat.label}</p>
-                  <p className="m-0 mt-1 text-[17px] font-semibold tracking-tight tabular-nums">{stat.value}</p>
-                </div>
-              ))}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className="rounded-[12px] bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
+              <p className="m-0 text-[11px] text-[#86868b]">{stat.label}</p>
+              <p className="m-0 mt-1 text-[17px] font-semibold tracking-tight tabular-nums">{stat.value}</p>
             </div>
-            <HoursCard
-              catalogId={catalogId}
-              hours={catalog.hours ?? ""}
-              showHours={catalog.show_hours !== false}
-            />
-            <BranchesCard
-              catalogId={catalogId}
-              catalogName={catalog.name}
-              shops={shops}
-              canAdd={canAddBranch}
-              subscribeHref="/admin/settings"
-            />
-            <LookSettingsForm
-          catalogId={catalogId}
-          catalogName={catalog.name}
-          template={catalog.template}
-          accent={catalog.accent}
-          logo={catalog.logo ?? ""}
-          tagline={catalog.tagline ?? ""}
-          about={catalog.about ?? ""}
-          banners={parseBanners(catalog.banners)}
-          imageFit={parseImageFit(catalog.image_fit)}
-          phone={catalog.phone ?? ""}
-          email={catalog.email ?? ""}
-          address={catalog.address ?? ""}
-          whatsapp={catalog.whatsapp ?? ""}
-          instagram={catalog.instagram ?? ""}
-          locationsText={locationsToText(parseLocations(catalog.locations))}
-          geoLat={parseCoord(catalog.geo_lat)}
-          geoLng={parseCoord(catalog.geo_lng)}
-          placeholderImageUrl={catalog.placeholder_image_url ?? ""}
-          showContact={catalog.show_contact !== false}
-          showSocial={catalog.show_social !== false}
-          showMap={Boolean(catalog.show_map)}
-          templateSettings={parseTemplateSettings(catalog.template_settings)}
-          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
-        />
+          ))}
+        </div>
 
-        <OrderingCard
-          catalogId={catalogId}
-          fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
-          checkoutFields={parseCheckoutFields(catalog.checkout_fields)}
-          checkoutForm={parseCheckoutForm(catalog.checkout_form)}
-          template={catalog.template}
-          templateSettings={parseTemplateSettings(catalog.template_settings)}
-          acceptOrders={acceptOrders}
-          ordersPausedMessage={catalog.orders_paused_message ?? ""}
-          storefrontAlert={catalog.storefront_alert ?? ""}
-          showStorefrontAlert={showAlert}
-          orderEmail={catalog.order_email ?? ""}
-          catalogAddress={catalog.address ?? ""}
-        />
-        </SettingsFold>
+        <SettingsHub desktop={panels(false)} mobile={panels(true)} />
       </div>
     </>
   );

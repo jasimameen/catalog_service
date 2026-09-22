@@ -6,7 +6,7 @@ import {
   telHref,
   whatsappHref,
 } from "@/lib/catalog/merchandising";
-import { osmEmbedSrc } from "@/lib/catalog/locations";
+import { osmEmbedSrc, websiteHref } from "@/lib/catalog/locations";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 
 export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
@@ -80,17 +80,54 @@ export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
                 </p>
                 {hasLocations ? (
                   <ul className="mt-2 list-none space-y-2 p-0">
-                    {locations.map((row) => (
-                      <li key={`${row.name}-${row.phone}`} className="text-[13px] leading-snug">
-                        <span className="font-medium text-[var(--cat-ink)]">{row.name}</span>
-                        {row.phone ? (
-                          <span className="mt-0.5 block text-[var(--cat-muted)]">{row.phone}</span>
-                        ) : null}
-                        {row.address ? (
-                          <span className="mt-0.5 block text-[var(--cat-muted)]">{row.address}</span>
-                        ) : null}
-                      </li>
-                    ))}
+                    {locations.map((row) => {
+                      const site = websiteHref(row.website);
+                      const mail = mailtoHref(row.email);
+                      const tel = telHref(row.phone);
+                      return (
+                        <li key={`${row.name}-${row.phone}-${row.address}`} className="text-[13px] leading-snug">
+                          <span className="font-medium text-[var(--cat-ink)]">{row.name}</span>
+                          {row.address ? (
+                            <span className="mt-0.5 block text-[var(--cat-muted)]">{row.address}</span>
+                          ) : null}
+                          {row.phone ? (
+                            tel ? (
+                              <a href={tel} className="mt-0.5 block text-[var(--cat-accent)] hover:underline">
+                                {row.phone}
+                              </a>
+                            ) : (
+                              <span className="mt-0.5 block text-[var(--cat-muted)]">{row.phone}</span>
+                            )
+                          ) : null}
+                          {row.email ? (
+                            mail ? (
+                              <a href={mail} className="mt-0.5 block text-[var(--cat-accent)] hover:underline">
+                                {row.email}
+                              </a>
+                            ) : (
+                              <span className="mt-0.5 block text-[var(--cat-muted)]">{row.email}</span>
+                            )
+                          ) : null}
+                          {row.website ? (
+                            site ? (
+                              <a
+                                href={site}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-0.5 block text-[var(--cat-accent)] hover:underline"
+                              >
+                                {row.website}
+                              </a>
+                            ) : (
+                              <span className="mt-0.5 block text-[var(--cat-muted)]">{row.website}</span>
+                            )
+                          ) : null}
+                          {row.notes ? (
+                            <span className="mt-0.5 block text-[var(--cat-muted)]">{row.notes}</span>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : null}
                 {showMap && catalog.geoLat != null && catalog.geoLng != null ? (

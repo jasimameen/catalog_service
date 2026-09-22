@@ -6,7 +6,7 @@ import {
   type TemplateSettings,
 } from "@/lib/catalog/template-settings";
 import { planStats } from "@/lib/catalog/floor-plan";
-import { dashBtnPrimary, dashCard, dashKicker } from "@/components/admin/dashboard/styles";
+import { dashKicker } from "@/components/admin/dashboard/styles";
 
 export function FloorPlanCard({
   catalogId,
@@ -28,35 +28,23 @@ export function FloorPlanCard({
   const empty = !hasPlan;
 
   return (
-    <section id="floor" className={`${dashCard} flex flex-wrap items-center gap-3.5 px-4 py-4 sm:px-[18px]`}>
+    <section id="floor" className="flex flex-wrap items-center gap-3 rounded-[16px] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(16,23,32,0.04)] sm:px-[18px]">
       <div className="min-w-0 flex-1 basis-[240px]">
-        <p className={`m-0 ${dashKicker}`}>Floor plan</p>
+        <p className={`m-0 ${dashKicker}`}>Floor</p>
         {empty ? (
-          <>
-            <p className="m-0 mt-1.5 text-[18px] font-semibold tracking-tight text-[var(--cat-ink)]">
-              Design rooms and tables
-            </p>
-            <p className="m-0 mt-1 text-[13px] leading-relaxed text-[var(--cat-muted)]">
-              {restaurantish
-                ? "Paint floors, drop tables, then publish. Guests pick from this plan when they reserve or dine in."
-                : "Open the studio to draw a floor. Turn on dine-in or reserve in Ordering when you want guests to use it."}
-            </p>
-          </>
+          <p className="m-0 mt-1 text-[14px] text-[#5a6472]">
+            {restaurantish
+              ? "Draw tables so guests can reserve or dine in."
+              : "Optional floor plan for rooms and tables."}
+          </p>
         ) : (
-          <>
-            <p className="m-0 mt-1.5 text-[22px] font-semibold tracking-tight text-[var(--cat-ink)] tabular-nums">
-              {stats.floors} {stats.floors === 1 ? "floor" : "floors"} · {stats.tables}{" "}
-              {stats.tables === 1 ? "table" : "tables"} · {stats.covers} covers
-            </p>
-            <p className="m-0 mt-1 text-[13px] text-[var(--cat-muted)]">
-              {stats.area} m² painted · {settings.floor.name}
-              {settings.restaurant.enableReserve ? " · live for reserve" : ""}
-            </p>
-          </>
+          <p className="m-0 mt-1 text-[15px] font-semibold tracking-tight tabular-nums">
+            {stats.tables} {stats.tables === 1 ? "table" : "tables"} · {stats.covers} covers
+          </p>
         )}
       </div>
-      <Link href={`/admin/${catalogId}/floor`} className={`${dashBtnPrimary} no-underline`}>
-        Open studio
+      <Link href={`/admin/${catalogId}/floor`} className="ops-press text-[13px] text-[#0b5fce] no-underline">
+        {empty ? "Open studio" : "Edit"}
       </Link>
     </section>
   );

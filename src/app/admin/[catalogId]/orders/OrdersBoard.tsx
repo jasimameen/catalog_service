@@ -18,7 +18,16 @@ import {
   type OrderStatusDef,
   type WorkflowLaneId,
 } from "@/lib/catalog/order-statuses";
-import { FulfillmentTypeBadge } from "@/components/orders/FulfillmentTypeBadge";
+import {
+  OpsGhostButton,
+  OpsPrimaryButton,
+  OpsSegment,
+  OpsSegmented,
+  OrderHero,
+  StatusCue,
+} from "@/components/admin/ops/OpsChrome";
+import { TypeMark } from "@/components/orders/FulfillmentTypeBadge";
+import { LANE_TONE, orderIdentity } from "@/lib/catalog/order-identity";
 import type { CheckoutFormField, OrderItemRow, OrderRow } from "@/lib/supabase/types";
 import type { OrderStatusEventRow } from "@/lib/supabase/types";
 import { claimOrder, setOrderStatus } from "./actions";
@@ -72,10 +81,6 @@ function statusEdge(hex?: string) {
   return hex ? `${hex}40` : "#e2e7ee";
 }
 
-function statusTintStrong(hex?: string) {
-  return hex ? `${hex}26` : "#f4f6f9";
-}
-
 function columnAtPoint(x: number, y: number): string | null {
   const node = document.elementFromPoint(x, y);
   if (!(node instanceof Element)) return null;
@@ -108,6 +113,7 @@ export function OrdersBoard({
   checkoutForm,
   enableClaim,
   notify,
+  hasDineIn = false,
   children,
 }: {
   catalogId: string;
@@ -123,6 +129,7 @@ export function OrdersBoard({
   checkoutForm: CheckoutFormField[];
   enableClaim: boolean;
   notify: NotifySoundSettings;
+  hasDineIn?: boolean;
   children?: ReactNode;
 }) {
   const router = useRouter();
@@ -136,6 +143,7 @@ export function OrdersBoard({
   const [loadError, setLoadError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [fulfillFilter, setFulfillFilter] = useState<OrderFulfillment | "all" | "unclaimed">("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<ViewMode>("table");
   const [drag, setDrag] = useState<DragState | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
@@ -263,6 +271,10 @@ export function OrdersBoard({
       try {
         const stored = window.sessionStorage.getItem(`catalog-orders-view:${catalogId}`);
         if (stored === "board" || stored === "table") setView(stored);
+        const fulfill = window.sessionStorage.getItem(`catalog-orders-fulfill:${catalogId}`);
+        if (fulfill === "all" || fulfill === "unclaimed" || fulfill === "dine_in" || fulfill === "pickup" || fulfill === "delivery") {
+          setFulfillFilter(fulfill);
+        }
       } catch {
         // ignore
       }
@@ -280,6 +292,15 @@ export function OrdersBoard({
     setView(next);
     try {
       window.sessionStorage.setItem(`catalog-orders-view:${catalogId}`, next);
+    } catch {
+      // ignore
+    }
+  }
+
+  function pickFulfill(next: OrderFulfillment | "all" | "unclaimed") {
+    setFulfillFilter(next);
+    try {
+      window.sessionStorage.setItem(`catalog-orders-fulfill:${catalogId}`, next);
     } catch {
       // ignore
     }
@@ -338,25 +359,31 @@ export function OrdersBoard({
     return [...map.values()];
   }, [extraStatuses, statuses]);
 
-  const counts = useMemo(() => {
-    const next: Record<string, number> = {};
-    for (const status of filterStatuses) next[status.id] = 0;
-    for (const order of orders) {
-      if (next[order.status] == null) next[order.status] = 0;
-      next[order.status] += 1;
-    }
-    return next;
-  }, [filterStatuses, orders]);
+  const openIds = useMemo(
+    () => filterStatuses.filter((row) => !row.is_done).map((row) => row.id),
+    [filterStatuses],
+  );
+  const allIds = useMemo(() => filterStatuses.map((row) => row.id), [filterStatuses]);
+  const isOpenFilter = sameIds(filter, openIds);
+  const isAllFilter = !isOpenFilter && sameIds(filter, allIds);
+  const dineInOn = hasDineIn || orders.some((order) => order.fulfillment === "dine_in");
+  const dineInFirst =
+    dineInOn && isOpenFilter && (fulfillFilter === "all" || fulfillFilter === "unclaimed");
 
   const visible = useMemo(() => {
     const allowed = new Set(filter);
-    return orders.filter((order) => {
+    const rows = orders.filter((order) => {
       if (!allowed.has(order.status)) return false;
       if (fulfillFilter === "unclaimed") return !order.claimed_at;
       if (fulfillFilter === "all") return true;
       return order.fulfillment === fulfillFilter;
     });
-  }, [filter, fulfillFilter, orders]);
+    if (!dineInFirst) return rows;
+    return [...rows].sort((a, b) => {
+      const rank = (order: OrderRow) => (order.fulfillment === "dine_in" ? 0 : 1);
+      return rank(a) - rank(b);
+    });
+  }, [dineInFirst, filter, fulfillFilter, orders]);
 
   async function takeOrder(order: OrderRow) {
     const result = await claimOrder(catalogId, order.id);
@@ -373,22 +400,7 @@ export function OrdersBoard({
     );
   }
 
-  const openIds = useMemo(
-    () => filterStatuses.filter((row) => !row.is_done).map((row) => row.id),
-    [filterStatuses],
-  );
-  const allIds = useMemo(() => filterStatuses.map((row) => row.id), [filterStatuses]);
-  const isOpenFilter = sameIds(filter, openIds);
-  const isAllFilter = !isOpenFilter && sameIds(filter, allIds);
-
   const openOrder = openId ? orders.find((order) => order.id === openId) ?? null : null;
-
-  function toggleStatus(id: string) {
-    const next = filter.includes(id) ? filter.filter((item) => item !== id) : [...filter, id];
-    if (next.length === 0) return;
-    setFilter(next);
-    writeFilterUrl(catalogId, next);
-  }
 
   function showOpenOnly() {
     const next = filterStatuses.filter((row) => !row.is_done).map((row) => row.id);
@@ -515,125 +527,143 @@ export function OrdersBoard({
                 : "Nothing matches these filters."
       : "";
   const boardColumns = filterStatuses.filter((status) => filter.includes(status.id));
+  const openCount = orders.filter((row) => !filterStatuses.find((s) => s.id === row.status)?.is_done).length;
+  const filterActive = !isOpenFilter || fulfillFilter !== "all";
+  const filterSummary = [
+    !isOpenFilter && !isAllFilter && activeLane ? WORKFLOW_LANES.find((lane) => lane.id === activeLane)?.label : null,
+    fulfillFilter === "dine_in" ? "Dine-in" : fulfillFilter === "pickup" ? "Pickup" : fulfillFilter === "delivery" ? "Delivery" : fulfillFilter === "unclaimed" ? "Unclaimed" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <p className="m-0 min-w-0 flex-1 basis-60 text-[13px] text-[#5a6472]">
-          Accept new tickets, cook, then mark ready. Bookings live on the Reservations tab.
-        </p>
-        <div className="flex gap-1 rounded-[11px] border border-[#e2e7ee] bg-white p-[3px]">
-          <button
-            type="button"
-            onClick={() => pickView("table")}
-            className="min-h-[38px] cursor-pointer rounded-lg px-3.5 text-[13px]"
-            style={{
-              background: view === "table" ? "#101720" : "transparent",
-              color: view === "table" ? "#fff" : "#5a6472",
-            }}
-          >
-            Table
-          </button>
-          <button
-            type="button"
-            onClick={() => pickView("board")}
-            className="min-h-[38px] cursor-pointer rounded-lg px-3.5 text-[13px]"
-            style={{
-              background: view === "board" ? "#101720" : "transparent",
-              color: view === "board" ? "#fff" : "#5a6472",
-            }}
-          >
-            Board
-          </button>
+    <div className="flex flex-col gap-3">
+      <div className="ops-glass relative z-[4] -mx-4 px-4 py-2.5 md:sticky md:top-[3.6rem]">
+        <div className="ops-edge" aria-hidden />
+        <div className="flex flex-wrap items-center gap-2">
+          <OpsSegmented label="Tickets to show">
+            <OpsSegment selected={isOpenFilter} onClick={showOpenOnly}>
+              Needs action{openCount > 0 ? ` ${openCount}` : ""}
+            </OpsSegment>
+            <OpsSegment selected={isAllFilter} onClick={showAll}>
+              All
+            </OpsSegment>
+          </OpsSegmented>
+          {dineInFirst ? (
+            <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--cat-accent)]">
+              <TypeMark kind="dine_in" size={13} />
+              Dine-in first
+            </span>
+          ) : null}
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <OpsSegmented label="View">
+              <OpsSegment selected={view === "table"} onClick={() => pickView("table")}>
+                Table
+              </OpsSegment>
+              <OpsSegment selected={view === "board"} onClick={() => pickView("board")}>
+                Board
+              </OpsSegment>
+            </OpsSegmented>
+            <OpsGhostButton
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className={filterActive || filtersOpen ? "text-[var(--cat-accent)]" : ""}
+            >
+              Filter{filterActive ? " · on" : ""}
+            </OpsGhostButton>
+            {notifyPermission === "default" ? (
+              <OpsGhostButton onClick={() => void enableNotify()}>Notify</OpsGhostButton>
+            ) : null}
+            <a
+              href={`/admin/${catalogId}/orders/export`}
+              className="ops-press inline-flex min-h-9 items-center px-2.5 text-[13px] text-[#86868b] no-underline hover:text-[var(--cat-ink)]"
+            >
+              Export
+            </a>
+          </div>
         </div>
-        {notifyPermission === "default" ? (
-          <button
-            type="button"
-            onClick={() => void enableNotify()}
-            className="min-h-[38px] shrink-0 cursor-pointer rounded-full border border-[#e2e7ee] bg-white px-3.5 text-[13px] hover:border-[#c3ccd9]"
-          >
-            Notify me
-          </button>
+        {filterSummary && !filtersOpen ? (
+          <p className="m-0 mt-1.5 text-[12px] text-[#86868b]">{filterSummary}</p>
         ) : null}
-        <a
-          href={`/admin/${catalogId}/orders/export`}
-          className="inline-flex min-h-[38px] shrink-0 items-center rounded-full border border-[#e2e7ee] bg-white px-3.5 text-[13px] text-[var(--cat-ink)] hover:border-[#c3ccd9]"
-        >
-          Export CSV
-        </a>
+        {filtersOpen ? (
+          <div className="mt-2.5 flex flex-col gap-2.5 border-t border-black/[0.04] pt-2.5">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="mr-1 text-[11px] uppercase tracking-[0.06em] text-[#86868b]">Step</span>
+              {WORKFLOW_LANES.map((lane) => (
+                <OpsGhostButton
+                  key={lane.id}
+                  onClick={() => showLane(lane.id)}
+                  className={activeLane === lane.id ? "bg-[var(--cat-accent)]/10 text-[var(--cat-accent)]" : ""}
+                >
+                  {lane.id === "done" ? <TypeMark kind="done" size={13} /> : null}
+                  {lane.label}
+                  <span className={`ml-1 tabular-nums ${activeLane === lane.id ? "text-[var(--cat-accent)]" : "text-[#86868b]"}`}>
+                    {laneCounts[lane.id]}
+                  </span>
+                </OpsGhostButton>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="mr-1 text-[11px] uppercase tracking-[0.06em] text-[#86868b]">Type</span>
+              <OpsGhostButton
+                onClick={() => pickFulfill("all")}
+                className={fulfillFilter === "all" ? "bg-[var(--cat-accent)]/10 text-[var(--cat-accent)]" : ""}
+              >
+                All
+              </OpsGhostButton>
+              {FULFILLMENTS.map((mode) => (
+                <OpsGhostButton
+                  key={mode.value}
+                  onClick={() => pickFulfill(mode.value)}
+                  className={fulfillFilter === mode.value ? "bg-[var(--cat-accent)]/10 text-[var(--cat-accent)]" : ""}
+                >
+                  <TypeMark kind={mode.value} size={13} />
+                  {mode.label}
+                </OpsGhostButton>
+              ))}
+              {enableClaim ? (
+                <OpsGhostButton
+                  onClick={() => pickFulfill("unclaimed")}
+                  className={fulfillFilter === "unclaimed" ? "bg-[var(--cat-accent)]/10 text-[var(--cat-accent)]" : ""}
+                >
+                  Unclaimed
+                </OpsGhostButton>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {children}
 
       {loadError ? (
-        <p className="m-0 rounded-[11px] border border-[#f3d2ce] bg-[#fff5f4] px-3.5 py-2.5 text-[13px] text-[#b42318]">
+        <p className="m-0 rounded-[11px] bg-[#fff5f4] px-3.5 py-2.5 text-[13px] text-[#b42318]">
           Could not refresh orders. New ones still appear within a few seconds.
         </p>
       ) : null}
-
-      <div className="flex flex-col gap-2">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 [scrollbar-width:thin]">
-          <FilterPill label={`Open ${orders.filter((row) => !filterStatuses.find((s) => s.id === row.status)?.is_done).length}`} selected={isOpenFilter} onClick={showOpenOnly} />
-          {WORKFLOW_LANES.map((lane) => (
-            <FilterPill
-              key={lane.id}
-              label={`${lane.label} ${laneCounts[lane.id]}`}
-              selected={activeLane === lane.id}
-              onClick={() => showLane(lane.id)}
-            />
-          ))}
-        </div>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
-          <FilterPill label="All types" selected={fulfillFilter === "all"} onClick={() => setFulfillFilter("all")} />
-          {FULFILLMENTS.map((mode) => (
-            <FilterPill
-              key={mode.value}
-              label={mode.label}
-              selected={fulfillFilter === mode.value}
-              onClick={() => setFulfillFilter(mode.value)}
-            />
-          ))}
-          {enableClaim ? (
-            <FilterPill
-              label="Unclaimed"
-              selected={fulfillFilter === "unclaimed"}
-              onClick={() => setFulfillFilter("unclaimed")}
-            />
-          ) : null}
-        </div>
-      </div>
 
       {view === "board" ? (
         <div className="-mx-1 flex items-start gap-3 overflow-x-auto px-1 pb-1.5 [scrollbar-width:thin]">
           {boardColumns.map((status) => {
             const cards = visible.filter((order) => order.status === status.id);
             const dropping = overCol === status.id && drag?.active === true && drag.fromStatus !== status.id;
+            const lane = workflowLane(status.id, filterStatuses);
+            const tone = LANE_TONE[lane];
             return (
               <section
                 key={status.id}
                 data-board-col={status.id}
-                className="max-w-[360px] min-w-[264px] flex-1 overflow-hidden rounded-[14px] border bg-white transition-[box-shadow,border-color,background-color]"
+                className="max-w-[360px] min-w-[264px] flex-1 overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)] transition-[box-shadow,background-color]"
                 style={{
-                  borderColor: dropping ? status.color || "#0b5fce" : "#e2e7ee",
-                  background: dropping ? statusTint(status.color) : "#fff",
-                  boxShadow: dropping ? `inset 0 0 0 2px ${status.color || "#0b5fce"}` : undefined,
+                  background: dropping ? tone.wash : "#fff",
+                  boxShadow: dropping ? `inset 0 0 0 2px ${tone.ink}` : undefined,
                 }}
               >
-                <div
-                  className="flex items-center gap-2.5 border-b px-3.5 py-3"
-                  style={{
-                    background: statusTint(status.color),
-                    borderColor: statusEdge(status.color),
-                  }}
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ background: status.color || "#86868b" }}
-                  />
+                <div className="flex items-center gap-2.5 px-3.5 py-3">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.ink }} />
                   <span className="min-w-0 flex-1 text-[14px] font-semibold tracking-tight">
                     {status.label}
                   </span>
-                  <span className="text-[12px] tabular-nums text-[#46505e]">{cards.length}</span>
+                  <span className="text-[13px] tabular-nums text-[#86868b]">{cards.length}</span>
                 </div>
                 <div className="flex min-h-[88px] flex-col gap-2.5 p-2.5">
                   {cards.map((order) => (
@@ -679,15 +709,14 @@ export function OrdersBoard({
 
       {view === "table" ? (
         <>
-          <section className="hidden overflow-hidden rounded-[14px] border border-[#e2e7ee] bg-white md:block">
+          <section className="hidden overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)] md:block">
             <div className="overflow-x-auto">
               <div className="min-w-[720px]">
-                <div className="flex items-center gap-2 border-b border-[#edf0f4] bg-[#fbfbfd] px-3 py-1.5 text-[10px] uppercase tracking-[0.08em] text-[#8a93a2]">
-                  <div className="w-[118px] shrink-0">Type</div>
-                  <div className="min-w-0 flex-1">Order</div>
-                  <div className="w-[58px] shrink-0 text-right">Time</div>
-                  <div className="w-[88px] shrink-0 text-right">Total</div>
-                  <div className="w-[108px] shrink-0">Next</div>
+                <div className="flex items-center gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.06em] text-[#a3abb8]">
+                  <div className="min-w-0 flex-1">Ticket</div>
+                  <div className="w-[4.5rem] shrink-0 text-right">Time</div>
+                  <div className="w-[5.5rem] shrink-0 text-right">Total</div>
+                  <div className="w-[6.75rem] shrink-0">Next</div>
                 </div>
                 {visible.map((order) => (
                   <DesktopRow
@@ -778,35 +807,6 @@ export function OrdersBoard({
   );
 }
 
-function FilterPill({
-  label,
-  selected,
-  dot,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  dot?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium"
-      style={{
-        background: selected ? "#101720" : "#fff",
-        color: selected ? "#fff" : "#46505e",
-        borderColor: selected ? "#101720" : "#e2e7ee",
-      }}
-    >
-      {dot ? <span className="h-2 w-2 rounded-full" style={{ background: dot }} /> : null}
-      {label}
-    </button>
-  );
-}
-
 function NextActionButton({
   order,
   statuses,
@@ -818,73 +818,21 @@ function NextActionButton({
 }) {
   const action = nextWorkflowAction(order.status, statuses);
   if (!action) {
-    return <span className="text-[12px] text-[var(--cat-muted)]">Done</span>;
+    return (
+      <span className="inline-flex w-full items-center justify-center gap-1 text-[12px] text-[#86868b]">
+        <TypeMark kind="done" size={13} />
+        Done
+      </span>
+    );
   }
   return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation();
-        onStatus(action.nextId);
-      }}
-      className="inline-flex min-h-8 w-full items-center justify-center rounded-lg bg-[var(--cat-ink)] px-2.5 text-[12px] font-semibold text-white"
+    <OpsPrimaryButton
+      onClick={() => onStatus(action.nextId)}
+      className="w-full"
     >
       {action.label}
-    </button>
+    </OpsPrimaryButton>
   );
-}
-
-function StatusSelect({
-  id,
-  reference,
-  value,
-  options,
-  color,
-  onChange,
-  large,
-}: {
-  id: string;
-  reference: string;
-  value: string;
-  options: OrderStatusDef[];
-  color?: string;
-  onChange: (next: string) => void;
-  large?: boolean;
-}) {
-  return (
-    <div
-      className="flex items-center gap-1 rounded-lg border p-0.5"
-      style={{ borderColor: color || "#e2e7ee", background: statusTint(color) }}
-      onClick={(event) => event.stopPropagation()}
-    >
-      {color ? (
-        <span className="ml-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: color }} aria-hidden />
-      ) : null}
-      <label className="sr-only" htmlFor={id}>
-        Status for {reference}
-      </label>
-      <select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={`min-w-0 flex-1 cursor-pointer border-0 bg-transparent pr-1.5 font-medium text-[var(--cat-ink)] ${
-          large ? "min-h-11 text-[14px]" : "min-h-7 text-[12px]"
-        }`}
-      >
-        {options.map((row) => (
-          <option key={row.id} value={row.id}>
-            {row.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function statusOptions(statuses: OrderStatusDef[], current: string): OrderStatusDef[] {
-  return statuses.some((row) => row.id === current)
-    ? statuses
-    : [...statuses, { id: current, label: statusLabel(statuses, current), sort: statuses.length, is_done: false }];
 }
 
 function DesktopRow({
@@ -913,8 +861,11 @@ function DesktopRow({
   onTake: () => void;
 }) {
   const current = statuses.find((row) => row.id === order.status);
-  const color = current?.color || "#86868b";
+  const lane = workflowLane(order.status, statuses);
+  const tone = LANE_TONE[lane];
   const units = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
+  const identity = orderIdentity(order);
+  void showFulfillment;
 
   return (
     <div
@@ -927,36 +878,37 @@ function DesktopRow({
           onOpen();
         }
       }}
-      className="flex cursor-pointer items-center gap-2 border-b border-[#edf0f4] border-l-[3px] px-3 py-1.5 last:border-b-0"
+      className="ops-press flex cursor-pointer items-center gap-3 border-l-[3px] px-4 py-2.5 last:border-b-0"
       style={{
-        background: selected ? statusTintStrong(color) : "#fff",
-        borderLeftColor: color,
+        background: selected ? tone.wash : "#fff",
+        borderLeftColor: tone.ink,
       }}
     >
-      <div className="w-[118px] shrink-0">
-        <FulfillmentTypeBadge order={order} compact />
-      </div>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[13px] font-medium text-[var(--cat-ink)]">{order.shop_name || "Guest"}</span>
-          <span className="shrink-0 font-mono text-[11px] text-[var(--cat-muted)]">{order.reference}</span>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <OrderHero order={order} />
+          <span className="shrink-0 font-mono text-[11px] text-[#a3abb8]">{order.reference}</span>
         </div>
-        <div className="truncate text-[12px] text-[var(--cat-muted)]">
+        <div className="mt-0.5 truncate text-[12px] text-[#5a6472]">
+          {identity.kind !== "dine_in" ? `${identity.meta} · ` : ""}
           {itemsSummary(lines)}
           {units > 0 ? ` · ${units}` : ""}
         </div>
-        {duplicateRefs.length > 0 ? (
-          <span className="text-[10px] text-[#a1670a]">Possible duplicate · {duplicateRefs.join(", ")}</span>
-        ) : null}
-        {enableClaim ? <ClaimControl order={order} onTake={onTake} /> : null}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+          <StatusCue lane={lane} label={current?.label || statusLabel(statuses, order.status)} />
+          {duplicateRefs.length > 0 ? (
+            <span className="text-[11px] text-[#8a5a00]">Possible duplicate · {duplicateRefs.join(", ")}</span>
+          ) : null}
+          {enableClaim ? <ClaimControl order={order} onTake={onTake} /> : null}
+        </div>
       </div>
-      <div suppressHydrationWarning className="w-[58px] shrink-0 text-right text-[12px] tabular-nums text-[var(--cat-muted)]">
+      <div suppressHydrationWarning className="w-[4.5rem] shrink-0 text-right text-[13px] tabular-nums text-[#86868b]">
         {formatOrderTime(order.created_at)}
       </div>
-      <div className="w-[88px] shrink-0 text-right text-[13px] font-semibold tabular-nums text-[var(--cat-ink)]">
+      <div className="w-[5.5rem] shrink-0 text-right text-[15px] font-semibold tabular-nums tracking-tight text-[var(--cat-ink)]">
         {formatMoney(Number(order.subtotal), currency)}
       </div>
-      <div className="w-[108px] shrink-0" onClick={(event) => event.stopPropagation()}>
+      <div className="w-[6.75rem] shrink-0" onClick={(event) => event.stopPropagation()}>
         <NextActionButton order={order} statuses={statuses} onStatus={onStatus} />
       </div>
     </div>
@@ -987,7 +939,8 @@ function MobileCard({
   onTake: () => void;
 }) {
   const current = statuses.find((row) => row.id === order.status);
-  const color = current?.color || "#86868b";
+  const lane = workflowLane(order.status, statuses);
+  const tone = LANE_TONE[lane];
   const units = lines.reduce((sum, line) => sum + Number(line.qty || 0), 0);
   void showFulfillment;
 
@@ -995,11 +948,8 @@ function MobileCard({
     <article
       role="button"
       tabIndex={0}
-      className="cursor-pointer overflow-hidden rounded-[12px] border border-l-[3px] bg-white"
-      style={{
-        borderColor: statusEdge(color),
-        borderLeftColor: color,
-      }}
+      className="ops-press cursor-pointer overflow-hidden rounded-[14px] border-l-[3px] bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(16,23,32,0.04)]"
+      style={{ borderLeftColor: tone.ink }}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1008,29 +958,26 @@ function MobileCard({
         }
       }}
     >
-      <div className="flex items-center gap-2 px-2.5 py-2">
-        <FulfillmentTypeBadge order={order} compact />
+      <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="shrink-0 font-mono text-[12px] font-medium">{order.reference}</span>
-            <span className="truncate text-[12px] text-[var(--cat-muted)]">{order.shop_name || "Guest"}</span>
-          </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--cat-muted)]">
+          <OrderHero order={order} />
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] text-[#86868b]">
+            <StatusCue lane={lane} label={current?.label || statusLabel(statuses, order.status)} />
             <span>{units} items</span>
             <span suppressHydrationWarning>{formatOrderTime(order.created_at)}</span>
-            <span>{current?.label || statusLabel(statuses, order.status)}</span>
           </div>
         </div>
-        <span className="shrink-0 text-[13px] font-semibold tabular-nums">
+        <span className="shrink-0 text-[15px] font-semibold tabular-nums tracking-tight">
           {formatMoney(Number(order.subtotal), currency)}
         </span>
       </div>
-      <div className="flex items-center gap-2 border-t border-[#edf0f4] px-2.5 py-1.5">
+      <div className="mt-2 truncate text-[12px] text-[#5a6472]">{itemsSummary(lines)}</div>
+      <div className="mt-2.5 flex items-center gap-2">
         {enableClaim ? <ClaimControl order={order} onTake={onTake} /> : null}
         {duplicateRefs.length > 0 ? (
-          <span className="text-[10px] text-[#a1670a]">Duplicate</span>
+          <span className="text-[11px] text-[#8a5a00]">Duplicate</span>
         ) : null}
-        <div className="ml-auto w-[120px]" onClick={(event) => event.stopPropagation()}>
+        <div className="ml-auto w-[7.5rem]" onClick={(event) => event.stopPropagation()}>
           <NextActionButton order={order} statuses={statuses} onStatus={onStatus} />
         </div>
       </div>
@@ -1071,20 +1018,18 @@ function BoardCard({
   onStatus: (next: string) => void;
   onTake: () => void;
 }) {
-  const current = statuses.find((row) => row.id === order.status);
-  const color = current?.color || "#86868b";
+  const lane = workflowLane(order.status, statuses);
+  const tone = LANE_TONE[lane];
 
   return (
     <article
       role="button"
       tabIndex={0}
-      className={`flex flex-col gap-1 rounded-[11px] border border-l-[3px] px-2.5 py-2 touch-none ${
+      className={`flex flex-col gap-1.5 rounded-[12px] border-l-[3px] bg-[#fbfbfd] px-3 py-2.5 touch-none ${
         dragging ? "cursor-grabbing" : "cursor-grab"
       }`}
       style={{
-        background: "#fff",
-        borderColor: statusEdge(color),
-        borderLeftColor: color,
+        borderLeftColor: tone.ink,
         opacity: dragging ? 0.35 : 1,
       }}
       onPointerDown={onPointerDown}
@@ -1098,59 +1043,48 @@ function BoardCard({
         }
       }}
     >
-      <div className="flex items-center gap-2">
-        <FulfillmentTypeBadge order={order} compact />
-        <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-medium">{order.reference}</span>
-        <span suppressHydrationWarning className="text-[11px] text-[#8a93a2]">
+      <div className="flex items-start justify-between gap-2">
+        <OrderHero order={order} />
+        <span suppressHydrationWarning className="shrink-0 text-[12px] tabular-nums text-[#86868b]">
           {formatOrderTime(order.created_at)}
         </span>
       </div>
-      <div className="flex items-center gap-2 text-[12px]">
-        <span className="min-w-0 flex-1 truncate text-[var(--cat-ink)]">{order.shop_name || "Guest"}</span>
-        <span className="shrink-0 text-[11px] text-[var(--cat-muted)]">{lines.reduce((sum, line) => sum + Number(line.qty || 0), 0)} items</span>
-      </div>
+      <div className="truncate text-[12px] leading-snug text-[#5a6472]">{itemsSummary(lines)}</div>
       {showFulfillment && order.location && order.fulfillment === "delivery" ? (
-        <div className="truncate text-[11px] text-[#8a93a2]">{order.location}</div>
+        <div className="truncate text-[11px] text-[#86868b]">{order.location}</div>
       ) : null}
       {enableClaim ? <ClaimControl order={order} onTake={onTake} /> : null}
       {duplicateRefs.length > 0 ? (
-        <span className="self-start rounded-full bg-[#fdf3e6] px-2 py-[3px] text-[11px] text-[#a1670a]">
-          Possible duplicate · {duplicateRefs.join(", ")}
-        </span>
+        <span className="text-[11px] text-[#8a5a00]">Possible duplicate · {duplicateRefs.join(", ")}</span>
       ) : null}
-      <div className="text-[12px] leading-relaxed text-[#5a6472]">{itemsSummary(lines)}</div>
-      <div className="text-[15px] font-semibold tabular-nums">
-        {formatMoney(Number(order.subtotal), currency)}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[15px] font-semibold tabular-nums tracking-tight">
+          {formatMoney(Number(order.subtotal), currency)}
+        </span>
+        <span className="font-mono text-[11px] text-[#a3abb8]">{order.reference}</span>
       </div>
-      <NextActionButton order={order} statuses={statuses} onStatus={onStatus} />
+      <div onPointerDown={(event) => event.stopPropagation()}>
+        <NextActionButton order={order} statuses={statuses} onStatus={onStatus} />
+      </div>
     </article>
   );
 }
 
 function ClaimControl({ order, onTake }: { order: OrderRow; onTake: () => void }) {
   if (order.claimed_at) {
-    return <span className="text-[11px] text-[#1e9e4a]">Taken · {order.claimed_by || "staff"}</span>;
+    return <span className="text-[12px] text-[#86868b]">Taken · {order.claimed_by || "staff"}</span>;
   }
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="relative flex h-2 w-2" aria-hidden>
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#c27c0e] opacity-50" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#c27c0e]" />
-      </span>
-      <span className="rounded-full bg-[#fff3d6] px-2 py-0.5 text-[11px] font-semibold text-[#8a5a00]">
-        Unclaimed
-      </span>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onTake();
-        }}
-        className="self-start rounded-full border border-[#101720] px-2.5 py-1 text-[11px] font-semibold"
-      >
-        Take
-      </button>
-    </span>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onTake();
+      }}
+      className="ops-press text-[12px] font-medium text-[#8a5a00] hover:underline"
+    >
+      Take
+    </button>
   );
 }
 

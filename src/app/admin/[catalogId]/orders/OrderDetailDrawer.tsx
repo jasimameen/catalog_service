@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
-import { FulfillmentTypeBadge } from "@/components/orders/FulfillmentTypeBadge";
+import { FulfillmentTypeBadge, TypeMark } from "@/components/orders/FulfillmentTypeBadge";
+import { OpsPrimaryButton } from "@/components/admin/ops/OpsChrome";
+import { LANE_TONE, orderIdentity } from "@/lib/catalog/order-identity";
 import { formatSelectedOptions } from "@/lib/catalog/item-options";
 import {
   formatComboIncludes,
@@ -11,7 +13,7 @@ import {
   thumbForSku,
   type ItemThumb,
 } from "@/lib/catalog/combos";
-import { formatOrderDateTime, nextWorkflowAction, statusLabel, type OrderStatusDef } from "@/lib/catalog/order-statuses";
+import { formatOrderDateTime, nextWorkflowAction, statusLabel, workflowLane, type OrderStatusDef } from "@/lib/catalog/order-statuses";
 import type {
   CheckoutFormField,
   OrderItemRow,
@@ -58,10 +60,6 @@ function customerEmail(values: Record<string, string>): string {
     if (/email/i.test(key) && value.includes("@")) return value;
   }
   return "";
-}
-
-function statusTint(hex?: string) {
-  return hex ? `${hex}1a` : "#fbfbfd";
 }
 
 function LinePhoto({ src, name }: { src: string; name: string }) {
@@ -144,8 +142,9 @@ export function OrderDetailDrawer({
           is_done: false,
         },
       ];
-  const current = statuses.find((row) => row.id === order.status);
-  const statusColor = current?.color || "#86868b";
+  const lane = workflowLane(order.status, statuses);
+  const tone = LANE_TONE[lane];
+  const identity = orderIdentity(order);
   const nextAction = nextWorkflowAction(order.status, statuses);
 
   async function copyLink() {
@@ -173,35 +172,38 @@ export function OrderDetailDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="order-detail-title"
-        className="orders-sheet flex h-[92%] w-full max-h-full max-w-none flex-col overflow-y-auto rounded-t-[18px] bg-white md:h-full md:max-w-[440px] md:rounded-none md:border-l md:border-[#e2e7ee]"
+        className="orders-sheet flex h-[92%] w-full max-h-full max-w-none flex-col overflow-y-auto rounded-t-[18px] bg-white md:h-full md:max-w-[440px] md:rounded-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-[1] border-b border-[#edf0f4] bg-white px-4 py-3">
+        <div className="ops-glass sticky top-0 z-[1] px-4 py-3">
           <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-[#e2e7ee] md:hidden" aria-hidden />
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                <FulfillmentTypeBadge order={order} />
-                <span className="text-[11px] uppercase tracking-[0.08em] text-[#8a93a2]">
-                  {lines.reduce((sum, line) => sum + Number(line.qty || 0), 0)} items
-                </span>
-              </div>
               <h2
                 id="order-detail-title"
-                className="m-0 font-mono text-[16px] font-medium tracking-tight text-[var(--cat-ink)]"
+                className="m-0 flex items-center gap-2 text-[1.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-[var(--cat-ink)]"
               >
-                {order.reference}
+                <span
+                  className={`shrink-0 ${identity.kind === "dine_in" ? "text-[var(--cat-accent)]" : "text-[#9aa3af]"}`}
+                  aria-hidden
+                >
+                  <TypeMark kind={identity.kind} size={20} />
+                </span>
+                <span className="min-w-0 truncate">{identity.title}</span>
               </h2>
-              <p suppressHydrationWarning className="m-0 mt-0.5 text-[12px] text-[#8a93a2]">
-                {formatOrderDateTime(order.created_at)}
-                {order.shop_name ? ` · ${order.shop_name}` : ""}
+              <p suppressHydrationWarning className="m-0 mt-1 text-[13px] text-[#86868b]">
+                {identity.kind === "dine_in" ? `${identity.meta} · ` : ""}
+                {formatOrderDateTime(order.created_at)} · {order.reference}
+              </p>
+              <p className="m-0 mt-1 text-[12px] text-[#86868b]">
+                {lines.reduce((sum, line) => sum + Number(line.qty || 0), 0)} items
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close order"
-              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[11px] border border-[#e2e7ee] bg-white text-[16px] leading-none text-[#5a6472]"
+              className="ops-press flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[11px] bg-black/[0.04] text-[16px] leading-none text-[#5a6472]"
             >
               ×
             </button>
@@ -212,21 +214,17 @@ export function OrderDetailDrawer({
           <section className="flex flex-col gap-2.5">
             <div className="text-[11px] uppercase tracking-[0.08em] text-[#8a93a2]">Status</div>
             {nextAction ? (
-              <button
-                type="button"
-                onClick={() => onStatus(nextAction.nextId)}
-                className="min-h-11 w-full rounded-[11px] bg-[var(--cat-ink)] text-[14px] font-semibold text-white"
-              >
+              <OpsPrimaryButton onClick={() => onStatus(nextAction.nextId)} className="min-h-11 w-full text-[15px]">
                 {nextAction.label}
-              </button>
+              </OpsPrimaryButton>
             ) : null}
             <div
-              className="flex items-center gap-2 rounded-xl border p-1"
-              style={{ borderColor: statusColor, background: statusTint(statusColor) }}
+              className="flex items-center gap-2 rounded-xl p-1"
+              style={{ background: tone.wash }}
             >
               <span
                 className="ml-2 h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: statusColor }}
+                style={{ background: tone.ink }}
                 aria-hidden
               />
               <label className="sr-only" htmlFor={`drawer-status-${order.id}`}>

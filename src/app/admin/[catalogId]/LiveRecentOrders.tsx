@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
-import { formatOrderDateTime, statusById, type OrderStatusDef } from "@/lib/catalog/order-statuses";
+import { formatOrderDateTime, statusById, workflowLane, type OrderStatusDef } from "@/lib/catalog/order-statuses";
 import type { OrderRow } from "@/lib/supabase/types";
-import { dashCard } from "@/components/admin/dashboard/styles";
-import { FulfillmentTypeBadge } from "@/components/orders/FulfillmentTypeBadge";
+import { OrderHero, StatusCue } from "@/components/admin/ops/OpsChrome";
 import {
   announceNewOrder,
   asCatalogOrder,
@@ -30,10 +29,6 @@ function relativeTime(iso: string, now: number | null): string {
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return formatOrderDateTime(iso);
-}
-
-function statusDot(statuses: OrderStatusDef[], id: string): string {
-  return statusById(statuses, id)?.color ?? "#8a93a2";
 }
 
 export function LiveRecentOrders({
@@ -140,15 +135,15 @@ export function LiveRecentOrders({
   }, [toast]);
 
   return (
-    <section className={dashCard}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#edf0f4] px-4 py-3.5 sm:px-[18px]">
+    <section className="overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 sm:px-[18px]">
         <div className="flex min-w-0 items-center gap-2">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1e9e4a] opacity-40" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-[#1e9e4a]" />
           </span>
           <h3 className="m-0 text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">
-            Recent orders
+            Live orders
           </h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -160,13 +155,13 @@ export function LiveRecentOrders({
                   setNotifyAsk(permission === "granted" ? "on" : "hidden");
                 });
               }}
-              className="min-h-11 text-[13px] text-[#5a6472] hover:text-[var(--cat-ink)]"
+              className="ops-press min-h-11 text-[13px] text-[#5a6472] hover:text-[var(--cat-ink)]"
             >
               Notify
             </button>
           ) : null}
-          <Link href={`/admin/${catalogId}/orders`} className="min-h-11 text-[13px] leading-[44px] text-[#0b5fce]">
-            Open inbox
+          <Link href={`/admin/${catalogId}/orders`} className="ops-press min-h-11 text-[13px] leading-[44px] text-[#0b5fce]">
+            Open
           </Link>
         </div>
       </div>
@@ -187,30 +182,19 @@ export function LiveRecentOrders({
               <Link
                 key={order.id}
                 href={`/admin/${catalogId}/orders?order=${order.id}`}
-                className="flex min-h-11 items-center gap-3 border-b border-[#f1f4f8] px-4 py-3 text-[var(--cat-ink)] last:border-b-0 hover:bg-[#fafbfd] sm:px-[18px]"
+                className="ops-press flex min-h-11 items-center gap-3 px-4 py-3 text-[var(--cat-ink)] no-underline last:pb-4 hover:bg-[#fafbfd] sm:px-[18px]"
               >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: statusDot(statuses, order.status) }}
-                  title={statusById(statuses, order.status)?.label ?? order.status}
-                />
                 <span className="min-w-0 flex-1">
-                  <span className="flex min-w-0 items-center gap-1.5">
-                    <FulfillmentTypeBadge order={order} compact />
-                    <span className="truncate text-[14px]">{order.shop_name || "Guest"}</span>
+                  <OrderHero order={order} />
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-[#86868b]">
+                    <StatusCue
+                      lane={workflowLane(order.status, statuses)}
+                      label={statusById(statuses, order.status)?.label ?? order.status}
+                    />
+                    <span suppressHydrationWarning>{when}</span>
                   </span>
-                  <span className="block truncate font-mono text-[12px] text-[#8a93a2] sm:hidden">
-                    {order.reference}
-                    {when ? ` · ${when}` : ""}
-                  </span>
                 </span>
-                <span className="hidden shrink-0 font-mono text-[12px] text-[#8a93a2] sm:inline">
-                  {order.reference}
-                </span>
-                <span className="hidden shrink-0 text-[12px] text-[#8a93a2] sm:inline">
-                  {when}
-                </span>
-                <span className="shrink-0 text-[14px] tabular-nums">
+                <span className="shrink-0 text-[15px] font-semibold tabular-nums tracking-tight">
                   {formatMoney(Number(order.subtotal), currency)}
                 </span>
               </Link>

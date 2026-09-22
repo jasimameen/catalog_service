@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { dashCard } from "@/components/admin/dashboard/styles";
-import { formatOrderDateTime } from "@/lib/catalog/order-statuses";
+import { reservationTone, RESERVATION_TONE } from "@/lib/catalog/reservation-status";
 import {
   formatReserveDay,
   parseReservationItems,
@@ -88,8 +87,8 @@ export function LiveRecentReservations({
   }, [toast]);
 
   return (
-    <section className={dashCard}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#edf0f4] px-4 py-3.5 sm:px-[18px]">
+    <section className="overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 sm:px-[18px]">
         <div className="flex min-w-0 items-center gap-2">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--cat-ink)] opacity-30" />
@@ -101,9 +100,9 @@ export function LiveRecentReservations({
         </div>
         <Link
           href={`/admin/${catalogId}/orders?inbox=reservations`}
-          className="min-h-11 text-[13px] leading-[44px] text-[#0b5fce]"
+          className="ops-press min-h-11 text-[13px] leading-[44px] text-[#0b5fce]"
         >
-          Open bookings
+          Open
         </Link>
       </div>
       {toast ? (
@@ -120,32 +119,32 @@ export function LiveRecentReservations({
           rows.map((row) => {
             const count = reservationItemsCount(parseReservationItems(row.items));
             const status = parseReservationStatus(row.status);
+            const tone = RESERVATION_TONE[reservationTone(status)];
             return (
               <Link
                 key={row.id}
                 href={`/admin/${catalogId}/orders?inbox=reservations`}
-                className="flex min-h-11 items-center gap-3 border-b border-[#f1f4f8] px-4 py-3 text-[var(--cat-ink)] last:border-b-0 hover:bg-[#fafbfd] sm:px-[18px]"
+                className="ops-press flex min-h-11 items-center gap-3 px-4 py-3 text-[var(--cat-ink)] no-underline last:pb-4 hover:bg-[#fafbfd] sm:px-[18px]"
               >
-                <span className="flex min-w-0 flex-col gap-1">
-                  <span className="inline-flex h-5 w-fit items-center rounded-full bg-[var(--cat-ink)] px-1.5 text-[10px] font-semibold text-white">
-                    {reservationTablesLabel(row)}
-                  </span>
-                  <span
-                    className="inline-flex h-5 w-fit items-center rounded-full px-1.5 text-[10px] font-semibold text-white"
-                    style={{ background: RESERVATION_STATUS_META[status].color }}
-                  >
-                    {RESERVATION_STATUS_META[status].label}
-                  </span>
+                <span className="w-[4.25rem] shrink-0 text-[17px] font-semibold tracking-[-0.02em] tabular-nums">
+                  {row.slot}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px]">{row.name || "Guest"}</span>
-                  <span className="block truncate text-[12px] text-[#8a93a2]">
-                    {formatReserveDay(String(row.day))} · {row.slot} · {row.guests} {row.guests === 1 ? "guest" : "guests"}
-                    {count > 0 ? ` · ${count} dishes` : ""}
+                  <span className="block truncate text-[15px] font-semibold tracking-tight">{row.name || "Guest"}</span>
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] text-[#86868b]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone.ink }} />
+                      {RESERVATION_STATUS_META[status].label}
+                    </span>
+                    <span>
+                      {row.guests} {row.guests === 1 ? "guest" : "guests"}
+                      {reservationTablesLabel(row) !== "No preference" ? ` · ${reservationTablesLabel(row)}` : ""}
+                      {count > 0 ? ` · ${count} dishes` : ""}
+                    </span>
                   </span>
                 </span>
-                <span suppressHydrationWarning className="hidden shrink-0 text-[12px] text-[#8a93a2] sm:inline">
-                  {formatOrderDateTime(row.created_at)}
+                <span className="hidden shrink-0 text-[12px] text-[#86868b] sm:inline">
+                  {formatReserveDay(String(row.day))}
                 </span>
               </Link>
             );

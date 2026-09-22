@@ -12,10 +12,12 @@ import {
 } from "@/lib/catalog/reservation-items";
 import {
   merchantReservationActions,
+  nextReservationAction,
   parseReservationStatus,
   reservationActionLabel,
-  reservationStatusTimestamp,
+  reservationTone,
   RESERVATION_STATUS_META,
+  RESERVATION_TONE,
 } from "@/lib/catalog/reservation-status";
 import { reservationTablesLabel } from "@/lib/catalog/reservation-tables";
 import {
@@ -28,6 +30,10 @@ import {
 } from "@/lib/catalog/live-orders";
 import type { ReservationRow, ReservationStatus } from "@/lib/supabase/types";
 import { setReservationStatus } from "./reservation-actions";
+import { OpsGhostButton, OpsPrimaryButton, OpsSegment, OpsSegmented } from "@/components/admin/ops/OpsChrome";
+import { TypeMark } from "@/components/orders/FulfillmentTypeBadge";
+
+type Scope = "booked" | "seated" | "all";
 
 export function ReservationsInbox({
   catalogId,
@@ -40,6 +46,7 @@ export function ReservationsInbox({
 }) {
   const [rows, setRows] = useState(initial.filter((row) => row.catalog_id === catalogId));
   const [openId, setOpenId] = useState<string | null>(null);
+  const [scope, setScope] = useState<Scope>("booked");
   const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const seenIds = useRef(new Set(initial.map((row) => row.id)));
@@ -105,30 +112,71 @@ export function ReservationsInbox({
     setRows((prev) => prev.map((row) => (row.id === next.id ? next : row)));
   }
 
+  const bookedCount = rows.filter((row) => reservationTone(row.status) === "booked").length;
+  const seatedCount = rows.filter((row) => reservationTone(row.status) === "seated").length;
+  const visible = rows.filter((row) => {
+    const tone = reservationTone(row.status);
+    if (scope === "booked") return tone === "booked";
+    if (scope === "seated") return tone === "seated";
+    return true;
+  });
+
+  async function bump(row: ReservationRow) {
+    const next = nextReservationAction(row.status);
+    if (!next) return;
+    const result = await setReservationStatus(catalogId, row.id, next);
+    if (result.error || !result.row) {
+      setToast(result.error || "Could not update booking.");
+      return;
+    }
+    applyRow(result.row);
+  }
+
   return (
     <div className="flex flex-col gap-3">
-      <p className="m-0 text-[13px] text-[var(--cat-muted)]">
-        Table bookings land here. Food pre-ordered with a booking also shows on Orders as dine-in.
-      </p>
+      <div className="ops-glass relative z-[4] -mx-4 px-4 py-2.5 md:sticky md:top-[3.6rem]">
+        <div className="ops-edge" aria-hidden />
+        <OpsSegmented label="Bookings to show">
+          <OpsSegment selected={scope === "booked"} onClick={() => setScope("booked")}>
+            Booked{bookedCount > 0 ? ` ${bookedCount}` : ""}
+          </OpsSegment>
+          <OpsSegment selected={scope === "seated"} onClick={() => setScope("seated")}>
+            Seated{seatedCount > 0 ? ` ${seatedCount}` : ""}
+          </OpsSegment>
+          <OpsSegment selected={scope === "all"} onClick={() => setScope("all")}>
+            All
+          </OpsSegment>
+        </OpsSegmented>
+        <p className="m-0 mt-2 text-[12px] text-[#86868b]">
+          Time, name, party. Food pre-ordered with a booking also shows on Orders.
+        </p>
+      </div>
       {loadError ? (
-        <p className="m-0 rounded-[11px] border border-[#f3d2ce] bg-[#fff5f4] px-3.5 py-2.5 text-[13px] text-[#b42318]">
+        <p className="m-0 rounded-[11px] bg-[#fff5f4] px-3.5 py-2.5 text-[13px] text-[#b42318]">
           Could not refresh bookings. New ones still appear within a few seconds.
         </p>
       ) : null}
 
-      {rows.length === 0 ? (
-        <div className="rounded-[14px] border border-[var(--cat-border)] bg-white px-[18px] py-12 text-center text-[14px] text-[var(--cat-muted)]">
-          No bookings yet. When a guest reserves a table, it shows up here.
+      {visible.length === 0 ? (
+        <div className="rounded-[16px] bg-white px-[18px] py-12 text-center text-[14px] text-[#86868b]">
+          {rows.length === 0
+            ? "No bookings yet. When a guest reserves a table, it shows up here."
+            : scope === "booked"
+              ? "No booked tables waiting."
+              : scope === "seated"
+                ? "No one seated right now."
+                : "Nothing here."}
         </div>
       ) : (
-        <section className="overflow-hidden rounded-[14px] border border-[var(--cat-border)] bg-white">
-          {rows.map((row) => (
+        <section className="overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
+          {visible.map((row) => (
             <ReservationRowCard
               key={row.id}
               row={row}
               currency={currency}
               selected={openId === row.id}
               onOpen={() => setOpenId(row.id)}
+              onNext={() => void bump(row)}
             />
           ))}
         </section>
@@ -155,12 +203,13 @@ export function ReservationsInbox({
   );
 }
 
-function StatusPill({ status }: { status: unknown }) {
+function StatusCue({ status }: { status: unknown }) {
   const id = parseReservationStatus(status);
-  const meta = RESERVATION_STATUS_META[id];
+  const tone = RESERVATION_TONE[reservationTone(id)];
   return (
-    <span className="inline-flex h-6 shrink-0 items-center rounded-full px-2 text-[11px] font-semibold text-white" style={{ background: meta.color }}>
-      {meta.label}
+    <span className="inline-flex items-center gap-1.5 text-[12px] text-[#5a6472]">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: tone.ink }} aria-hidden />
+      {RESERVATION_STATUS_META[id].label}
     </span>
   );
 }
@@ -170,56 +219,72 @@ function ReservationRowCard({
   currency,
   selected,
   onOpen,
+  onNext,
 }: {
   row: ReservationRow;
   currency: string;
   selected: boolean;
   onOpen: () => void;
+  onNext: () => void;
 }) {
   const items = useMemo(() => parseReservationItems(row.items), [row.items]);
   const count = reservationItemsCount(items);
   const total = reservationItemsTotal(items);
   const tables = reservationTablesLabel(row);
-  const status = parseReservationStatus(row.status);
-  const stamp = reservationStatusTimestamp(row, status);
+  const tone = reservationTone(row.status);
+  const wash = RESERVATION_TONE[tone].wash;
+  const next = nextReservationAction(row.status);
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-start gap-3 border-b border-[#edf0f4] px-3.5 py-3 text-left last:border-b-0"
-      style={{ background: selected ? "var(--cat-photo-bg)" : "#fff" }}
+    <div
+      className="ops-press flex w-full items-center gap-3 px-4 py-3 text-left"
+      style={{ background: selected ? wash : "#fff" }}
     >
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="inline-flex h-6 w-fit items-center rounded-full bg-[var(--cat-ink)] px-2 text-[11px] font-semibold text-white">
-          {tables}
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+        <span className="mt-0.5 shrink-0 text-[var(--cat-accent)]" aria-hidden>
+          <TypeMark kind="reservation" size={16} />
         </span>
-        <StatusPill status={row.status} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-medium text-[var(--cat-ink)]">{row.name || "Guest"}</span>
-        <span className="mt-0.5 block text-[12px] text-[var(--cat-muted)]">
-          {formatReserveDay(String(row.day))} · {row.slot} · {row.guests} {row.guests === 1 ? "guest" : "guests"}
-          {row.phone ? ` · ${row.phone}` : ""}
+        <span className="w-[4.5rem] shrink-0">
+          <span className="block text-[1.25rem] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[var(--cat-ink)]">
+            {row.slot}
+          </span>
+          <span className="mt-1 block text-[11px] text-[#86868b]">{formatReserveDay(String(row.day))}</span>
         </span>
-        <span className="mt-0.5 block truncate text-[12px] text-[var(--cat-muted)]">
-          {count > 0 ? reservationItemsSummary(items) : "No food yet"}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">
+            {row.name || "Guest"}
+          </span>
+          <span className="mt-0.5 block text-[12px] text-[#5a6472]">
+            {row.guests} {row.guests === 1 ? "guest" : "guests"}
+            {tables !== "No preference" ? ` · ${tables}` : ""}
+            {row.phone ? ` · ${row.phone}` : ""}
+          </span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-2">
+            <StatusCue status={row.status} />
+            <span className="truncate text-[12px] text-[#86868b]">
+              {count > 0 ? reservationItemsSummary(items) : "No food yet"}
+            </span>
+          </span>
         </span>
-      </span>
-      <span className="shrink-0 text-right">
         {count > 0 ? (
-          <span className="block text-[13px] font-semibold tabular-nums">{formatMoney(total, currency)}</span>
+          <span className="hidden shrink-0 text-[13px] font-semibold tabular-nums sm:block">
+            {formatMoney(total, currency)}
+          </span>
         ) : null}
-        <span suppressHydrationWarning className="block text-[11px] leading-4 text-[var(--cat-muted)]">
-          Booked {formatOrderDateTime(row.created_at)}
-          {row.confirmed_at ? ` · Confirmed ${formatOrderDateTime(row.confirmed_at)}` : ""}
-          {row.cancelled_at ? ` · Cancelled ${formatOrderDateTime(row.cancelled_at)}` : ""}
-          {!row.confirmed_at && !row.cancelled_at && stamp && stamp !== row.created_at
-            ? ` · ${RESERVATION_STATUS_META[status].timeLabel} ${formatOrderDateTime(stamp)}`
-            : ""}
-        </span>
+      </button>
+      <span className="w-[6.75rem] shrink-0" onClick={(event) => event.stopPropagation()}>
+        {next ? (
+          <OpsPrimaryButton onClick={onNext} className="w-full">
+            {reservationActionLabel(next)}
+          </OpsPrimaryButton>
+        ) : (
+          <span className="inline-flex w-full items-center justify-center gap-1 text-[12px] text-[#86868b]">
+            <TypeMark kind="done" size={13} />
+            {RESERVATION_TONE[tone].label}
+          </span>
+        )}
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -240,6 +305,8 @@ function ReservationDetail({
   const tables = reservationTablesLabel(row);
   const status = parseReservationStatus(row.status);
   const actions = merchantReservationActions(status);
+  const primary = nextReservationAction(status);
+  const secondary = actions.filter((next) => next !== primary);
   const [busy, setBusy] = useState<ReservationStatus | null>(null);
   const [error, setError] = useState("");
 
@@ -274,38 +341,64 @@ function ReservationDetail({
         role="dialog"
         aria-modal="true"
         aria-labelledby="reservation-detail-title"
-        className="flex h-[88%] w-full max-w-none flex-col overflow-y-auto rounded-t-[18px] bg-white md:h-full md:max-w-[420px] md:rounded-none md:border-l md:border-[var(--cat-border)]"
+        className="flex h-[88%] w-full max-w-none flex-col overflow-y-auto rounded-t-[18px] bg-white md:h-full md:max-w-[420px] md:rounded-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 border-b border-[#edf0f4] bg-white px-4 py-3">
+        <div className="ops-glass sticky top-0 px-4 py-3">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-                <span className="inline-flex h-6 items-center rounded-full bg-[var(--cat-ink)] px-2 text-[11px] font-semibold text-white">
-                  {tables}
-                </span>
-                <StatusPill status={row.status} />
-              </div>
-              <h2 id="reservation-detail-title" className="m-0 text-[18px] font-semibold tracking-tight">
+              <p className="m-0 text-[1.5rem] font-semibold leading-none tracking-[-0.02em] tabular-nums">
+                {row.slot}
+              </p>
+              <h2 id="reservation-detail-title" className="m-0 mt-2 text-[1.25rem] font-semibold tracking-tight">
                 {row.name || "Guest"}
               </h2>
-              <p className="m-0 mt-0.5 text-[13px] text-[var(--cat-muted)]">
-                {formatReserveDay(String(row.day))} · {row.slot} · {row.guests} {row.guests === 1 ? "guest" : "guests"}
+              <p className="m-0 mt-1 text-[13px] text-[#86868b]">
+                {formatReserveDay(String(row.day))} · {row.guests} {row.guests === 1 ? "guest" : "guests"}
+                {tables !== "No preference" ? ` · ${tables}` : ""}
+              </p>
+              <p className="m-0 mt-1">
+                <StatusCue status={row.status} />
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Close booking"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-[var(--cat-border)] bg-white text-[16px]"
+              className="ops-press flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] bg-black/[0.04] text-[16px]"
             >
               ×
             </button>
           </div>
         </div>
         <div className="flex flex-col gap-4 px-4 py-4">
+          {primary ? (
+            <OpsPrimaryButton
+              disabled={busy !== null}
+              onClick={() => void changeStatus(primary)}
+              className="min-h-11 w-full text-[15px]"
+            >
+              {busy === primary ? "Saving…" : reservationActionLabel(primary)}
+            </OpsPrimaryButton>
+          ) : null}
+          {secondary.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {secondary.map((next) => (
+                <OpsGhostButton
+                  key={next}
+                  disabled={busy !== null}
+                  onClick={() => void changeStatus(next)}
+                  className={next === "cancelled" || next === "no_show" ? "text-[#86868b]" : ""}
+                >
+                  {busy === next ? "Saving…" : reservationActionLabel(next)}
+                </OpsGhostButton>
+              ))}
+            </div>
+          ) : null}
+          {error ? <p className="m-0 text-sm text-[#b42318]">{error}</p> : null}
+
           <section>
-            <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--cat-muted)]">Times</div>
+            <div className="text-[11px] uppercase tracking-[0.06em] text-[#86868b]">Times</div>
             <ul className="mt-1.5 list-none p-0 text-[14px]">
               <li>Booked at {formatOrderDateTime(row.created_at)}</li>
               {row.confirmed_at ? <li>Confirmed at {formatOrderDateTime(row.confirmed_at)}</li> : null}
@@ -315,28 +408,8 @@ function ReservationDetail({
               {row.no_show_at ? <li>No-show at {formatOrderDateTime(row.no_show_at)}</li> : null}
             </ul>
           </section>
-          {actions.length > 0 ? (
-            <section>
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--cat-muted)]">Update</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {actions.map((next) => (
-                  <button
-                    key={next}
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => void changeStatus(next)}
-                    className="h-11 rounded-[10px] px-4 text-[13px] font-bold text-white"
-                    style={{ background: RESERVATION_STATUS_META[next].color }}
-                  >
-                    {busy === next ? "Saving…" : reservationActionLabel(next)}
-                  </button>
-                ))}
-              </div>
-              {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-            </section>
-          ) : null}
           <section>
-            <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--cat-muted)]">Guest</div>
+            <div className="text-[11px] uppercase tracking-[0.06em] text-[#86868b]">Guest</div>
             <div className="mt-1 text-[15px]">{row.name || "Guest"}</div>
             {row.phone ? (
               <a href={`tel:${row.phone}`} className="mt-1 block text-[14px] text-[var(--cat-accent)]">
@@ -346,21 +419,21 @@ function ReservationDetail({
           </section>
           {row.note ? (
             <section>
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--cat-muted)]">Request</div>
+              <div className="text-[11px] uppercase tracking-[0.06em] text-[#86868b]">Request</div>
               <p className="mt-1 whitespace-pre-wrap text-[14px]">{row.note}</p>
             </section>
           ) : null}
           <section>
-            <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--cat-muted)]">Pre-ordered food</div>
+            <div className="text-[11px] uppercase tracking-[0.06em] text-[#86868b]">Pre-ordered food</div>
             {items.length === 0 ? (
-              <p className="mt-1 text-[14px] text-[var(--cat-muted)]">No dishes with this booking.</p>
+              <p className="mt-1 text-[14px] text-[#86868b]">No dishes with this booking.</p>
             ) : (
               <ul className="mt-2 flex list-none flex-col gap-2 p-0">
                 {items.map((line, index) => (
                   <li key={`${line.code}-${index}`} className="flex items-start justify-between gap-3 text-[14px]">
                     <span>
                       {line.qty}× {line.name}
-                      {line.notes ? <span className="block text-[12px] text-[var(--cat-muted)]">{line.notes}</span> : null}
+                      {line.notes ? <span className="block text-[12px] text-[#86868b]">{line.notes}</span> : null}
                     </span>
                     <span className="shrink-0 tabular-nums">{formatMoney(line.price * line.qty, currency)}</span>
                   </li>
@@ -368,15 +441,15 @@ function ReservationDetail({
               </ul>
             )}
             {items.length > 0 ? (
-              <div className="mt-3 flex items-baseline justify-between border-t border-[#edf0f4] pt-3">
-                <span className="text-[13px] text-[var(--cat-muted)]">Food total</span>
+              <div className="mt-3 flex items-baseline justify-between pt-3">
+                <span className="text-[13px] text-[#86868b]">Food total</span>
                 <span className="text-[16px] font-semibold tabular-nums">
                   {formatMoney(reservationItemsTotal(items), currency)}
                 </span>
               </div>
             ) : null}
             {row.order_id ? (
-              <p className="mt-2 text-[12px] text-[var(--cat-muted)]">This food is also on the Orders tab as dine-in.</p>
+              <p className="mt-2 text-[12px] text-[#86868b]">This food is also on the Orders tab as dine-in.</p>
             ) : null}
           </section>
         </div>

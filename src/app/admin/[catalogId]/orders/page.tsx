@@ -14,10 +14,11 @@ import {
 import type { OrderItemRow, OrderRow, OrderStatusEventRow, ReservationRow } from "@/lib/supabase/types";
 import type { ServiceRequestRow } from "@/lib/supabase/types";
 import { LiveServiceRequests } from "../LiveServiceRequests";
+import { OpsSegment, OpsSegmented } from "@/components/admin/ops/OpsChrome";
+import { TypeMark } from "@/components/orders/FulfillmentTypeBadge";
 import { OrdersBoard } from "./OrdersBoard";
 import { ReservationsInbox } from "./ReservationsInbox";
 import { StatusSettings } from "./StatusSettings";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,10 @@ export default async function OrdersPage({
     usedCounts[order.status] = (usedCounts[order.status] ?? 0) + 1;
   }
   const initialFilter = parseStatusFilterParam(query.status, statuses);
-  const showFulfillment = parseFulfillmentModes(catalog.fulfillment_modes).length > 0;
+  const fulfillmentModes = parseFulfillmentModes(catalog.fulfillment_modes);
+  const showFulfillment = fulfillmentModes.length > 0;
+  const hasDineIn =
+    fulfillmentModes.includes("dine_in") || orders.some((order) => order.fulfillment === "dine_in");
   const settings = parseTemplateSettings(catalog.template_settings);
   const checkoutForm = resolveCheckoutForm(catalog.checkout_form, parseCheckoutFields(catalog.checkout_fields));
   const { data: thumbRows } = await supabase
@@ -101,28 +105,21 @@ export default async function OrdersPage({
         }
         account={account}
       />
-      <div className="mx-auto flex w-full max-w-[1180px] flex-col px-4 pb-14 pt-4">
-        <div className="mb-3 flex gap-1 rounded-[11px] border border-[var(--cat-border)] bg-white p-[3px] self-start">
-          <Link
-            href={`/admin/${catalogId}/orders`}
-            className="inline-flex min-h-[38px] items-center rounded-lg px-3.5 text-[13px] font-medium no-underline"
-            style={{
-              background: inbox === "orders" ? "var(--cat-ink)" : "transparent",
-              color: inbox === "orders" ? "#fff" : "var(--cat-muted)",
-            }}
-          >
-            Orders{orders.length > 0 ? ` · ${orders.length}` : ""}
-          </Link>
-          <Link
-            href={`/admin/${catalogId}/orders?inbox=reservations`}
-            className="inline-flex min-h-[38px] items-center rounded-lg px-3.5 text-[13px] font-medium no-underline"
-            style={{
-              background: inbox === "reservations" ? "var(--cat-ink)" : "transparent",
-              color: inbox === "reservations" ? "#fff" : "var(--cat-muted)",
-            }}
-          >
-            Reservations{reservations.length > 0 ? ` · ${reservations.length}` : ""}
-          </Link>
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col px-4 pb-14 pt-3">
+        <div className="mb-2">
+          <OpsSegmented label="Inbox">
+            <OpsSegment selected={inbox === "orders"} href={`/admin/${catalogId}/orders`}>
+              <TypeMark kind="orders" size={14} />
+              Orders{orders.length > 0 ? ` ${orders.length}` : ""}
+            </OpsSegment>
+            <OpsSegment
+              selected={inbox === "reservations"}
+              href={`/admin/${catalogId}/orders?inbox=reservations`}
+            >
+              <TypeMark kind="reservation" size={14} />
+              Reservations{reservations.length > 0 ? ` ${reservations.length}` : ""}
+            </OpsSegment>
+          </OpsSegmented>
         </div>
         {inbox === "reservations" ? (
           <ReservationsInbox catalogId={catalogId} currency={catalog.currency} initial={reservations} />
@@ -141,6 +138,7 @@ export default async function OrdersPage({
             checkoutForm={checkoutForm}
             enableClaim={settings.restaurant.enableClaim}
             notify={settings.notify}
+            hasDineIn={hasDineIn}
           >
             <LiveServiceRequests catalogId={catalogId} initial={serviceRequests} />
             <StatusSettings

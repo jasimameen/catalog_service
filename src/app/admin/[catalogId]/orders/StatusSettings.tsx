@@ -145,20 +145,15 @@ export function StatusSettings({
   }
 
   return (
-    <section className="overflow-hidden rounded-[14px] border border-[#e2e7ee] bg-white">
+    <section className="overflow-hidden rounded-[14px] bg-white/70">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
-        className="flex min-h-[52px] w-full cursor-pointer items-center justify-between gap-3 px-4 text-left"
+        className="ops-press flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 px-3.5 text-left"
       >
-        <span className="text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">Statuses</span>
-        <span className="flex items-center gap-2.5">
-          <span className="text-[12px] text-[#8a93a2]">
-            {rows.length} {rows.length === 1 ? "status" : "statuses"}
-          </span>
-          <span className="text-[12px] text-[#5a6472]">{open ? "Hide" : "Edit"}</span>
-        </span>
+        <span className="text-[13px] font-medium text-[#5a6472]">Status names</span>
+        <span className="text-[12px] text-[#86868b]">{open ? "Hide" : "Edit"}</span>
       </button>
 
       {open ? (

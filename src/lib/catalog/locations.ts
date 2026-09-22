@@ -2,23 +2,46 @@ export type CatalogLocation = {
   name: string;
   phone: string;
   address: string;
+  website: string;
+  email: string;
+  notes: string;
 };
 
 function asText(value: unknown, max = 120): string {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
+export function emptyLocation(): CatalogLocation {
+  return { name: "", phone: "", address: "", website: "", email: "", notes: "" };
+}
+
+export function parseLocationRow(raw: unknown): CatalogLocation | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const row = raw as Record<string, unknown>;
+  const name = asText(row.name, 80);
+  const phone = asText(row.phone, 40);
+  const address = asText(row.address, 160);
+  const website = asText(row.website, 200);
+  const email = asText(row.email, 120);
+  const notes = asText(row.notes, 280);
+  if (!name && !phone && !address && !website && !email && !notes) return null;
+  return {
+    name: name || phone || address || website || email,
+    phone,
+    address,
+    website,
+    email,
+    notes,
+  };
+}
+
 export function parseLocations(raw: unknown): CatalogLocation[] {
   if (!Array.isArray(raw)) return [];
   const out: CatalogLocation[] = [];
   for (const entry of raw) {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
-    const row = entry as Record<string, unknown>;
-    const name = asText(row.name, 80);
-    const phone = asText(row.phone, 40);
-    const address = asText(row.address, 160);
-    if (!name && !phone && !address) continue;
-    out.push({ name: name || phone || address, phone, address });
+    const row = parseLocationRow(entry);
+    if (!row) continue;
+    out.push(row);
     if (out.length >= 24) break;
   }
   return out;
@@ -39,18 +62,18 @@ function parseLine(line: string): CatalogLocation | null {
     const last = parts[parts.length - 1]!;
     const looksPhone = /[\d+][\d\s-]{5,}/.test(last);
     if (looksPhone) {
-      return { name: parts.slice(0, -1).join(" "), phone: last, address: "" };
+      return { ...emptyLocation(), name: parts.slice(0, -1).join(" "), phone: last };
     }
   }
   const comma = trimmed.split(",").map((part) => part.trim()).filter(Boolean);
   if (comma.length >= 2 && /[\d+][\d\s-]{5,}/.test(comma[comma.length - 1]!)) {
     return {
+      ...emptyLocation(),
       name: comma.slice(0, -1).join(", "),
       phone: comma[comma.length - 1]!,
-      address: "",
     };
   }
-  return { name: trimmed, phone: "", address: "" };
+  return { ...emptyLocation(), name: trimmed };
 }
 
 /** One location per line: `Lusail, 4414 6262` or `Lusail | 4414 6262`. */
@@ -65,12 +88,12 @@ export function parseLocationsFromText(text: string): CatalogLocation[] {
     const names = splitPipes(lines[0]!);
     const phones = splitPipes(lines[1]!);
     if (names.length > 1 && names.length === phones.length) {
-      return names.map((name, i) => ({ name, phone: phones[i] ?? "", address: "" }));
+      return names.map((name, i) => ({ ...emptyLocation(), name, phone: phones[i] ?? "" }));
     }
   }
 
   if (lines.length === 1 && lines[0]!.includes("|")) {
-    return splitPipes(lines[0]!).map((name) => ({ name, phone: "", address: "" }));
+    return splitPipes(lines[0]!).map((name) => ({ ...emptyLocation(), name }));
   }
 
   const out: CatalogLocation[] = [];
@@ -115,4 +138,12 @@ export function osmEmbedSrc(lat: number, lng: number): string {
   const pad = 0.012;
   const bbox = `${lng - pad},${lat - pad},${lng + pad},${lat + pad}`;
   return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+export function websiteHref(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(trimmed)) return `https://${trimmed}`;
+  return null;
 }
