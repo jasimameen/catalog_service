@@ -22,6 +22,9 @@ import {
   parseImageFit,
 } from "@/lib/catalog/merchandising";
 import { parseCoord, parseLocationsFromText } from "@/lib/catalog/locations";
+import { formatCatalogHours, parseHoursState } from "@/lib/catalog/hours";
+import { canPublishNewCatalog } from "@/lib/billing/status";
+import { isValidSlug, slugFromName, suggestSlugCandidates } from "@/lib/catalog/slug";
 import { STOCK_PHOTOS } from "@/lib/catalog/placeholders";
 
 export type LookState = { error?: string; saved?: boolean } | null;
@@ -118,7 +121,6 @@ export async function updateCatalogLook(
   const phone = String(formData.get("companyPhone") ?? "").trim().slice(0, 40);
   const email = String(formData.get("companyEmail") ?? "").trim().slice(0, 120);
   const address = String(formData.get("companyAddress") ?? "").trim().slice(0, 200);
-  const hours = String(formData.get("companyHours") ?? "").trim().slice(0, 800);
   const whatsapp = String(formData.get("companyWhatsapp") ?? "").trim().slice(0, 40);
   const instagram = String(formData.get("companyInstagram") ?? "").trim().slice(0, 80);
   const locations = parseLocationsFromText(String(formData.get("companyLocations") ?? ""));
@@ -128,7 +130,6 @@ export async function updateCatalogLook(
   const placeholderImageUrl = STOCK_PHOTOS.some((photo) => photo.url === placeholderRaw)
     ? placeholderRaw
     : "";
-  const showHours = formData.get("showHours") === "1";
   const showContact = formData.get("showContact") === "1";
   const showSocial = formData.get("showSocial") === "1";
   const showMap = formData.get("showMap") === "1";
@@ -149,14 +150,12 @@ export async function updateCatalogLook(
       phone: phone || null,
       email: email || null,
       address: address || null,
-      hours: hours || null,
       whatsapp: whatsapp || null,
       instagram: instagram || null,
       locations,
       geo_lat: geoLat,
       geo_lng: geoLng,
       placeholder_image_url: placeholderImageUrl || null,
-      show_hours: showHours,
       show_contact: showContact,
       show_social: showSocial,
       show_map: showMap,
@@ -287,6 +286,163 @@ export async function updateCatalogOrdering(
 
   revalidateCatalog(catalogId, data.slug);
   return { saved: true };
+}
+
+export async function setDayService(
+  catalogId: string,
+  patch: { acceptOrders?: boolean; kitchenOpen?: boolean },
+): Promise<{ error?: string; saved?: boolean }> {
+  await requireAccount();
+  const supabase = await getCatalogAdminClient();
+  const { data: current } = await supabase
+    .from("catalogs")
+    .select("slug, template_settings")
+    .eq("id", catalogId)
+    .maybeSingle();
+  if (!current) return { error: "Catalog not found." };
+
+  const next: {
+    accept_orders?: boolean;
+    template_settings?: ReturnType<typeof parseTemplateSettings>;
+  } = {};
+  if (patch.acceptOrders !== undefined) next.accept_orders = patch.acceptOrders;
+  if (patch.kitchenOpen !== undefined) {
+    const settings = parseTemplateSettings(current.template_settings);
+    next.template_settings = {
+      ...settings,
+      restaurant: { ...settings.restaurant, kitchenOpen: patch.kitchenOpen },
+    };
+  }
+  if (next.accept_orders === undefined && next.template_settings === undefined) return { saved: true };
+
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update(next)
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("setDayService failed", error);
+    return { error: "Could not update service. Try again." };
+  }
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
+}
+
+export type HoursState = { error?: string; saved?: boolean } | null;
+
+export async function updateCatalogHours(
+  catalogId: string,
+  _prevState: HoursState,
+  formData: FormData,
+): Promise<HoursState> {
+  await requireAccount();
+  const hours = formatCatalogHours(parseHoursState(formData.get("hoursJson")));
+  const showHours = formData.get("showHours") === "1";
+
+  const supabase = await getCatalogAdminClient();
+  const { data, error } = await supabase
+    .from("catalogs")
+    .update({
+      hours: hours || null,
+      show_hours: showHours,
+    })
+    .eq("id", catalogId)
+    .select("slug")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("updateCatalogHours failed", error);
+    return { error: "Could not save hours. Try again." };
+  }
+
+  revalidateCatalog(catalogId, data.slug);
+  return { saved: true };
+}
+
+export async function createBranchCatalog(
+  sourceCatalogId: string,
+  input: { name: string; copyHours: boolean },
+): Promise<{ error?: string; catalogId?: string; slug?: string }> {
+  const account = await requireAccount();
+  const name = input.name.trim().slice(0, 120);
+  if (!name) return { error: "Give the branch a name." };
+
+  const supabase = await getCatalogAdminClient();
+  const { data: source, error: sourceError } = await supabase
+    .from("catalogs")
+    .select(
+      "id, account_id, template, accent, currency, hours, order_email, fulfillment_modes, checkout_form, checkout_fields, template_settings, show_hours",
+    )
+    .eq("id", sourceCatalogId)
+    .maybeSingle();
+
+  if (sourceError || !source) {
+    return { error: "Could not find this shop." };
+  }
+
+  const { data: owner } = await supabase
+    .from("accounts")
+    .select("ls_status, trial_ends_at")
+    .eq("id", source.account_id)
+    .maybeSingle();
+
+  if (!canPublishNewCatalog(owner ?? account)) {
+    return { error: "Subscribe to add another shop. This one stays live." };
+  }
+
+  const slug = await uniqueBranchSlug(name);
+  if (!slug) return { error: "Could not pick a shop address. Try another name." };
+
+  const { data: catalog, error: insertError } = await supabase
+    .from("catalogs")
+    .insert({
+      account_id: source.account_id,
+      name,
+      slug,
+      status: "live",
+      template: source.template,
+      accent: source.accent,
+      currency: source.currency,
+      hours: input.copyHours ? source.hours : null,
+      order_email: source.order_email,
+      fulfillment_modes: source.fulfillment_modes,
+      checkout_form: source.checkout_form,
+      checkout_fields: source.checkout_fields,
+      template_settings: source.template_settings,
+      show_hours: source.show_hours,
+    })
+    .select("id, slug")
+    .maybeSingle();
+
+  if (insertError || !catalog) {
+    if (insertError?.code === "23505") {
+      return { error: "That shop address was just taken. Try a slightly different name." };
+    }
+    console.error("createBranchCatalog failed", insertError);
+    return { error: "Could not add that branch. Try again." };
+  }
+
+  revalidateCatalog(catalog.id, catalog.slug);
+  revalidatePath(`/admin/${sourceCatalogId}`);
+  return { catalogId: catalog.id, slug: catalog.slug };
+}
+
+async function uniqueBranchSlug(name: string): Promise<string | null> {
+  const base = slugFromName(name) || "shop";
+  const extras = `${base}-${Date.now().toString(36).slice(-4)}`;
+  const candidates = [base, ...suggestSlugCandidates(base, name), extras].filter(
+    (value): value is string => Boolean(value) && isValidSlug(value),
+  );
+  const supabase = getServiceClient();
+  const { data, error } = await supabase.from("catalogs").select("slug").in("slug", candidates);
+  if (error) {
+    console.error("uniqueBranchSlug failed", error);
+    return candidates[0] ?? null;
+  }
+  const used = new Set((data ?? []).map((row) => row.slug));
+  return candidates.find((value) => !used.has(value)) ?? null;
 }
 
 function safeJson(raw: FormDataEntryValue | null): unknown {

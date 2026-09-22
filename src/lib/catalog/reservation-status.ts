@@ -73,6 +73,30 @@ export function merchantReservationActions(status: unknown): ReservationStatus[]
   return MERCHANT_NEXT[parseReservationStatus(status)];
 }
 
+/** One primary next step. Cancel / no-show stay secondary. */
+export function nextReservationAction(status: unknown): ReservationStatus | null {
+  const id = parseReservationStatus(status);
+  if (id === "pending") return "confirmed";
+  if (id === "confirmed") return "seated";
+  if (id === "seated") return "completed";
+  return null;
+}
+
+export type ReservationTone = "booked" | "seated" | "ended";
+
+export function reservationTone(status: unknown): ReservationTone {
+  const id = parseReservationStatus(status);
+  if (id === "seated") return "seated";
+  if (id === "completed" || id === "cancelled" || id === "no_show") return "ended";
+  return "booked";
+}
+
+export const RESERVATION_TONE: Record<ReservationTone, { ink: string; wash: string; label: string }> = {
+  booked: { ink: "#0b5fce", wash: "#eef4fd", label: "Booked" },
+  seated: { ink: "#1e9e4a", wash: "#dff5e6", label: "Seated" },
+  ended: { ink: "#86868b", wash: "#f4f6f9", label: "Ended" },
+};
+
 export function canMerchantSetReservationStatus(from: unknown, to: unknown): boolean {
   const next = parseReservationStatus(to);
   return MERCHANT_NEXT[parseReservationStatus(from)].includes(next);

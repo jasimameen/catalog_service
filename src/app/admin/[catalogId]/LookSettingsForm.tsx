@@ -40,14 +40,12 @@ export function LookSettingsForm({
   phone,
   email,
   address,
-  hours,
   whatsapp,
   instagram,
   locationsText,
   geoLat,
   geoLng,
   placeholderImageUrl,
-  showHours,
   showContact,
   showSocial,
   showMap,
@@ -66,14 +64,12 @@ export function LookSettingsForm({
   phone: string;
   email: string;
   address: string;
-  hours: string;
   whatsapp: string;
   instagram: string;
   locationsText: string;
   geoLat: number | null;
   geoLng: number | null;
   placeholderImageUrl: string;
-  showHours: boolean;
   showContact: boolean;
   showSocial: boolean;
   showMap: boolean;
@@ -103,7 +99,7 @@ export function LookSettingsForm({
     <section id="look" className={dashCard}>
       <button
         type="button"
-        className="flex min-h-11 w-full items-start justify-between gap-3 px-4 py-4 text-left md:hidden"
+        className="ops-press flex min-h-11 w-full items-start justify-between gap-3 px-4 py-4 text-left"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
@@ -112,22 +108,13 @@ export function LookSettingsForm({
             Look
           </span>
           <span className="mt-1 block text-[13px] leading-snug text-[#5a6472]">
-            Brand, template, accent, and storefront details.
+            Brand and storefront details.
           </span>
         </span>
-        <span className="mt-0.5 shrink-0 text-[13px] text-[#0b5fce]">{open ? "Hide" : "Show"}</span>
+        <span className="mt-0.5 shrink-0 text-[13px] text-[#86868b]">{open ? "Hide" : "Show"}</span>
       </button>
-      <div className="hidden border-b border-[#edf0f4] px-4 py-4 md:block">
-        <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Look</p>
-        <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-          Brand, template, accent, and storefront details.
-        </p>
-        <p className="m-0 mt-1.5 text-xs leading-snug text-[#8a93a2]">
-          Hours, contact, map, and social only appear when enabled. Take orders is under Ordering.
-        </p>
-      </div>
 
-      <div className={open ? "block" : "hidden md:block"}>
+      <div className={open ? "block" : "hidden"}>
         <form action={formAction} className="flex flex-col">
           <div className="flex flex-col gap-6 px-4 pb-2">
             <div className="flex flex-col gap-3">
@@ -302,7 +289,6 @@ export function LookSettingsForm({
               <div className="flex flex-wrap gap-2">
                 {(
                   [
-                    { name: "showHours", label: "Show hours", checked: showHours },
                     { name: "showContact", label: "Show contact", checked: showContact },
                     { name: "showSocial", label: "Show social", checked: showSocial },
                     { name: "showMap", label: "Show map", checked: showMap },
@@ -404,19 +390,7 @@ export function LookSettingsForm({
                 </label>
               </div>
               <label className="flex flex-col gap-1.5">
-                <span className={dashLabel}>Hours</span>
-                <textarea
-                  id="companyHours"
-                  name="companyHours"
-                  defaultValue={hours}
-                  maxLength={800}
-                  rows={3}
-                  placeholder={"Mon–Fri 11:00 – 23:00\nSat–Sun 11:00 – 00:00"}
-                  className={dashTextarea}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className={dashLabel}>Branches</span>
+                <span className={dashLabel}>Locations on this page</span>
                 <textarea
                   id="companyLocations"
                   name="companyLocations"
@@ -426,7 +400,9 @@ export function LookSettingsForm({
                   placeholder={"Lusail, 4414 6262\nWukair, 4417 6262"}
                   className={dashTextarea}
                 />
-                <span className={dashHint}>One branch per line: name, phone.</span>
+                <span className={dashHint}>
+                  Guest-facing list on this shop only. One line: name, phone. Real shops are under Branch.
+                </span>
               </label>
               <p className={`m-0 ${dashHint}`}>OpenStreetMap embed. Hidden if off or empty.</p>
               <input type="hidden" name="placeholderImageUrl" value={placeholderImageUrl} />
