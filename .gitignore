@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Instant Catalog Ops app is a separate project — do not track in this website repo
+/mobile-app/
+/Instant Catalog — Ops App.html
