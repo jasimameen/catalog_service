@@ -4,7 +4,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
 
     const { error } = await supabase
       .from("service_requests")

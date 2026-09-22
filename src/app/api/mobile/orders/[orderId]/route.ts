@@ -6,7 +6,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ orde
   try {
     const { orderId } = await params;
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
     const statuses = catalogStatuses(catalog);
 
     const { data: order, error } = await supabase

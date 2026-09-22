@@ -5,7 +5,7 @@ import { catalogStatuses } from "../_lib/shape";
 export async function GET(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
     const statuses = catalogStatuses(catalog);
 
     return Response.json({

@@ -4,7 +4,7 @@ import { mobileErrorResponse, requireMobileAccount, requireMobileCatalog } from 
 export async function GET(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
 
     const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabase

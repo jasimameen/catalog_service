@@ -7,7 +7,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
   try {
     const { orderId } = await params;
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
     const statuses = catalogStatuses(catalog);
 
     if (!statuses.some((row) => row.id === CANCEL_STATUS_ID)) {

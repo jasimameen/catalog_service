@@ -4,11 +4,11 @@ import type { CatalogItemRow } from "@/lib/supabase/types";
 export async function GET(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
 
     const { data, error } = await supabase
       .from("catalog_items")
-      .select("id, name, code, category, visible, position")
+      .select("id, name, code, category, visible, position, image, price")
       .eq("catalog_id", catalog.id)
       .order("category", { ascending: true })
       .order("position", { ascending: true });
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     const items = (data ?? []) as Pick<
       CatalogItemRow,
-      "id" | "name" | "code" | "category" | "visible" | "position"
+      "id" | "name" | "code" | "category" | "visible" | "position" | "image" | "price"
     >[];
 
     return Response.json({
@@ -29,6 +29,8 @@ export async function GET(request: Request) {
         // no separate day-of-stock flag, so 86'ing an item here hides it
         // from checkout exactly like the web admin's Visible toggle does.
         available: item.visible,
+        image: item.image || null,
+        price: item.price,
       })),
     });
   } catch (error) {

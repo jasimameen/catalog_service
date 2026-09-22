@@ -3,7 +3,7 @@ import { mobileErrorResponse, requireMobileAccount, requireMobileCatalog } from 
 export async function GET(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
 
     const includeResolved = new URL(request.url).searchParams.get("all") === "true";
     let query = supabase

@@ -6,7 +6,7 @@ import type { OrderItemRow, OrderRow } from "@/lib/supabase/types";
 export async function GET(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
     const statuses = catalogStatuses(catalog);
 
     const { data: orders, error } = await supabase

@@ -4,7 +4,7 @@ import type { CatalogRow } from "@/lib/supabase/types";
 export async function GET(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
     return Response.json({
       accept_orders: catalog.accept_orders ?? true,
       kitchen_open: catalog.kitchen_open ?? true,
@@ -26,7 +26,7 @@ type StoreSettingsPatch = {
 export async function POST(request: Request) {
   try {
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
 
     let body: StoreSettingsPatch;
     try {

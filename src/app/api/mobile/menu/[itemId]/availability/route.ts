@@ -4,7 +4,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ite
   try {
     const { itemId } = await params;
     const { account, supabase } = await requireMobileAccount(request);
-    const catalog = await requireMobileCatalog(supabase, account);
+    const catalog = await requireMobileCatalog(supabase, account, request);
 
     let body: { available?: boolean };
     try {

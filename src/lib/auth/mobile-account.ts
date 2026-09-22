@@ -53,14 +53,29 @@ export async function requireMobileAccount(
 }
 
 /**
- * The one catalog this account operates from the mobile app. Accounts can
- * have several catalogs on the web (multi-store), but the ops app's store
- * strip only has a "switcher" placeholder for now — first by creation date.
+ * The catalog this account is operating from the mobile app. Accounts can
+ * have several catalogs (multi-store) — the app remembers the merchant's
+ * pick and sends it back as the `X-Catalog-Id` header on every call; absent
+ * that (first launch, or the id no longer belongs to this account), it
+ * falls back to the earliest catalog by creation date.
  */
 export async function requireMobileCatalog(
   supabase: ReturnType<typeof getMobileSupabase>,
   account: AccountRow,
+  request?: Request,
 ): Promise<CatalogRow> {
+  const requestedId = request?.headers.get("x-catalog-id");
+  if (requestedId) {
+    const { data } = await supabase
+      .from("catalogs")
+      .select("*")
+      .eq("id", requestedId)
+      .eq("account_id", account.id)
+      .maybeSingle();
+    if (data) return data as CatalogRow;
+    // Falls through to the default catalog below if the id is stale/invalid.
+  }
+
   const { data, error } = await supabase
     .from("catalogs")
     .select("*")
