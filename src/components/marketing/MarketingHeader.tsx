@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { CatalogLogo } from "@/components/brand/CatalogLogo";
-import { PRODUCT_DOMAIN, PRODUCT_NAME } from "@/lib/brand";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 type MarketingHeaderProps = {
   /** Homepage keeps in-page anchors; other pages point those sections at `/`. */
@@ -8,45 +11,46 @@ type MarketingHeaderProps = {
 };
 
 export function MarketingHeader({ variant = "inner" }: MarketingHeaderProps) {
-  const templatesHref = variant === "home" ? "#templates" : "/templates";
-  const howHref = variant === "home" ? "#how" : "/#how";
+  const opsHref = variant === "home" ? "#ops" : "/#ops";
+  const floorHref = variant === "home" ? "#floor" : "/#floor";
   const pricingHref = variant === "home" ? "#pricing" : "/#pricing";
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/[0.82] backdrop-blur-xl">
-      <nav className="mx-auto flex h-[52px] max-w-[1120px] items-center justify-between gap-4 px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <CatalogLogo size={28} />
-          <span className="text-[15px] font-semibold tracking-tight">{PRODUCT_NAME}</span>
-          <span className="hidden text-xs text-[#86868b] sm:inline">{PRODUCT_DOMAIN}</span>
-        </Link>
-        <div className="flex items-center gap-4 sm:gap-6">
-          <Link href="/live" className="hidden text-xs sm:inline">
-            See it live
+    <header className="sticky top-0 z-30">
+      <div className="mkt-glass relative">
+        <nav className="mx-auto flex h-[3.25rem] max-w-[70rem] items-center justify-between gap-4 px-5 sm:px-6">
+          <Link href="/" className="mkt-press flex items-center gap-2.5 text-[var(--cat-ink)]">
+            <CatalogLogo size={28} />
+            <span className="text-[0.9375rem] font-semibold tracking-tight">{PRODUCT_NAME}</span>
           </Link>
-          <Link href={templatesHref} className="hidden text-xs sm:inline">
-            Templates
-          </Link>
-          <a href={howHref} className="hidden text-xs sm:inline">
-            How it works
-          </a>
-          <a href={pricingHref} className="hidden text-xs sm:inline">
-            Pricing
-          </a>
-          <Link href="/setup" className="hidden text-xs sm:inline">
-            We’ll set it up
-          </Link>
-          <Link href="/auth/sign-in" className="text-xs">
-            Sign in
-          </Link>
-          <Link
-            href="/auth/sign-up"
-            className="rounded-full bg-[var(--cat-accent)] px-3.5 py-1.5 text-xs font-medium text-white"
-          >
-            Start free
-          </Link>
-        </div>
-      </nav>
+          <div className="flex items-center gap-4 text-[0.8125rem] font-medium text-[var(--cat-ink)] sm:gap-5">
+            <a href={opsHref} className="mkt-press hidden sm:inline">
+              Ops
+            </a>
+            <a href={floorHref} className="mkt-press hidden sm:inline">
+              Floor
+            </a>
+            <a href={pricingHref} className="mkt-press hidden sm:inline">
+              Pricing
+            </a>
+            <Link href="/auth/sign-in" className="mkt-press">
+              Sign in
+            </Link>
+            <Link href="/auth/sign-up" className="mkt-btn-primary mkt-btn-sm">
+              Start free
+            </Link>
+          </div>
+        </nav>
+        {scrolled ? <div className="mkt-edge" aria-hidden /> : null}
+      </div>
     </header>
   );
 }

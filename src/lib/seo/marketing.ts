@@ -15,8 +15,8 @@ import {
 export const SEO_PRODUCT = "Instant Catalog";
 export const SEO_ENTITY = `${SEO_PRODUCT} by ${COMPANY_NAME}`;
 
-export const HOME_TITLE = `${SEO_PRODUCT} — restaurant QR menu and table reservations`;
-export const HOME_DESCRIPTION = `A live catalog guests open on their phone. Restaurant QR menu, table reservations, pickup and delivery. ${TRIAL_DAYS} days free, then ${MONTHLY_PRICE_LABEL}. Set it up yourself or we will.`;
+export const HOME_TITLE = `${SEO_PRODUCT} — QR menu, kitchen ops, and table reservations`;
+export const HOME_DESCRIPTION = `A live catalog guests open on their phone — restaurant QR menu, reservations, pickup and delivery — plus kitchen ops on phone and iPad. ${TRIAL_DAYS} days free, then ${MONTHLY_PRICE_LABEL}. Set it up yourself or we will.`;
 
 export const LIVE_TITLE = `Harbor Kitchen — ${SEO_PRODUCT} restaurant demo`;
 export const LIVE_DESCRIPTION =
@@ -32,7 +32,7 @@ export const TEMPLATES_TITLE = `Catalog templates — ${SEO_PRODUCT}`;
 export const TEMPLATES_DESCRIPTION =
   "Restaurant menu, grid, lookbook, and price list layouts for the same Instant Catalog. Switch any time after you publish.";
 
-export const WHAT_IS_INSTANT_CATALOG = `${SEO_PRODUCT} is a live catalog guests open on their phone. Restaurants use it as a QR menu with table reservations, pickup, and delivery. Shops use it as a product list. It is made by ${COMPANY_NAME}.`;
+export const WHAT_IS_INSTANT_CATALOG = `${SEO_PRODUCT} is a live catalog guests open on their phone. Restaurants use it as a QR menu with table reservations, pickup, and delivery, plus a kitchen ops companion for phone and tablet. Shops use it as a product list. It is made by ${COMPANY_NAME}.`;
 
 export const MARKETING_FAQS: { q: string; a: string }[] = [
   {
@@ -49,7 +49,11 @@ export const MARKETING_FAQS: { q: string; a: string }[] = [
   },
   {
     q: "Does Instant Catalog include table reservation software?",
-    a: "Yes. Guests pick a day, a time, and a table. It lands in the same dashboard as orders. You can hide reserve in settings if you do not want it.",
+    a: "Yes. Guests pick a day, a time, and a table on the floor map. It lands in the same dashboard as orders. You can hide reserve in settings if you do not want it.",
+  },
+  {
+    q: "Is there an iPhone or Android app?",
+    a: "A companion ops app is coming to iOS and Android — kitchen phone or iPad. Hear new orders, bump tickets, 86 items, pause the store. The web dashboard stays the place you edit the menu, floor, QR, and billing. There is no store download link yet.",
   },
   {
     q: "Do you rank Instant Catalog in every city?",
@@ -128,8 +132,10 @@ export function marketingJsonLd(): Record<string, unknown> {
         featureList: [
           "Live catalog on a link",
           "Restaurant QR menu / dine-in",
-          "Table reservations",
+          "Table reservations and floor map",
           "Pickup and delivery orders",
+          "Kitchen ops on phone and tablet",
+          "86 items and pause store",
         ],
       },
       {
@@ -168,7 +174,7 @@ ${WHAT_IS_INSTANT_CATALOG}
 - WhatsApp: ${CONTACT_WHATSAPP_DISPLAY} (${CONTACT_WHATSAPP_HREF})
 
 ## What it is
-Live catalog on a phone. Restaurant QR menu, table reservations, pickup, delivery. Shops can use the same product as a price list.
+Live catalog on a phone. Restaurant QR menu, table reservations, pickup, delivery. Kitchen ops companion for phone and iPad (coming to iOS and Android — no store link yet). Shops can use the same product as a price list.
 
 ## What it is not
 Not a POS. Not a marketplace. Not a local SEO agency. We do not claim Instant Catalog ranks in every city. Harbor Kitchen on /live is a sample restaurant, not a real venue and not ${COMPANY_NAME}'s office.

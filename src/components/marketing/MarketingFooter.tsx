@@ -8,41 +8,66 @@ type MarketingFooterProps = {
 
 export function MarketingFooter({ variant = "inner" }: MarketingFooterProps) {
   return (
-    <footer className="border-t border-[var(--cat-border)] bg-[var(--cat-surface)] px-6 pb-16 pt-10">
-      <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4">
+    <footer className="bg-[var(--cat-surface)] px-5 pb-16 pt-10 sm:px-6">
+      <div className="mx-auto flex max-w-[70rem] flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-[var(--cat-muted)]">
+          <p className="text-[0.75rem] text-[var(--cat-muted)]">
             <a
               href={COMPANY_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-[var(--cat-ink)] hover:underline"
+              className="mkt-press font-medium text-[var(--cat-ink)] hover:underline"
             >
               Powered by {COMPANY_NAME}
             </a>
             <span> · Made for people who sell from a list.</span>
           </p>
-          <CompanyContact className="text-xs text-[var(--cat-muted)]" />
+          <CompanyContact className="text-[0.75rem] text-[var(--cat-muted)]" />
         </div>
-        <div className="flex gap-5 text-xs">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-[0.75rem] font-medium text-[var(--cat-ink)]">
           {variant === "home" ? (
             <>
-              <Link href="/live">See it live</Link>
-              <a href="#templates">Templates</a>
-              <a href="#pricing">Pricing</a>
-              <a href="#faq">Questions</a>
-              <Link href="/setup">We’ll set it up</Link>
+              <Link href="/live" className="mkt-press">
+                Harbor
+              </Link>
+              <a href="#ops" className="mkt-press">
+                Ops
+              </a>
+              <a href="#floor" className="mkt-press">
+                Floor
+              </a>
+              <a href="#pricing" className="mkt-press">
+                Pricing
+              </a>
+              <a href="#faq" className="mkt-press">
+                Questions
+              </a>
+              <Link href="/setup" className="mkt-press">
+                We’ll set it up
+              </Link>
             </>
           ) : (
             <>
-              <Link href="/live">See it live</Link>
-              <Link href="/templates">Templates</Link>
-              <Link href="/#pricing">Pricing</Link>
-              <Link href="/#faq">Questions</Link>
-              <Link href="/setup">We’ll set it up</Link>
+              <Link href="/live" className="mkt-press">
+                Harbor
+              </Link>
+              <Link href="/templates" className="mkt-press">
+                Templates
+              </Link>
+              <Link href="/#pricing" className="mkt-press">
+                Pricing
+              </Link>
+              <Link href="/#faq" className="mkt-press">
+                Questions
+              </Link>
+              <Link href="/setup" className="mkt-press">
+                We’ll set it up
+              </Link>
             </>
           )}
-          <Link href="/admin">Dashboard</Link>
+          <Link href="/admin" className="mkt-press">
+            Dashboard
+          </Link>
         </div>
       </div>
     </footer>

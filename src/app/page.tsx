@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { FloorMapSample } from "@/components/marketing/FloorMapSample";
 import { HarborPreview } from "@/components/marketing/HarborPreview";
 import { JsonLd } from "@/components/marketing/JsonLd";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { MarketingHeader } from "@/components/marketing/MarketingHeader";
-import { MONTHLY_PRICE_LABEL, MONTHLY_PRICE_USD, TRIAL_DAYS, TRIAL_DAYS_LABEL } from "@/lib/billing/plan";
+import { OpsAlarmPhone, OpsMenu86Phone, OpsNowPhone, OpsOrdersPhone } from "@/components/marketing/OpsPhoneScreens";
+import { OpsTabletBoard } from "@/components/marketing/OpsTabletBoard";
+import { WebDashPreview } from "@/components/marketing/WebDashPreview";
+import { MONTHLY_PRICE_LABEL, MONTHLY_PRICE_USD, TRIAL_DAYS_LABEL } from "@/lib/billing/plan";
 import { CompanyContact } from "@/components/brand/CompanyContact";
 import { PRODUCT_DOMAIN, PRODUCT_NAME_LONG } from "@/lib/brand";
-import { TEMPLATES } from "@/lib/catalog/templates";
 import {
   HOME_DESCRIPTION,
   HOME_TITLE,
@@ -24,8 +27,9 @@ export const metadata = marketingMetadata({
 const PLAN_INCLUDES = [
   "Live menu on your link",
   "Table QR / dine-in",
-  "Reservations",
-  "Orders to your dashboard",
+  "Reservations and floor map",
+  "Orders on dashboard, phone, and tablet",
+  "86 items and pause store",
 ];
 
 export default function LandingPage() {
@@ -34,106 +38,207 @@ export default function LandingPage() {
       <JsonLd data={marketingJsonLd()} />
       <MarketingHeader variant="home" />
 
-      <section className="mx-auto max-w-[1120px] px-5 pt-16 text-center sm:px-6 sm:pt-24">
-        <p className="mb-4 text-[14px] text-[var(--cat-muted)] sm:text-[15px]">
+      <section className="mx-auto max-w-[70rem] px-5 pt-12 sm:px-6 sm:pt-16">
+        <p className="mb-4 text-center text-[0.875rem] text-[var(--cat-muted)] sm:text-[0.9375rem]">
           <span className="font-medium text-[var(--cat-ink)]">{PRODUCT_NAME_LONG}</span>
-          {" · Live catalog for kitchens and shops"}
+          {" · QR catalog + kitchen ops"}
         </p>
-        <h1 className="font-catalog-display mx-auto text-balance text-[clamp(36px,8vw,72px)] font-semibold leading-[1.04] tracking-[-0.035em]">
-          Your menu, live.
+        <h1 className="mkt-display font-catalog-display mx-auto max-w-[57.5rem] text-balance text-center text-[clamp(2.125rem,7.2vw,4.25rem)] font-semibold">
+          Guests order from the menu.
           <br />
-          Guests order from it.
+          The kitchen hears it.
         </h1>
-        <p className="mx-auto mt-5 max-w-[620px] text-pretty text-[clamp(16px,2.4vw,20px)] leading-[1.45] text-[var(--cat-muted)]">
-          Instant Catalog is a live catalog guests open on their phone — restaurant QR menu,
-          table reservations, pickup and delivery. We can publish it for you, or you set it
-          up yourself.
+        <p className="mx-auto mt-5 max-w-[40rem] text-pretty text-center text-[clamp(1rem,2.4vw,1.25rem)] leading-[1.5] text-[var(--cat-muted)]">
+          A live catalog on the guest&apos;s phone — QR dine-in, reserve, pickup, delivery — and an
+          ops companion on a kitchen phone or iPad. Edit your menu in the web dashboard.
         </p>
-        <p className="mt-4 text-[13px] text-[var(--cat-muted)]">
-          {TRIAL_DAYS} days free, then {MONTHLY_PRICE_LABEL}.
+        <p className="mt-4 text-center text-[0.8125rem] leading-relaxed text-[var(--cat-muted)]">
+          {TRIAL_DAYS_LABEL} · no card · then {MONTHLY_PRICE_LABEL} · cancel anytime
+        </p>
+        <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/auth/sign-up" className="mkt-btn-primary">
+            Start free
+          </Link>
+          <Link href="/setup" className="mkt-btn-secondary">
+            We&apos;ll set it up
+          </Link>
+        </div>
+        <p className="mt-3 text-center text-[0.75rem] text-[var(--cat-muted)]">
+          No App Store link yet — ops is on the roadmap for phone and tablet.
         </p>
       </section>
 
-      <section className="mx-auto max-w-[1120px] px-5 pt-10 sm:px-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <section className="mx-auto max-w-[73.75rem] px-5 pt-12 sm:px-6">
+        <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+          <OpsAlarmPhone />
+          <div className="min-w-0">
+            <OpsTabletBoard />
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[70rem] px-5 pt-16 sm:px-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
           <DoorCard
-            kicker="Do it yourself"
-            title="You get the dashboard today"
-            body={`${TRIAL_DAYS} days free, then ${MONTHLY_PRICE_LABEL}. Catalog, QR, dine-in, reserve, and orders are in the dashboard now. Upload the menu and go live.`}
+            kicker="Start today"
+            title="Put the menu up yourself"
+            body="Upload dishes and go live. Guests can order the same day."
             href="/auth/sign-up"
             cta="Start free"
-            primary
           />
           <DoorCard
-            kicker="We’ll set it up"
-            title="Same product after we build it"
-            body={`Send the menu, a logo, and how to reach you. We set the dashboard. You still get ${TRIAL_DAYS} days free, then ${MONTHLY_PRICE_LABEL} — concierge is the on-ramp, not a second price.`}
+            kicker="We'll do it"
+            title="Send the menu. We open the place."
+            body={`Menu, logo, and how to reach you. Same ${TRIAL_DAYS_LABEL} — not a second price.`}
             href="/setup"
             cta="Tell us about the place"
           />
         </div>
-      </section>
-
-      <section className="mx-auto max-w-[1120px] px-5 pt-14 sm:px-6">
-        <HarborPreview />
-      </section>
-
-      <section id="how" className="mx-auto max-w-[1120px] px-5 pt-24 sm:px-6 sm:pt-28">
-        <h2 className="font-catalog-display text-center text-[clamp(28px,4vw,44px)] font-semibold tracking-tight">
-          What you get
-        </h2>
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FeatureCard title="Live catalog" body="Guests browse dishes, pick sizes, and send the order. Prices are locked on the server." />
-          <FeatureCard title="Dine-in QR" body="A code on the table opens the menu. Send to kitchen. Call waiter. Ask for the bill." />
-          <FeatureCard title="Reserve" body="Guests pick a day, a time, and a table. It lands in the same inbox as orders." />
-          <FeatureCard title="We build it" body="No photos yet? No time? Send what you have. We publish Harbor-quality for your name." />
-        </div>
-      </section>
-
-      <section id="templates" className="mx-auto max-w-[1120px] px-5 pt-24 sm:px-6 sm:pt-28">
-        <h2 className="font-catalog-display text-center text-[clamp(28px,4vw,44px)] font-semibold tracking-tight">
-          Templates
-        </h2>
-        <p className="mx-auto mt-3.5 max-w-[560px] text-center text-[16px] leading-relaxed text-[var(--cat-muted)]">
-          Restaurant menu is the default for kitchens. Trade catalogs still get Grid and Price List.
+        <p className="mt-4 text-center text-[0.75rem] text-[var(--cat-muted)]">
+          Same plan either way.
         </p>
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {TEMPLATES.map((tpl) => (
-            <div key={tpl.key} className="overflow-hidden rounded-[20px] border border-[var(--cat-border)] bg-[var(--cat-surface)]">
-              <div className="flex aspect-[4/3] items-stretch bg-[var(--cat-bg)] p-4">
-                <div className="flex flex-1 flex-col gap-2 overflow-hidden rounded-[10px] bg-[var(--cat-surface)] p-3 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.3)]">
-                  <div className="h-1.5 w-2/5 rounded-full bg-[var(--cat-ink)]" />
-                  <TemplatePreviewBlocks templateKey={tpl.key} />
-                </div>
-              </div>
-              <div className="px-5 pb-5 pt-4">
-                <h3 className="text-[16px] font-semibold tracking-tight">{tpl.name}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-[var(--cat-muted)]">{tpl.blurb}</p>
-              </div>
-            </div>
-          ))}
+      </section>
+
+      <section id="how" className="mx-auto max-w-[70rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+          Guest orders. Kitchen bumps.
+        </h2>
+        <p className="mx-auto mt-3 max-w-[35rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
+          Same ticket on the web inbox, a phone list, or a four-lane tablet board.
+        </p>
+        <ol className="mt-12 grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-8">
+          <Step
+            n="1"
+            title="Guest sends it"
+            body="QR on the table, or the live link. Dine-in, pickup, or delivery. Reserve picks a table on the floor map."
+          />
+          <Step
+            n="2"
+            title="Kitchen hears it"
+            body="A loud full-screen alarm on the ops phone. Table number big. Accept & start in one tap."
+          />
+          <Step
+            n="3"
+            title="Bump the ticket"
+            body="New → Preparing → Ready → Done. Waiter and bill alerts land on the same device."
+          />
+        </ol>
+      </section>
+
+      <section id="ops" className="mx-auto max-w-[70rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <p className="text-center text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-[var(--cat-accent)]">
+          Ops · iOS and Android
+        </p>
+        <h2 className="mkt-display font-catalog-display mt-2 text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+          Phone in the pocket. iPad on the pass.
+        </h2>
+        <p className="mx-auto mt-3 max-w-[37.5rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
+          Companion for the floor — hear new orders, 86 a dish, pause the store.
+          Coming to iPhone, Android, and iPad. Edit your menu, floor, QR, and billing on the web dashboard.
+        </p>
+        <div className="mt-12 grid items-start justify-center gap-10 sm:grid-cols-2">
+          <OpsNowPhone />
+          <OpsOrdersPhone />
         </div>
       </section>
 
-      <section id="pricing" className="mx-auto max-w-[1120px] px-5 pt-24 sm:px-6 sm:pt-28">
-        <h2 className="font-catalog-display text-center text-[clamp(28px,4vw,44px)] font-semibold tracking-tight">
+      <section id="floor" className="mx-auto max-w-[70rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+          Floor map, not a stock photo.
+        </h2>
+        <p className="mx-auto mt-3 max-w-[35rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
+          Draw tables in the web studio. Guests pick a table to reserve. Staff see seated, booked,
+          waiter, and bill on the same plan.
+        </p>
+        <div className="mt-10">
+          <FloorMapSample />
+        </div>
+        <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3">
+          <Feature title="Reserve" body="Day, time, and a table. It lands in the same inbox as orders." />
+          <Feature title="Waiter / bill" body="A diner taps Call waiter or Request bill. Ops interrupts." />
+          <Feature title="Closed tables" body="Mark a two-top out of service. Guests cannot book it." />
+        </div>
+      </section>
+
+      <section id="day-of" className="mx-auto max-w-[70rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+          86 a dish. Pause the store.
+        </h2>
+        <p className="mx-auto mt-3 max-w-[35rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
+          Day-of control on the phone. Available or Sold out is the same list guests see. Pause
+          checkout without killing tickets already in the kitchen.
+        </p>
+        <div className="mt-12 grid items-center gap-10 md:grid-cols-[minmax(0,17rem)_1fr]">
+          <OpsMenu86Phone />
+          <div className="grid gap-8">
+            <Feature
+              title="Pause new orders"
+              body="Guests can still read the menu. They cannot check out. Tickets already accepted still finish."
+            />
+            <Feature
+              title="Close kitchen"
+              body="Storefront shows closed. New orders and table requests stay off until you reopen."
+            />
+            <Feature
+              title="Sold out"
+              body="Harbor chowder and olive focaccia off the list. Flip them back when the pot is ready."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-[70rem] px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+          What guests open
+        </h2>
+        <p className="mx-auto mt-3 max-w-[35rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
+          Harbor Kitchen is a demo — a sample restaurant, not a real venue. Open it for dine-in,
+          pickup, delivery, and reserve.
+        </p>
+        <div className="mt-12">
+          <HarborPreview />
+        </div>
+      </section>
+
+      <section id="dashboard" className="mx-auto max-w-[70rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
+          Web dashboard for the deep work
+        </h2>
+        <p className="mx-auto mt-3 max-w-[35rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
+          Ops does not replace the web dashboard. Items, floor, QR, look, domains, and
+          billing stay on the web.
+        </p>
+        <div className="mt-10">
+          <WebDashPreview />
+        </div>
+        <p className="mx-auto mt-6 max-w-[35rem] text-center text-[0.875rem] leading-relaxed text-[var(--cat-muted)]">
+          Restaurant menu is the default for kitchens.{" "}
+          <Link href="/templates" className="mkt-press font-medium text-[var(--cat-ink)] underline-offset-2 hover:underline">
+            Trade catalogs
+          </Link>{" "}
+          still get Grid and Price List.
+        </p>
+      </section>
+
+      <section id="pricing" className="mx-auto max-w-[70rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
           One plan
         </h2>
-        <p className="mx-auto mt-3 max-w-[420px] text-center text-[16px] leading-relaxed text-[var(--cat-muted)]">
+        <p className="mx-auto mt-3 max-w-[26rem] text-center text-[1rem] leading-relaxed text-[var(--cat-muted)]">
           One live shop. {TRIAL_DAYS_LABEL}, then {MONTHLY_PRICE_LABEL}.
         </p>
-        <div className="mx-auto mt-10 max-w-[460px] rounded-[24px] bg-[var(--cat-ink)] p-8 text-center text-[var(--cat-on-ink)] sm:p-10">
-          <p className="text-sm text-[var(--cat-on-ink-muted)]">{TRIAL_DAYS_LABEL}</p>
-          <p className="mt-3 text-[56px] font-semibold leading-none tracking-tighter sm:text-[64px]">
+        <div className="mx-auto mt-8 max-w-[28.75rem] rounded-[1.5rem] bg-[var(--cat-ink)] px-8 py-10 text-center text-[var(--cat-on-ink)] shadow-[0_40px_80px_-36px_rgba(16,23,32,0.55)] sm:px-10">
+          <p className="text-[0.875rem] text-[var(--cat-on-ink-muted)]">{TRIAL_DAYS_LABEL}</p>
+          <p className="mkt-display mt-3 text-[3.5rem] font-semibold sm:text-[4rem]">
             ${MONTHLY_PRICE_USD}
           </p>
-          <p className="mt-2 text-[15px] text-[var(--cat-on-ink-muted)]">per month</p>
-          <p className="mt-4 text-[14px] leading-relaxed text-[var(--cat-on-ink-muted)]">
-            Try the live shop. No card to start.
+          <p className="mt-2 text-[0.9375rem] text-[var(--cat-on-ink-muted)]">per month</p>
+          <p className="mx-auto mt-5 max-w-[17.5rem] text-[0.75rem] leading-[1.35] tracking-[-0.011em] text-[var(--cat-on-ink-faint)]">
+            One wrong WhatsApp order costs more than a month. Guests scan, kitchen hears it.
           </p>
           <div className="mt-7 flex flex-col gap-3 text-left">
             {PLAN_INCLUDES.map((line) => (
-              <p key={line} className="text-[15px] text-[var(--cat-on-ink)]">
+              <p key={line} className="text-[0.9375rem] text-[var(--cat-on-ink)]">
                 {line}
               </p>
             ))}
@@ -141,44 +246,61 @@ export default function LandingPage() {
           <div className="mt-7 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Link
               href="/auth/sign-up"
-              className="block rounded-full bg-[var(--cat-surface)] py-3.5 text-[15px] font-medium text-[var(--cat-ink)]"
+              className="mkt-press block rounded-full bg-[var(--cat-surface)] py-3.5 text-[0.9375rem] font-medium text-[var(--cat-ink)]"
             >
               Do it yourself
             </Link>
             <Link
               href="/setup"
-              className="block rounded-full border border-[var(--cat-on-ink)]/25 py-3.5 text-[15px] font-medium text-[var(--cat-on-ink)]"
+              className="mkt-press block rounded-full bg-white/10 py-3.5 text-[0.9375rem] font-medium text-[var(--cat-on-ink)]"
             >
-              We’ll set it up
+              We&apos;ll set it up
             </Link>
           </div>
-          <p className="mt-3.5 text-xs text-[var(--cat-on-ink-faint)]">
+          <p className="mt-3.5 text-[0.75rem] text-[var(--cat-on-ink-faint)]">
             Same plan either way. Cancel in one click.
           </p>
         </div>
-        <p className="mx-auto mt-5 max-w-[460px] text-center text-[13px] text-[var(--cat-muted)]">
-          Need a second shop? Add it when you’re ready.
+        <p className="mx-auto mt-5 max-w-[28.75rem] text-center text-[0.8125rem] text-[var(--cat-muted)]">
+          Need a second shop? Add it when you&apos;re ready.
         </p>
       </section>
 
-      <section id="faq" className="mx-auto max-w-[720px] px-5 pt-24 sm:px-6 sm:pt-28">
-        <h2 className="font-catalog-display text-center text-[clamp(28px,4vw,44px)] font-semibold tracking-tight">
+      <section id="faq" className="mx-auto max-w-[45rem] scroll-mt-20 px-5 pt-24 sm:px-6 sm:pt-28">
+        <h2 className="mkt-display font-catalog-display text-center text-[clamp(1.75rem,4vw,2.75rem)] font-semibold">
           Questions
         </h2>
-        <dl className="mt-10 flex flex-col gap-6">
+        <dl className="mt-12 flex flex-col gap-8">
           {MARKETING_FAQS.map((item) => (
             <div key={item.q}>
-              <dt className="text-[17px] font-semibold tracking-tight">{item.q}</dt>
-              <dd className="mt-2 text-[15px] leading-relaxed text-[var(--cat-muted)]">{item.a}</dd>
+              <dt className="text-[1.0625rem] font-semibold tracking-tight">{item.q}</dt>
+              <dd className="mt-2 text-[0.9375rem] leading-relaxed text-[var(--cat-muted)]">{item.a}</dd>
             </div>
           ))}
         </dl>
       </section>
 
-      <p className="mx-auto mt-10 max-w-[1120px] px-5 text-center text-[13px] text-[var(--cat-muted)] sm:px-6">
+      <section className="mx-auto max-w-[45rem] px-5 pt-20 text-center sm:px-6">
+        <h2 className="mkt-display font-catalog-display text-[clamp(1.625rem,4vw,2.5rem)] font-semibold">
+          Open the catalog. Run the floor.
+        </h2>
+        <p className="mx-auto mt-3 max-w-[30rem] text-[0.9375rem] leading-relaxed text-[var(--cat-muted)]">
+          Start on the web today. Ops on phone and iPad is next.
+        </p>
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/auth/sign-up" className="mkt-btn-primary">
+            Start free
+          </Link>
+          <Link href="/live" className="mkt-btn-secondary">
+            See the Harbor demo
+          </Link>
+        </div>
+      </section>
+
+      <p className="mx-auto mt-10 max-w-[70rem] px-5 text-center text-[0.8125rem] text-[var(--cat-muted)] sm:px-6">
         Every catalog also gets a free subdomain on {PRODUCT_DOMAIN}. Point your own domain when you are ready.
       </p>
-      <CompanyContact className="mx-auto mt-4 max-w-[1120px] px-5 text-center text-[13px] text-[var(--cat-muted)] sm:px-6" />
+      <CompanyContact className="mx-auto mt-4 max-w-[70rem] px-5 text-center text-[0.8125rem] text-[var(--cat-muted)] sm:px-6" />
 
       <div className="mt-20">
         <MarketingFooter variant="home" />
@@ -193,68 +315,47 @@ function DoorCard({
   body,
   href,
   cta,
-  primary,
 }: {
   kicker: string;
   title: string;
   body: string;
   href: string;
   cta: string;
-  primary?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`rounded-[22px] border p-6 text-left sm:p-8 ${
-        primary
-          ? "border-[var(--cat-accent)] bg-[var(--cat-accent)] text-[var(--cat-surface)]"
-          : "border-[var(--cat-border)] bg-[var(--cat-bg)]"
-      }`}
+      className="mkt-press rounded-[1.375rem] bg-[var(--cat-bg)] p-6 text-left sm:p-8"
     >
-      <p className={`text-[12px] font-semibold uppercase tracking-[0.12em] ${primary ? "text-white/80" : "text-[var(--cat-accent)]"}`}>
-        {kicker}
-      </p>
-      <h2 className="font-catalog-display mt-2 text-[26px] font-semibold tracking-tight">{title}</h2>
-      <p className={`mt-3 text-[15px] leading-relaxed ${primary ? "text-white/90" : "text-[var(--cat-muted)]"}`}>
-        {body}
-      </p>
-      <span
-        className={`mt-6 inline-flex min-h-11 items-center rounded-full px-4 text-[14px] font-medium ${
-          primary ? "bg-[var(--cat-surface)] text-[var(--cat-accent)]" : "bg-[var(--cat-ink)] text-[var(--cat-surface)]"
-        }`}
-      >
+      <p className="text-[0.8125rem] text-[var(--cat-muted)]">{kicker}</p>
+      <h2 className="mkt-display font-catalog-display mt-2 text-[1.5rem] font-semibold tracking-tight sm:text-[1.625rem]">
+        {title}
+      </h2>
+      <p className="mt-2 text-[0.9375rem] leading-relaxed text-[var(--cat-muted)]">{body}</p>
+      <span className="mt-6 inline-flex min-h-11 items-center text-[0.9375rem] font-medium text-[var(--cat-accent)]">
         {cta}
       </span>
     </Link>
   );
 }
 
-function FeatureCard({ title, body }: { title: string; body: string }) {
+function Feature({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[20px] bg-[var(--cat-bg)] p-6 sm:p-7">
-      <h3 className="font-catalog-display text-[20px] font-semibold tracking-tight">{title}</h3>
-      <p className="mt-2 text-[15px] leading-relaxed text-[var(--cat-muted)]">{body}</p>
+    <div>
+      <h3 className="mkt-display font-catalog-display text-[1.25rem] font-semibold">{title}</h3>
+      <p className="mt-2 text-[0.9375rem] leading-relaxed text-[var(--cat-muted)]">{body}</p>
     </div>
   );
 }
 
-const PREVIEW_SHAPES: Record<string, { cols: string; count: number }> = {
-  grid: { cols: "grid-cols-3", count: 9 },
-  lookbook: { cols: "grid-cols-2", count: 4 },
-  menu: { cols: "grid-cols-1", count: 5 },
-  pricelist: { cols: "grid-cols-1", count: 7 },
-  cards: { cols: "grid-cols-2", count: 4 },
-  compact: { cols: "grid-cols-1", count: 7 },
-  spotlight: { cols: "grid-cols-2", count: 5 },
-};
-
-function TemplatePreviewBlocks({ templateKey }: { templateKey: string }) {
-  const shape = PREVIEW_SHAPES[templateKey] ?? PREVIEW_SHAPES.grid;
+function Step({ n, title, body }: { n: string; title: string; body: string }) {
   return (
-    <div className={`grid flex-1 gap-1.5 ${shape.cols}`}>
-      {Array.from({ length: shape.count }).map((_, i) => (
-        <div key={i} className="min-h-[14px] rounded-md bg-[var(--cat-photo-bg)]" />
-      ))}
-    </div>
+    <li>
+      <p className="text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-[var(--cat-accent)]">
+        {n}
+      </p>
+      <h3 className="mkt-display font-catalog-display mt-2 text-[1.25rem] font-semibold">{title}</h3>
+      <p className="mt-2 text-[0.9375rem] leading-relaxed text-[var(--cat-muted)]">{body}</p>
+    </li>
   );
 }

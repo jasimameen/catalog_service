@@ -24,12 +24,116 @@
 
 html {
   background: var(--cat-bg);
+  scroll-padding-top: 4rem;
 }
 
 body {
   background: var(--cat-bg);
   color: var(--cat-ink);
   font-family: var(--kl-font-body), system-ui, sans-serif;
+}
+
+/* Marketing — press on pointer-down, Apple glass, display type */
+.mkt-press {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms ease-out;
+}
+
+.mkt-press:active {
+  transform: scale(0.97);
+}
+
+.mkt-display {
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-optical-sizing: auto;
+}
+
+.mkt-glass {
+  background: rgba(255, 255, 255, 0.62);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+.mkt-edge {
+  pointer-events: none;
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 1.5rem;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), transparent);
+}
+
+.mkt-btn-primary,
+.mkt-btn-secondary {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0 1.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms ease-out;
+}
+
+.mkt-btn-primary {
+  background: var(--cat-accent);
+  color: #fff;
+}
+
+.mkt-btn-secondary {
+  background: var(--cat-bg);
+  color: var(--cat-ink);
+}
+
+.mkt-btn-primary:active,
+.mkt-btn-secondary:active {
+  transform: scale(0.97);
+}
+
+.mkt-btn-sm {
+  min-height: 2rem;
+  padding: 0 0.875rem;
+  font-size: 0.8125rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-press,
+  .mkt-press:active,
+  .mkt-btn-primary,
+  .mkt-btn-primary:active,
+  .mkt-btn-secondary,
+  .mkt-btn-secondary:active {
+    transform: none;
+    transition: opacity 200ms ease;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .mkt-glass {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .mkt-edge {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .mkt-glass {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: 1px solid var(--cat-border);
+  }
+
+  .mkt-edge {
+    display: none;
+  }
 }
 
 .font-catalog-display {
