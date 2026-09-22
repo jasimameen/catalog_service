@@ -1,24 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import { formatOrderDateTime, statusById, workflowLane, type OrderStatusDef } from "@/lib/catalog/order-statuses";
 import type { OrderRow } from "@/lib/supabase/types";
 import { OrderHero, StatusCue } from "@/components/admin/ops/OpsChrome";
 import {
-  announceNewOrder,
   asCatalogOrder,
   fetchCatalogOrders,
-  newcomersToast,
   rowCatalogId,
   rowId,
   useCatalogLiveChannel,
   useLiveRefresh,
 } from "@/lib/catalog/live-orders";
-import type { NotifySoundSettings } from "@/lib/catalog/template-settings";
-import { DEFAULT_TEMPLATE_SETTINGS } from "@/lib/catalog/template-settings";
-
 function relativeTime(iso: string, now: number | null): string {
   if (now == null) return formatOrderDateTime(iso);
   const t = new Date(iso).getTime();
@@ -36,47 +31,24 @@ export function LiveRecentOrders({
   currency,
   initialOrders,
   statuses,
-  sounds = DEFAULT_TEMPLATE_SETTINGS.notify,
 }: {
   catalogId: string;
   currency: string;
   initialOrders: OrderRow[];
   statuses: OrderStatusDef[];
-  sounds?: NotifySoundSettings;
 }) {
   const [orders, setOrders] = useState(initialOrders.filter((order) => order.catalog_id === catalogId));
-  const [toast, setToast] = useState<string | null>(null);
   const [notifyAsk, setNotifyAsk] = useState<"hidden" | "ask" | "on">("hidden");
   const [now, setNow] = useState<number | null>(null);
-  const seenIds = useRef(new Set(initialOrders.map((order) => order.id)));
-  const hydrated = useRef(false);
-
-  const markSeen = useCallback(
-    (incoming: OrderRow[]) => {
-      const newcomers = incoming.filter((order) => !seenIds.current.has(order.id));
-      if (hydrated.current && newcomers.length > 0) {
-        for (const order of newcomers) {
-          seenIds.current.add(order.id);
-          announceNewOrder(order, sounds);
-        }
-        setToast(newcomersToast(newcomers));
-      } else {
-        for (const order of incoming) seenIds.current.add(order.id);
-      }
-      hydrated.current = true;
-    },
-    [sounds],
-  );
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetchCatalogOrders(catalogId, 4);
-      markSeen(next);
       setOrders(next);
     } catch {
       // poll retries
     }
-  }, [catalogId, markSeen]);
+  }, [catalogId]);
 
   const ingestInsert = useCallback(
     async (hint: OrderRow | null, orderId: string | null) => {
@@ -88,13 +60,12 @@ export function LiveRecentOrders({
           void refresh();
           return;
         }
-        markSeen([incoming]);
         setOrders((prev) => [incoming, ...prev.filter((row) => row.id !== incoming.id)].slice(0, 4));
       } catch {
         void refresh();
       }
     },
-    [catalogId, markSeen, refresh],
+    [catalogId, refresh],
   );
 
   const onRealtime = useCallback(
@@ -128,12 +99,6 @@ export function LiveRecentOrders({
     };
   }, []);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 5000);
-    return () => window.clearTimeout(t);
-  }, [toast]);
-
   return (
     <section className="overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3.5 sm:px-[18px]">
@@ -165,11 +130,6 @@ export function LiveRecentOrders({
           </Link>
         </div>
       </div>
-      {toast ? (
-        <p className="mx-4 mt-3 rounded-[11px] bg-[#101720] px-3 py-2 text-[13px] font-medium text-white sm:mx-[18px]">
-          {toast}
-        </p>
-      ) : null}
       <div className="flex flex-col">
         {orders.length === 0 ? (
           <p className="px-4 py-9 text-center text-[13px] leading-relaxed text-[#8a93a2] sm:px-[18px]">

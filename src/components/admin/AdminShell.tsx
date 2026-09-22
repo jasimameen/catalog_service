@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { CatalogLogo } from "@/components/brand/CatalogLogo";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { IncomingTicketHost } from "@/components/admin/IncomingTicketHost";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import { PRODUCT_NAME } from "@/lib/brand";
 
@@ -128,6 +129,7 @@ export function AdminShell({
       </aside>
 
       <main className="min-w-0 flex-1 overflow-x-clip md:min-h-0 md:overflow-y-auto">{children}</main>
+      <IncomingTicketHost />
     </div>
   );
 }

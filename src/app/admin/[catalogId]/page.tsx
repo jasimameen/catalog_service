@@ -294,7 +294,6 @@ export default async function CatalogDashboardPage({
               currency={catalog.currency}
               initialOrders={recentOrders}
               statuses={statuses}
-              sounds={parseTemplateSettings(catalog.template_settings).notify}
             />
             {showReservations ? (
               <LiveRecentReservations catalogId={catalogId} initial={recentReservations} />

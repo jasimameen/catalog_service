@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { reservationTone, RESERVATION_TONE } from "@/lib/catalog/reservation-status";
 import {
   formatReserveDay,
@@ -18,6 +18,7 @@ import {
   useCatalogLiveChannel,
   useLiveRefresh,
 } from "@/lib/catalog/live-orders";
+import { incomingReservationHref } from "@/lib/catalog/incoming-ticket";
 import type { ReservationRow } from "@/lib/supabase/types";
 
 export function LiveRecentReservations({
@@ -28,23 +29,10 @@ export function LiveRecentReservations({
   initial: ReservationRow[];
 }) {
   const [rows, setRows] = useState(initial.filter((row) => row.catalog_id === catalogId));
-  const [toast, setToast] = useState<string | null>(null);
-  const seenIds = useRef(new Set(initial.map((row) => row.id)));
-  const hydrated = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetchCatalogReservations(catalogId, 6);
-      const newcomers = next.filter((row) => !seenIds.current.has(row.id));
-      if (hydrated.current && newcomers.length > 0) {
-        setToast(
-          newcomers.length === 1
-            ? `New booking · ${reservationTablesLabel(newcomers[0]!)} · ${newcomers[0]!.name || "Guest"}`
-            : `${newcomers.length} new bookings`,
-        );
-      }
-      for (const row of next) seenIds.current.add(row.id);
-      hydrated.current = true;
       setRows(next);
     } catch {
       // poll retries
@@ -59,10 +47,6 @@ export function LiveRecentReservations({
       if (eventType === "INSERT") {
         const incoming = asCatalogReservation(row, catalogId);
         if (incoming) {
-          if (!seenIds.current.has(incoming.id)) {
-            seenIds.current.add(incoming.id);
-            setToast(`New booking · ${reservationTablesLabel(incoming)}`);
-          }
           setRows((prev) => [incoming, ...prev.filter((item) => item.id !== incoming.id)].slice(0, 6));
           return;
         }
@@ -79,12 +63,6 @@ export function LiveRecentReservations({
 
   useCatalogLiveChannel(catalogId, ["reservations"], onRealtime);
   useLiveRefresh(refresh);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 5000);
-    return () => window.clearTimeout(t);
-  }, [toast]);
 
   return (
     <section className="overflow-hidden rounded-[16px] bg-white shadow-[0_1px_2px_rgba(16,23,32,0.04)]">
@@ -105,11 +83,6 @@ export function LiveRecentReservations({
           Open
         </Link>
       </div>
-      {toast ? (
-        <p className="mx-4 mt-3 rounded-[11px] bg-[var(--cat-ink)] px-3 py-2 text-[13px] font-medium text-white sm:mx-[18px]">
-          {toast}
-        </p>
-      ) : null}
       <div className="flex flex-col">
         {rows.length === 0 ? (
           <p className="px-4 py-9 text-center text-[13px] leading-relaxed text-[#8a93a2] sm:px-[18px]">
@@ -123,7 +96,7 @@ export function LiveRecentReservations({
             return (
               <Link
                 key={row.id}
-                href={`/admin/${catalogId}/orders?inbox=reservations`}
+                href={incomingReservationHref(catalogId, row.id)}
                 className="ops-press flex min-h-11 items-center gap-3 px-4 py-3 text-[var(--cat-ink)] no-underline last:pb-4 hover:bg-[#fafbfd] sm:px-[18px]"
               >
                 <span className="w-[4.25rem] shrink-0 text-[17px] font-semibold tracking-[-0.02em] tabular-nums">

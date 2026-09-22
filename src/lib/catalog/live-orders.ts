@@ -3,14 +3,16 @@
 import { useEffect, useRef } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import type { OrderItemRow, OrderRow, OrderStatusEventRow, ReservationRow, ServiceRequestRow } from "@/lib/supabase/types";
+import type { IncomingTicket } from "./incoming-ticket";
 import type { NotifySoundSettings } from "./template-settings";
 import {
   notifyBody,
   notifyBrowserTitle,
   notifyKind,
   notifyToastTitle,
-  playOrderTone,
+  playNotifyCue,
   shouldPlayNotify,
+  type NotifyCueKind,
 } from "./order-notify";
 
 export const LIVE_POLL_MS = 4000;
@@ -43,11 +45,32 @@ export function asCatalogOrder(value: unknown, catalogId: string): OrderRow | nu
 
 export function announceNewOrder(order: OrderRow, sounds: NotifySoundSettings): void {
   const kind = notifyKind(order.fulfillment);
-  if (shouldPlayNotify(sounds, kind)) playOrderTone(kind);
-  flashDocumentTitle(notifyBrowserTitle(kind));
+  announceIncoming(sounds, "order", notifyBrowserTitle(kind), notifyBody(order), kind);
+}
+
+export function announceIncomingTicket(
+  ticket: IncomingTicket,
+  sounds: NotifySoundSettings,
+  orderKind?: ReturnType<typeof notifyKind>,
+): void {
+  const body = [ticket.who, ticket.detail].filter(Boolean).join(" · ");
+  announceIncoming(sounds, ticket.kind, ticket.title, body, orderKind);
+}
+
+function announceIncoming(
+  sounds: NotifySoundSettings,
+  cue: NotifyCueKind,
+  title: string,
+  body: string,
+  orderKind?: ReturnType<typeof notifyKind>,
+): void {
+  const play =
+    cue === "order" ? shouldPlayNotify(sounds, orderKind ?? "catalog") : sounds.enabled;
+  if (play) playNotifyCue(cue);
+  flashDocumentTitle(title);
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     try {
-      new Notification(notifyBrowserTitle(kind), { body: notifyBody(order) });
+      new Notification(title, { body });
     } catch {
       // ignore
     }
@@ -138,6 +161,14 @@ export function asCatalogReservation(value: unknown, catalogId: string): Reserva
   if (rec.catalog_id !== catalogId) return null;
   if (typeof rec.id !== "string") return null;
   return rec as unknown as ReservationRow;
+}
+
+export function asCatalogServiceRequest(value: unknown, catalogId: string): ServiceRequestRow | null {
+  const rec = asRecord(value);
+  if (!rec) return null;
+  if (rec.catalog_id !== catalogId) return null;
+  if (typeof rec.id !== "string" || typeof rec.kind !== "string") return null;
+  return rec as unknown as ServiceRequestRow;
 }
 
 export async function fetchCatalogReservations(catalogId: string, limit?: number): Promise<ReservationRow[]> {

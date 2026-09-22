@@ -27,12 +27,19 @@ export default async function OrdersPage({
   searchParams,
 }: {
   params: Promise<{ catalogId: string }>;
-  searchParams: Promise<{ status?: string | string[]; inbox?: string | string[] }>;
+  searchParams: Promise<{
+    status?: string | string[];
+    inbox?: string | string[];
+    order?: string | string[];
+    reservation?: string | string[];
+  }>;
 }) {
   const { catalogId } = await params;
   const query = await searchParams;
   const inboxRaw = Array.isArray(query.inbox) ? query.inbox[0] : query.inbox;
   const inbox = inboxRaw === "reservations" ? "reservations" : "orders";
+  const openOrderId = Array.isArray(query.order) ? query.order[0] : query.order;
+  const openReservationId = Array.isArray(query.reservation) ? query.reservation[0] : query.reservation;
   const supabase = await getCatalogAdminClient();
 
   const [account, catalog, ordersRes, reservationsRes] = await Promise.all([
@@ -122,7 +129,12 @@ export default async function OrdersPage({
           </OpsSegmented>
         </div>
         {inbox === "reservations" ? (
-          <ReservationsInbox catalogId={catalogId} currency={catalog.currency} initial={reservations} />
+          <ReservationsInbox
+            catalogId={catalogId}
+            currency={catalog.currency}
+            initial={reservations}
+            initialOpenId={openReservationId ?? null}
+          />
         ) : (
           <OrdersBoard
             catalogId={catalogId}
@@ -137,8 +149,8 @@ export default async function OrdersPage({
             thumbs={thumbs}
             checkoutForm={checkoutForm}
             enableClaim={settings.restaurant.enableClaim}
-            notify={settings.notify}
             hasDineIn={hasDineIn}
+            initialOpenId={openOrderId ?? null}
           >
             <LiveServiceRequests catalogId={catalogId} initial={serviceRequests} />
             <StatusSettings

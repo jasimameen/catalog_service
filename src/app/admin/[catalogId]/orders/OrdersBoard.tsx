@@ -33,19 +33,20 @@ import type { OrderStatusEventRow } from "@/lib/supabase/types";
 import { claimOrder, setOrderStatus } from "./actions";
 import { OrderDetailDrawer } from "./OrderDetailDrawer";
 import {
-  announceNewOrder,
   asCatalogOrder,
   fetchCatalogOrders,
   fetchOrderEvents,
   fetchOrderItems,
   fetchOrderWithItems,
-  newcomersToast,
   rowCatalogId,
   rowId,
   useCatalogLiveChannel,
   useLiveRefresh,
 } from "@/lib/catalog/live-orders";
-import type { NotifySoundSettings } from "@/lib/catalog/template-settings";
+import {
+  OPEN_INCOMING_TICKET_EVENT,
+  type OpenIncomingTicketDetail,
+} from "@/lib/catalog/incoming-ticket";
 import type { OrderFulfillment } from "@/lib/supabase/types";
 
 type ViewMode = "table" | "board";
@@ -112,8 +113,8 @@ export function OrdersBoard({
   thumbs,
   checkoutForm,
   enableClaim,
-  notify,
   hasDineIn = false,
+  initialOpenId = null,
   children,
 }: {
   catalogId: string;
@@ -128,8 +129,8 @@ export function OrdersBoard({
   thumbs: ItemThumb[];
   checkoutForm: CheckoutFormField[];
   enableClaim: boolean;
-  notify: NotifySoundSettings;
   hasDineIn?: boolean;
+  initialOpenId?: string | null;
   children?: ReactNode;
 }) {
   const router = useRouter();
@@ -141,7 +142,7 @@ export function OrdersBoard({
   const [events, setEvents] = useState(initialEvents);
   const [toast, setToast] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpenId);
   const [fulfillFilter, setFulfillFilter] = useState<OrderFulfillment | "all" | "unclaimed">("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<ViewMode>("table");
@@ -150,8 +151,6 @@ export function OrdersBoard({
   const [notifyPermission, setNotifyPermission] = useState<NotificationPermission | "unsupported">(
     "unsupported",
   );
-  const seenIds = useRef(new Set(initialOrders.map((o) => o.id)));
-  const hydrated = useRef(false);
   const dragRef = useRef<DragState | null>(null);
 
   const itemsByOrder = useMemo(() => {
@@ -163,23 +162,6 @@ export function OrdersBoard({
     }
     return map;
   }, [items]);
-
-  const markSeen = useCallback(
-    (incoming: OrderRow[]) => {
-      const newcomers = incoming.filter((order) => !seenIds.current.has(order.id));
-      if (hydrated.current && newcomers.length > 0) {
-        for (const order of newcomers) {
-          seenIds.current.add(order.id);
-          announceNewOrder(order, notify);
-        }
-        setToast(newcomersToast(newcomers));
-      } else {
-        for (const order of incoming) seenIds.current.add(order.id);
-      }
-      hydrated.current = true;
-    },
-    [notify],
-  );
 
   const applyList = useCallback(
     (nextOrders: OrderRow[], nextItems: OrderItemRow[], nextEvents: OrderStatusEventRow[]) => {
@@ -202,13 +184,12 @@ export function OrdersBoard({
       const nextOrders = await fetchCatalogOrders(catalogId);
       const ids = nextOrders.map((order) => order.id);
       const [nextItems, nextEvents] = await Promise.all([fetchOrderItems(ids), fetchOrderEvents(ids)]);
-      markSeen(nextOrders);
       applyList(nextOrders, nextItems, nextEvents);
       setLoadError(false);
     } catch {
       setLoadError(true);
     }
-  }, [applyList, catalogId, markSeen]);
+  }, [applyList, catalogId]);
 
   const ingestInsert = useCallback(
     async (hint: OrderRow | null, orderId: string | null) => {
@@ -231,11 +212,10 @@ export function OrdersBoard({
         void refresh();
         return;
       }
-      markSeen([full]);
       setOrders((prev) => [full, ...prev.filter((row) => row.id !== full.id)]);
       setItems((prev) => [...prev.filter((line) => line.order_id !== full.id), ...bundle.items]);
     },
-    [catalogId, markSeen, refresh],
+    [catalogId, refresh],
   );
 
   const onRealtime = useCallback(
@@ -254,6 +234,16 @@ export function OrdersBoard({
 
   useCatalogLiveChannel(catalogId, ["orders"], onRealtime);
   useLiveRefresh(refresh);
+
+  useEffect(() => {
+    function onOpenTicket(event: Event) {
+      const detail = (event as CustomEvent<OpenIncomingTicketDetail>).detail;
+      if (!detail || detail.catalogId !== catalogId || detail.kind !== "order") return;
+      setOpenId(detail.id);
+    }
+    window.addEventListener(OPEN_INCOMING_TICKET_EVENT, onOpenTicket);
+    return () => window.removeEventListener(OPEN_INCOMING_TICKET_EVENT, onOpenTicket);
+  }, [catalogId]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {

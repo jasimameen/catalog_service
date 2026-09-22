@@ -299,6 +299,23 @@ export async function catalogNavLabel(catalogId: string): Promise<string | null>
   return typeof data?.name === "string" && data.name.trim() ? data.name : null;
 }
 
+export async function catalogIncomingMeta(
+  catalogId: string,
+): Promise<{ currency: string; notify: ReturnType<typeof parseTemplateSettings>["notify"] } | null> {
+  await requireAccount();
+  const supabase = await getCatalogAdminClient();
+  const { data } = await supabase
+    .from("catalogs")
+    .select("currency, template_settings")
+    .eq("id", catalogId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    currency: typeof data.currency === "string" && data.currency.trim() ? data.currency : "AED",
+    notify: parseTemplateSettings(data.template_settings).notify,
+  };
+}
+
 export async function deleteCatalog(
   catalogId: string,
   typedName: string,

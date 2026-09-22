@@ -19,34 +19,54 @@ export function notifyBrowserTitle(kind: OrderNotifyKind): string {
   return notifyToastTitle(kind);
 }
 
-function toneFor(kind: OrderNotifyKind): { freq: number; type: OscillatorType; dur: number } {
-  if (kind === "dine_in") return { freq: 620, type: "triangle", dur: 0.22 };
-  if (kind === "pickup") return { freq: 740, type: "sine", dur: 0.18 };
-  if (kind === "delivery") return { freq: 520, type: "square", dur: 0.16 };
-  return { freq: 880, type: "sine", dur: 0.2 };
-}
+export type NotifyCueKind = "order" | "reservation" | "service";
 
 export function shouldPlayNotify(settings: NotifySoundSettings, kind: OrderNotifyKind): boolean {
   if (!settings.enabled) return false;
   return settings[kind] !== false;
 }
 
-export function playOrderTone(kind: OrderNotifyKind): void {
+function beep(
+  ctx: AudioContext,
+  freq: number,
+  type: OscillatorType,
+  start: number,
+  dur: number,
+  gainValue = 0.1,
+): void {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = gainValue;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + dur);
+}
+
+/** Three short cues: tickets / bookings / help. Pickup and delivery share the order cue. */
+export function playNotifyCue(kind: NotifyCueKind): void {
   try {
-    const tone = toneFor(kind);
     const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = tone.type;
-    osc.frequency.value = tone.freq;
-    gain.gain.value = 0.1;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + tone.dur);
+    const now = ctx.currentTime;
+    if (kind === "reservation") {
+      beep(ctx, 494, "triangle", now, 0.22);
+      return;
+    }
+    if (kind === "service") {
+      beep(ctx, 700, "sine", now, 0.1);
+      beep(ctx, 560, "sine", now + 0.13, 0.14);
+      return;
+    }
+    beep(ctx, 784, "sine", now, 0.2);
   } catch {
     // autoplay restrictions
   }
+}
+
+export function playOrderTone(_kind?: OrderNotifyKind): void {
+  playNotifyCue("order");
 }
 
 export function guestLabel(order: { shop_name?: string | null; phone?: string | null }): string {

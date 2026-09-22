@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import { formatOrderDateTime } from "@/lib/catalog/order-statuses";
 import {
@@ -28,6 +28,10 @@ import {
   useCatalogLiveChannel,
   useLiveRefresh,
 } from "@/lib/catalog/live-orders";
+import {
+  OPEN_INCOMING_TICKET_EVENT,
+  type OpenIncomingTicketDetail,
+} from "@/lib/catalog/incoming-ticket";
 import type { ReservationRow, ReservationStatus } from "@/lib/supabase/types";
 import { setReservationStatus } from "./reservation-actions";
 import { OpsGhostButton, OpsPrimaryButton, OpsSegment, OpsSegmented } from "@/components/admin/ops/OpsChrome";
@@ -39,33 +43,22 @@ export function ReservationsInbox({
   catalogId,
   currency,
   initial,
+  initialOpenId = null,
 }: {
   catalogId: string;
   currency: string;
   initial: ReservationRow[];
+  initialOpenId?: string | null;
 }) {
   const [rows, setRows] = useState(initial.filter((row) => row.catalog_id === catalogId));
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpenId);
   const [scope, setScope] = useState<Scope>("booked");
   const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const seenIds = useRef(new Set(initial.map((row) => row.id)));
-  const hydrated = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetchCatalogReservations(catalogId);
-      const newcomers = next.filter((row) => !seenIds.current.has(row.id));
-      if (hydrated.current && newcomers.length > 0) {
-        const first = newcomers[0]!;
-        setToast(
-          newcomers.length === 1
-            ? `New booking · ${reservationTablesLabel(first)}`
-            : `${newcomers.length} new bookings`,
-        );
-      }
-      for (const row of next) seenIds.current.add(row.id);
-      hydrated.current = true;
       setRows(next);
       setLoadError(false);
     } catch {
@@ -80,9 +73,7 @@ export function ReservationsInbox({
       if (cid && cid !== catalogId) return;
       if (eventType === "INSERT") {
         const incoming = asCatalogReservation(row, catalogId);
-        if (incoming && !seenIds.current.has(incoming.id)) {
-          seenIds.current.add(incoming.id);
-          setToast(`New booking · ${reservationTablesLabel(incoming)}`);
+        if (incoming) {
           setRows((prev) => [incoming, ...prev.filter((item) => item.id !== incoming.id)]);
           return;
         }
@@ -99,6 +90,16 @@ export function ReservationsInbox({
 
   useCatalogLiveChannel(catalogId, ["reservations"], onRealtime);
   useLiveRefresh(refresh);
+
+  useEffect(() => {
+    function onOpenTicket(event: Event) {
+      const detail = (event as CustomEvent<OpenIncomingTicketDetail>).detail;
+      if (!detail || detail.catalogId !== catalogId || detail.kind !== "reservation") return;
+      setOpenId(detail.id);
+    }
+    window.addEventListener(OPEN_INCOMING_TICKET_EVENT, onOpenTicket);
+    return () => window.removeEventListener(OPEN_INCOMING_TICKET_EVENT, onOpenTicket);
+  }, [catalogId]);
 
   useEffect(() => {
     if (!toast) return;
