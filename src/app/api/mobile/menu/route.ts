@@ -1,5 +1,13 @@
 import { mobileErrorResponse, requireMobileAccount, requireMobileCatalog } from "@/lib/auth/mobile-account";
-import type { CatalogItemRow } from "@/lib/supabase/types";
+import type { CatalogItemRow, ItemOptionGroup } from "@/lib/supabase/types";
+
+function parseOptionGroups(value: unknown): ItemOptionGroup[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (row): row is ItemOptionGroup =>
+      Boolean(row) && typeof row === "object" && typeof (row as ItemOptionGroup).name === "string",
+  );
+}
 
 export async function GET(request: Request) {
   try {
@@ -8,7 +16,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from("catalog_items")
-      .select("id, name, code, category, visible, position, image, price")
+      .select("id, name, code, category, visible, position, image, price, options")
       .eq("catalog_id", catalog.id)
       .order("category", { ascending: true })
       .order("position", { ascending: true });
@@ -16,7 +24,7 @@ export async function GET(request: Request) {
 
     const items = (data ?? []) as Pick<
       CatalogItemRow,
-      "id" | "name" | "code" | "category" | "visible" | "position" | "image" | "price"
+      "id" | "name" | "code" | "category" | "visible" | "position" | "image" | "price" | "options"
     >[];
 
     return Response.json({
@@ -31,6 +39,12 @@ export async function GET(request: Request) {
         available: item.visible,
         image: item.image || null,
         price: item.price,
+        // Variant groups (size, milk, etc.) — read-only here, same as the
+        // rest of this app; edited on the web dashboard.
+        options: parseOptionGroups(item.options).map((group) => ({
+          name: group.name,
+          values: group.values.map((v) => v.name),
+        })),
       })),
     });
   } catch (error) {

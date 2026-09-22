@@ -6,7 +6,34 @@ import {
   workflowLane,
   type OrderStatusDef,
 } from "@/lib/catalog/order-statuses";
-import type { CatalogRow, OrderItemRow, OrderRow } from "@/lib/supabase/types";
+import type { CatalogRow, OrderItemRow, OrderRow, SelectedOption } from "@/lib/supabase/types";
+
+function parseSelectedOptions(value: unknown): SelectedOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (row): row is SelectedOption =>
+      Boolean(row) && typeof row === "object" && typeof (row as SelectedOption).group === "string",
+  );
+}
+
+function parseComboLines(value: unknown): { name: string; qty: number }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((row) => Boolean(row) && typeof row === "object" && typeof (row as { name?: unknown }).name === "string")
+    .map((row) => {
+      const line = row as { name: string; qty?: number };
+      return { name: line.name, qty: line.qty ?? 1 };
+    });
+}
+
+/** "Large, Oat milk" from a line item's selected option groups. */
+function describeOptions(options: SelectedOption[]): string | null {
+  if (options.length === 0) return null;
+  return options
+    .flatMap((group) => group.values.map((value) => value.name))
+    .filter(Boolean)
+    .join(", ");
+}
 
 export type ShapedOrder = {
   id: string;
@@ -33,6 +60,9 @@ export type ShapedOrder = {
     name: string;
     qty: number;
     notes: string | null;
+    /** "Large, Oat milk" — the chosen variant values, joined for display. */
+    variant: string | null;
+    combo: { name: string; qty: number }[];
   }[];
 };
 
@@ -51,6 +81,8 @@ export function shapeOrder(
     name: item.name,
     qty: item.qty,
     notes: item.notes ?? null,
+    variant: describeOptions(parseSelectedOptions(item.options_json)),
+    combo: parseComboLines(item.combo_json),
   }));
 
   const itemCount = orderItems.reduce((sum, item) => sum + item.qty, 0);
