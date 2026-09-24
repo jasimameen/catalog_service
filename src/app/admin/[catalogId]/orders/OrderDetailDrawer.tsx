@@ -23,6 +23,7 @@ import type {
 } from "@/lib/supabase/types";
 import { StatusTimeline } from "@/components/orders/StatusTimeline";
 import { ensureTrackLink } from "./actions";
+import { PrintTicketFrame, printSandboxedHtml } from "@/components/admin/PrintTicketFrame";
 import { renderPrintTicketHtml } from "@/lib/catalog/print-ticket";
 
 const BUILTIN_FIELD_IDS = new Set([
@@ -120,23 +121,9 @@ export function OrderDetailDrawer({
   });
 
   function printTicket() {
-    const popup = window.open("", "_blank", "noopener,width=420,height=640");
-    if (!popup) {
-      onCopied("Allow pop-ups to print this ticket.");
-      return;
+    if (!printSandboxedHtml(ticketHtml)) {
+      onCopied("Could not open the print dialog.");
     }
-    popup.document.open();
-    popup.document.write(ticketHtml);
-    popup.document.close();
-    popup.focus();
-    popup.addEventListener("load", () => popup.print());
-    window.setTimeout(() => {
-      try {
-        popup.print();
-      } catch {
-        // popup may already be printing
-      }
-    }, 250);
   }
 
   useEffect(() => {
@@ -413,10 +400,9 @@ export function OrderDetailDrawer({
               </button>
             </div>
             {printOpen ? (
-              <iframe
+              <PrintTicketFrame
+                html={ticketHtml}
                 title="Print ticket preview"
-                srcDoc={ticketHtml}
-                sandbox=""
                 className="h-[280px] w-full rounded-[11px] border border-[#e2e7ee] bg-white"
               />
             ) : null}

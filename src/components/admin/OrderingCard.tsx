@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { CheckoutFields, CheckoutFormField, OrderFulfillment } from "@/lib/supabase/types";
 import {
   CHECKOUT_FIELD_KEYS,
@@ -33,7 +33,16 @@ import {
   dashSection,
   dashTextarea,
 } from "@/components/admin/dashboard/styles";
-import { DEFAULT_PRINT_TICKET_HTML, PRINT_TICKET_PLACEHOLDERS } from "@/lib/catalog/print-ticket";
+import { PrintTicketFrame } from "./PrintTicketFrame";
+import {
+  DEFAULT_PRINT_TICKET_HTML,
+  PRINT_TICKET_PLACEHOLDERS,
+  PRINT_TICKET_TEMPLATES,
+  matchPrintTemplateId,
+  printTicketTemplateById,
+  renderPrintTicketHtml,
+  samplePrintOrder,
+} from "@/lib/catalog/print-ticket";
 
 const FIELD_MODES = [
   { value: "required", label: "Required" },
@@ -62,6 +71,8 @@ export function OrderingCard({
   templateSettings,
   orderEmail,
   catalogAddress,
+  catalogName,
+  currency,
   embedded = false,
 }: {
   catalogId: string;
@@ -76,6 +87,8 @@ export function OrderingCard({
   templateSettings: TemplateSettings;
   orderEmail: string;
   catalogAddress?: string;
+  catalogName?: string;
+  currency?: string;
   embedded?: boolean;
 }) {
   const builtIn = checkoutFields ?? DEFAULT_CHECKOUT_FIELDS;
@@ -85,6 +98,17 @@ export function OrderingCard({
   const [alertOn, setAlertOn] = useState(showStorefrontAlert);
   const [tplSettings, setTplSettings] = useState(() => parseTemplateSettings(templateSettings));
   const restaurantUi = isRestaurantCatalog(template, modes);
+  const shopName = catalogName?.trim() || "Catalog";
+  const money = currency?.trim() || "AED";
+  const selectedTemplate = matchPrintTemplateId(tplSettings.printTicketHtml);
+  const previewHtml = useMemo(
+    () =>
+      renderPrintTicketHtml({
+        ...samplePrintOrder({ shop: shopName, currency: money }),
+        template: tplSettings.printTicketHtml,
+      }),
+    [tplSettings.printTicketHtml, shopName, money],
+  );
   const [state, formAction, pending] = useActionState<OrderingState, FormData>(
     updateCatalogOrdering.bind(null, catalogId),
     null,
@@ -226,9 +250,40 @@ export function OrderingCard({
             <div className={dashSection}>
               <p className={dashKicker}>Print ticket</p>
               <p className={`m-0 ${dashHint}`}>
-                HTML for kitchen tickets. Preview and Print sit on each order. Empty uses the
-                default receipt. Placeholders: {PRINT_TICKET_PLACEHOLDERS.join(" ")}
+                Pick a layout, then edit the HTML if you want. Preview uses a sample order.
+                Print from each order still uses this template. Placeholders:{" "}
+                {PRINT_TICKET_PLACEHOLDERS.join(" ")}
               </p>
+              <div className="flex flex-wrap gap-2">
+                {PRINT_TICKET_TEMPLATES.map((tpl) => {
+                  const on = selectedTemplate === tpl.id;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => {
+                        const next = printTicketTemplateById(tpl.id);
+                        if (!next) return;
+                        setTplSettings((prev) => ({ ...prev, printTicketHtml: next.html }));
+                      }}
+                      className={`min-h-11 rounded-full border px-4 text-[13px] font-medium active:scale-[0.98] motion-reduce:active:scale-100 ${
+                        on
+                          ? "border-[#101720] bg-[#101720] text-white"
+                          : "border-[#e2e7ee] bg-white text-[#46505e]"
+                      }`}
+                    >
+                      {tpl.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedTemplate ? (
+                <p className={`m-0 ${dashHint}`}>
+                  {PRINT_TICKET_TEMPLATES.find((t) => t.id === selectedTemplate)?.hint}
+                </p>
+              ) : (
+                <p className={`m-0 ${dashHint}`}>Custom HTML — preview updates as you type.</p>
+              )}
               <label className="flex flex-col gap-1.5">
                 <span className={dashLabel}>Ticket HTML</span>
                 <textarea
@@ -242,6 +297,14 @@ export function OrderingCard({
                   className={`${dashTextarea} min-h-[12rem] font-mono text-[12px]`}
                 />
               </label>
+              <div className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Live preview</span>
+                <PrintTicketFrame
+                  html={previewHtml}
+                  title="Print ticket preview"
+                  className="h-[320px] w-full rounded-[11px] border border-[#e2e7ee] bg-white"
+                />
+              </div>
             </div>
 
             <div className={dashSection}>

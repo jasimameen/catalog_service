@@ -25,6 +25,7 @@ import {
   parseImageFit,
 } from "@/lib/catalog/merchandising";
 import { parseCoord, parseLocations } from "@/lib/catalog/locations";
+import { sanitizePrintTemplate } from "@/lib/catalog/print-sanitize";
 import { formatCatalogHours, parseHoursState } from "@/lib/catalog/hours";
 import { canPublishNewCatalog } from "@/lib/billing/status";
 import { isValidSlug, slugFromName, suggestSlugCandidates } from "@/lib/catalog/slug";
@@ -90,7 +91,9 @@ function withPreservedFloor(incoming: TemplateSettings, current: unknown): Templ
   const existing = parseTemplateSettings(current);
   return {
     ...incoming,
-    printTicketHtml: incoming.printTicketHtml.trim() ? incoming.printTicketHtml : existing.printTicketHtml,
+    printTicketHtml: sanitizePrintTemplate(
+      incoming.printTicketHtml.trim() ? incoming.printTicketHtml : existing.printTicketHtml,
+    ),
     floor: existing.floor,
     restaurant: {
       ...incoming.restaurant,

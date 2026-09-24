@@ -244,6 +244,8 @@ export default async function CatalogDashboardPage({
           showStorefrontAlert={showAlert}
           orderEmail={catalog.order_email ?? ""}
           catalogAddress={catalog.address ?? ""}
+          catalogName={catalog.name}
+          currency={catalog.currency}
           embedded={embedded}
         />
       ),
