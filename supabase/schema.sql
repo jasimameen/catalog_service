@@ -19,6 +19,8 @@ create table if not exists accounts (
   ls_subscription_id text,
   ls_status text check (ls_status is null or ls_status in ('trialing', 'active', 'past_due', 'cancelled')),
   ls_renews_at timestamptz,
+  comp boolean not null default false,
+  max_catalogs integer,
   created_at timestamptz not null default now()
 );
 
@@ -302,7 +304,9 @@ alter table accounts
   add column if not exists ls_customer_id text,
   add column if not exists ls_subscription_id text,
   add column if not exists ls_status text,
-  add column if not exists ls_renews_at timestamptz;
+  add column if not exists ls_renews_at timestamptz,
+  add column if not exists comp boolean not null default false,
+  add column if not exists max_catalogs integer;
 
 alter table accounts drop constraint if exists accounts_ls_status_check;
 alter table accounts add constraint accounts_ls_status_check

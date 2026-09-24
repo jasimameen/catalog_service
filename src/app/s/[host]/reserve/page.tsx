@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { darken } from "@/lib/catalog/color";
 import { loadStorefrontCatalog } from "@/lib/catalog/load-storefront";
 import { storefrontMetadata } from "@/lib/seo/catalog-meta";
+import { ShopPausedNotice } from "@/components/storefront/ShopPausedNotice";
+import { catalogStorefrontLive } from "@/lib/billing/account-access";
 import { ReserveClient } from "./ReserveClient";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +23,9 @@ export default async function ReservePage({ params }: { params: Promise<{ host: 
   const { host } = await params;
   const catalog = await loadStorefrontCatalog(host);
   if (!catalog) notFound();
-  if (!catalog.settings.restaurant.enableReserve) notFound();
+  if (!(await catalogStorefrontLive(catalog.id))) {
+    return <ShopPausedNotice name={catalog.name} accent={catalog.accent} />;
+  }
   const style = {
     "--cat-accent": catalog.accent,
     "--cat-accent-dark": darken(catalog.accent),

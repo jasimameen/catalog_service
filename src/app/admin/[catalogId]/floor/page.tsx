@@ -26,7 +26,7 @@ export default async function FloorPage({ params }: { params: Promise<{ catalogI
     .order("created_at", { ascending: false })
     .limit(20);
   const serviceRequests = ((requestRows ?? []) as ServiceRequestRow[]).filter(
-    (row) => row.catalog_id === catalogId,
+    (row) => row.catalog_id === catalogId && !row.resolved_at,
   );
   const showRequests = settings.restaurant.callWaiter || settings.restaurant.requestBill;
 

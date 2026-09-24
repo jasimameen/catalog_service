@@ -230,6 +230,28 @@ export function isTerminalStatus(id: string, statuses: OrderStatusDef[]): boolea
   return LEGACY_DONE.has(id);
 }
 
+const GUEST_CANCEL_LOCKED = new Set([
+  "preparing",
+  "packed",
+  "in_progress",
+  "ready",
+  "collected",
+  "complete",
+  "done",
+  "out_for_delivery",
+  "shipped",
+  "cancelled",
+  "refunded",
+]);
+
+/** Guests may cancel only before kitchen / done. Merchants can still move any status. */
+export function guestCanCancelOrder(status: string, statuses: OrderStatusDef[]): boolean {
+  const id = status.trim().toLowerCase();
+  if (!id || GUEST_CANCEL_LOCKED.has(id)) return false;
+  if (isTerminalStatus(id, statuses)) return false;
+  return true;
+}
+
 export function normalizeStatuses(rows: OrderStatusDef[]): OrderStatusDef[] {
   return rows.map((row, index) => ({
     id: row.id,

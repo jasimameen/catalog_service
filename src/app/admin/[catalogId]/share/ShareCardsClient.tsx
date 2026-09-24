@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 
 const POWERED_BY = "Powered by HV Catalog";
 const DEFAULT_SUBTITLE = "Scan to browse and order";
+const DINE_SUBTITLE = "Scan to order at your table";
 
 const TEMPLATES = [
   { id: "poster", name: "Poster", blurb: "A5 counter sign" },
@@ -57,7 +58,7 @@ function PosterCard({ name, subtitle, host, qrSrc }: CardProps) {
         <QrFace src={qrSrc} alt={`QR code for ${host}`} size={220} />
       </div>
       <div>
-        <p className="m-0 text-[12px] font-medium tracking-tight text-[var(--cat-ink)]">{host}</p>
+        <p className="m-0 break-all text-[15px] font-semibold tracking-tight text-[var(--cat-ink)]">{host}</p>
         <p className="m-0 mt-3 text-[10px] tracking-wide text-[#86868b]">{POWERED_BY}</p>
       </div>
     </article>
@@ -80,7 +81,8 @@ function TentCard({ name, subtitle, host, qrSrc, accent }: CardProps) {
           {name || "Your catalog"}
         </h2>
         {subtitle ? <p className="m-0 mt-1.5 text-[12px] text-[var(--cat-muted)]">{subtitle}</p> : null}
-        <p className="m-0 mt-4 text-[10px] tracking-wide text-[#86868b]">{POWERED_BY}</p>
+        <p className="m-0 mt-3 break-all text-[13px] font-semibold tracking-tight text-[var(--cat-ink)]">{host}</p>
+        <p className="m-0 mt-3 text-[10px] tracking-wide text-[#86868b]">{POWERED_BY}</p>
       </div>
     </article>
   );
@@ -101,7 +103,8 @@ function AccentCard({ name, subtitle, host, qrSrc, accent }: CardProps) {
       <div className="rounded-2xl bg-white p-3">
         <QrFace src={qrSrc} alt={`QR code for ${host}`} size={200} />
       </div>
-      <p className="m-0 text-[10px] tracking-wide text-white/75">{POWERED_BY}</p>
+      <p className="m-0 break-all text-[13px] font-semibold tracking-tight text-white">{host}</p>
+      <p className="m-0 mt-2 text-[10px] tracking-wide text-white/75">{POWERED_BY}</p>
     </article>
   );
 }
@@ -117,7 +120,8 @@ function MinimalCard({ name, subtitle, host, qrSrc, accent }: CardProps) {
       <div className="flex flex-1 items-center justify-center py-6">
         <QrFace src={qrSrc} alt={`QR code for ${host}`} size={200} />
       </div>
-      <p className="m-0 text-[10px] tracking-wide text-[#86868b]">{POWERED_BY}</p>
+      <p className="m-0 break-all text-[14px] font-semibold tracking-tight text-[var(--cat-ink)]">{host}</p>
+      <p className="m-0 mt-2 text-[10px] tracking-wide text-[#86868b]">{POWERED_BY}</p>
     </article>
   );
 }
@@ -135,21 +139,67 @@ function ShareCard(props: CardProps & { template: TemplateId }) {
   }
 }
 
+async function stampLogo(qrDataUrl: string, logoUrl: string): Promise<string> {
+  const qr = await loadImage(qrDataUrl);
+  const logo = await loadImage(logoUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = qr.width;
+  canvas.height = qr.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return qrDataUrl;
+  ctx.drawImage(qr, 0, 0);
+  const box = Math.round(qr.width * 0.22);
+  const pad = Math.round(box * 0.12);
+  const x = (qr.width - box) / 2;
+  const y = (qr.height - box) / 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.roundRect(x, y, box, box, 12);
+  ctx.fill();
+  ctx.drawImage(logo, x + pad, y + pad, box - pad * 2, box - pad * 2);
+  return canvas.toDataURL("image/png");
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("image"));
+    img.src = src;
+  });
+}
+
 export function ShareCardsClient({
   catalogName,
-  url,
-  host,
+  menuUrl,
+  dineUrl,
+  menuHost,
+  dineHost,
   accent,
+  logo,
+  showDine,
+  dineInQr,
 }: {
   catalogName: string;
-  url: string;
-  host: string;
+  menuUrl: string;
+  dineUrl: string;
+  menuHost: string;
+  dineHost: string;
   accent: string;
+  logo?: string | null;
+  showDine: boolean;
+  dineInQr: boolean;
 }) {
+  const [kind, setKind] = useState<"menu" | "dine">(showDine && dineInQr ? "dine" : "menu");
   const [name, setName] = useState(catalogName);
-  const [subtitle, setSubtitle] = useState(DEFAULT_SUBTITLE);
+  const [subtitle, setSubtitle] = useState(showDine && dineInQr ? DINE_SUBTITLE : DEFAULT_SUBTITLE);
   const [template, setTemplate] = useState<TemplateId>("poster");
+  const [qrColor, setQrColor] = useState("#101720");
+  const [useLogo, setUseLogo] = useState(Boolean(logo));
   const [qrSrc, setQrSrc] = useState<string | null>(null);
+  const url = kind === "dine" ? dineUrl : menuUrl;
+  const host = kind === "dine" ? dineHost : menuHost;
 
   useEffect(() => {
     let cancelled = false;
@@ -157,10 +207,11 @@ export function ShareCardsClient({
       errorCorrectionLevel: "H",
       margin: 2,
       width: 640,
-      color: { dark: "#101720", light: "#ffffff" },
+      color: { dark: qrColor || "#101720", light: "#ffffff" },
     })
-      .then((dataUrl) => {
-        if (!cancelled) setQrSrc(dataUrl);
+      .then(async (dataUrl) => {
+        const next = useLogo && logo ? await stampLogo(dataUrl, logo).catch(() => dataUrl) : dataUrl;
+        if (!cancelled) setQrSrc(next);
       })
       .catch(() => {
         if (!cancelled) setQrSrc(null);
@@ -168,7 +219,7 @@ export function ShareCardsClient({
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [logo, qrColor, url, useLogo]);
 
   const cardProps: CardProps = { name, subtitle, host, qrSrc, accent };
 
@@ -213,6 +264,26 @@ export function ShareCardsClient({
               className="w-full rounded-[10px] border border-[#d2d2d7] px-3 py-2 text-[13px] outline-none focus:border-[var(--cat-accent)]"
             />
           </label>
+          <label className="shrink-0">
+            <span className="mb-1 block text-xs font-medium text-[var(--cat-muted)]">QR colour</span>
+            <input
+              type="color"
+              value={qrColor}
+              onChange={(e) => setQrColor(e.target.value)}
+              className="h-10 w-14 cursor-pointer rounded-[10px] border border-[#d2d2d7] bg-white p-1"
+            />
+          </label>
+          {logo ? (
+            <label className="inline-flex min-h-10 shrink-0 items-center gap-2 text-[13px] text-[var(--cat-ink)]">
+              <input
+                type="checkbox"
+                checked={useLogo}
+                onChange={(e) => setUseLogo(e.target.checked)}
+                className="h-4 w-4 accent-[#0b5fce]"
+              />
+              Logo
+            </label>
+          ) : null}
           <button
             type="button"
             onClick={() => window.print()}
@@ -223,9 +294,43 @@ export function ShareCardsClient({
           </button>
         </div>
         <p className="m-0 mt-3 text-xs text-[var(--cat-muted)]">
-          Prints the selected card only. Live link: {host}
+          Prints the selected card only. {kind === "dine" ? "Dine-in" : "Menu"} link:{" "}
+          <span className="font-semibold text-[var(--cat-ink)]">{host}</span>
         </p>
       </div>
+
+      {showDine ? (
+        <div className="print:hidden flex flex-wrap gap-2">
+          {(
+            [
+              { id: "menu" as const, label: "Menu", blurb: "Pickup and delivery" },
+              { id: "dine" as const, label: "Dine-in", blurb: "Table QR / in-house" },
+            ]
+          ).map((row) => {
+            const selected = kind === row.id;
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => {
+                  setKind(row.id);
+                  setSubtitle(row.id === "dine" ? DINE_SUBTITLE : DEFAULT_SUBTITLE);
+                }}
+                className={`rounded-full px-4 py-2 text-left text-[13px] ${
+                  selected
+                    ? "bg-[var(--cat-ink)] font-medium text-white"
+                    : "border border-[#d2d2d7] bg-white font-medium text-[var(--cat-ink)]"
+                }`}
+              >
+                {row.label}
+                <span className={`ml-2 text-[11px] ${selected ? "text-white/70" : "text-[#86868b]"}`}>
+                  {row.blurb}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="print:hidden flex flex-wrap gap-2">
         {TEMPLATES.map((tpl) => {

@@ -79,6 +79,10 @@ export type AccountRow = {
   ls_subscription_id: string | null;
   ls_status: LsStatus | null;
   ls_renews_at: string | null;
+  /** Operator grant — skip Lemon / in-app trial. Shop stays live. */
+  comp?: boolean | null;
+  /** Operator override. Null = use plan default (trial 1, paid unlimited). */
+  max_catalogs?: number | null;
   created_at: string;
 };
 
@@ -224,6 +228,7 @@ export type ReservationRow = {
   completed_at?: string | null;
   cancelled_at?: string | null;
   no_show_at?: string | null;
+  track_token?: string | null;
   created_at: string;
 };
 

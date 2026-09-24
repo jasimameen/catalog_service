@@ -32,7 +32,7 @@ const GROUPS: {
   },
   {
     title: "Ordering",
-    rows: [{ id: "ordering", title: "Ordering form", subtitle: "How guests place an order" }],
+    rows: [{ id: "ordering", title: "Ordering form", subtitle: "Fulfillment, reservations, checkout" }],
   },
   {
     title: "Look",
@@ -68,7 +68,7 @@ const PANEL_COPY: Record<SettingsPanelId, { title: string; subtitle: string }> =
     title: "Floor plan",
     subtitle: "Draw rooms and tables. Reservations work without this.",
   },
-  ordering: { title: "Ordering", subtitle: "How guests place an order" },
+  ordering: { title: "Ordering", subtitle: "Fulfillment, reservations, and checkout" },
   look: { title: "Look", subtitle: "Theme, cover, and display" },
   discovery: { title: "Discovery", subtitle: "Metadata, SEO, and share preview" },
   danger: { title: "Advanced", subtitle: "Another shop or delete this catalog" },

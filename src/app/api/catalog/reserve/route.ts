@@ -14,7 +14,8 @@ import {
 } from "@/lib/catalog/combos";
 import { parseItemOptions, resolveSelectedOptions, unitPriceWithOptions } from "@/lib/catalog/item-options";
 import { resolveIncomingOrderStatus } from "@/lib/catalog/order-statuses";
-import { newTrackToken } from "@/lib/catalog/order-tracking";
+import { newTrackToken, trackingPath, trackingUrl } from "@/lib/catalog/order-tracking";
+import { RESERVATION_TRACK_SQL_HINT } from "@/lib/catalog/guest-track";
 import { parseReservationItems, RESERVATIONS_ITEMS_SQL_HINT } from "@/lib/catalog/reservation-items";
 import {
   parseReservationTables,
@@ -37,6 +38,7 @@ import type {
   SelectedOption,
 } from "@/lib/supabase/types";
 import type { FloorTable } from "@/lib/catalog/template-settings";
+import { catalogStorefrontLive } from "@/lib/billing/account-access";
 
 function clean(value: unknown, max = 120): string {
   return typeof value === "string" ? value.replace(/[\r\n]+/g, " ").trim().slice(0, max) : "";
@@ -126,7 +128,22 @@ function asSnap(items: ResolvedLine[]): ReservationItemSnap[] {
 
 function missingColumn(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
-  return error.code === "42703" || Boolean(error.message?.includes("items") || error.message?.includes("order_id") || error.message?.includes("table_ids") || error.message?.includes("status"));
+  return error.code === "42703" || Boolean(error.message?.includes("items") || error.message?.includes("order_id") || error.message?.includes("table_ids") || error.message?.includes("status") || error.message?.includes("track_token"));
+}
+
+async function reservationTrackLinks(catalog: CatalogRow, token: string) {
+  const supabase = getServiceClient();
+  const { data: domainRows } = await supabase
+    .from("domains")
+    .select("hostname, kind")
+    .eq("catalog_id", catalog.id)
+    .eq("status", "verified");
+  const customHost = (domainRows ?? []).find((row) => row.kind === "custom")?.hostname ?? null;
+  return {
+    trackToken: token,
+    trackPath: trackingPath(catalog.slug, token),
+    trackUrl: trackingUrl(catalog.slug, token, customHost),
+  };
 }
 
 function incomingTables(body: Record<string, unknown>): ReservationTableRef[] {
@@ -276,6 +293,9 @@ export async function POST(request: Request) {
   if (!catalog || catalog.status !== "live") {
     return Response.json({ error: "This catalog is not available." }, { status: 404 });
   }
+  if (!(await catalogStorefrontLive(catalog.id))) {
+    return Response.json({ error: "This shop is paused." }, { status: 403 });
+  }
   const settings = parseTemplateSettings(catalog.template_settings);
   if (!settings.restaurant.enableReserve) {
     return Response.json({ error: "Reservations are off." }, { status: 403 });
@@ -316,6 +336,7 @@ export async function POST(request: Request) {
   }
 
   const snaps = asSnap(resolved);
+  const trackToken = newTrackToken();
   let orderId: string | null = null;
   let orderReference: string | null = null;
 
@@ -357,12 +378,34 @@ export async function POST(request: Request) {
     items: snaps,
     order_id: orderId,
     status: DEFAULT_RESERVATION_STATUS,
+    track_token: trackToken,
   };
 
   const first = await supabase.from("reservations").insert(fullRow).select("*").single();
   if (first.error) {
     if (first.error.code === "42P01" || first.error.message.includes("reservations")) {
       return Response.json({ error: "Run supabase/template-settings.sql, then try again." }, { status: 500 });
+    }
+    if (first.error.code === "42703" && first.error.message.includes("track_token")) {
+      const retry = await supabase.from("reservations").insert({
+        ...baseRow,
+        table_ids: tableRefs,
+        items: snaps,
+        order_id: orderId,
+        status: DEFAULT_RESERVATION_STATUS,
+      }).select("*").single();
+      if (!retry.error && retry.data) {
+        notifyNewReservation(catalog, retry.data);
+        return Response.json({
+          ok: true,
+          reservationId: retry.data.id,
+          reservation: retry.data,
+          orderId,
+          orderReference,
+          items: parseReservationItems(snaps),
+          sqlHint: RESERVATION_TRACK_SQL_HINT,
+        });
+      }
     }
     if (missingColumn(first.error)) {
       const fallback = await supabase.from("reservations").insert({ ...baseRow, items: snaps, order_id: orderId }).select("*").single();
@@ -404,6 +447,7 @@ export async function POST(request: Request) {
   });
 
   notifyNewReservation(catalog, first.data);
+  const track = await reservationTrackLinks(catalog, trackToken);
 
   return Response.json({
     ok: true,
@@ -412,6 +456,7 @@ export async function POST(request: Request) {
     orderId,
     orderReference,
     items: parseReservationItems(snaps),
+    ...track,
   });
 }
 
@@ -430,6 +475,8 @@ function notifyNewReservation(
       catalogId: catalog.id,
       href: incomingReservationHref(catalog.id, reservation.id),
     },
+  }).then((result) => {
+    if (!result.ok) console.error("reservation push", result.reason);
   });
 }
 

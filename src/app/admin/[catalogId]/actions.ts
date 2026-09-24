@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
-import { requireAccount } from "@/lib/auth/current-account";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { countAccountCatalogs } from "@/lib/billing/account-access";
 import { getCatalogAdminClient } from "@/app/admin/_lib/data";
 import { ACCENT_COLORS, isTemplateKey, parseAccentHex } from "@/lib/catalog/templates";
 import { checkoutFieldsFromForm } from "@/lib/catalog/checkout-fields";
@@ -79,6 +80,7 @@ function revalidateCatalog(catalogId: string, slug: string) {
   revalidatePath(`/admin/${catalogId}/floor`);
   revalidatePath("/admin");
   revalidatePath(`/s/${slug}`);
+  revalidatePath(`/s/${slug}/dine`);
   revalidatePath(`/s/${slug}/reserve`);
   revalidateStorefrontCatalog();
 }
@@ -88,6 +90,7 @@ function withPreservedFloor(incoming: TemplateSettings, current: unknown): Templ
   const existing = parseTemplateSettings(current);
   return {
     ...incoming,
+    printTicketHtml: incoming.printTicketHtml.trim() ? incoming.printTicketHtml : existing.printTicketHtml,
     floor: existing.floor,
     restaurant: {
       ...incoming.restaurant,
@@ -597,14 +600,24 @@ export async function createBranchCatalog(
     return { error: "Could not find this shop." };
   }
 
-  const { data: owner } = await supabase
+  const user = await getSessionUser();
+  const ownerFull = await supabase
     .from("accounts")
-    .select("ls_status, trial_ends_at")
+    .select("ls_status, trial_ends_at, comp, max_catalogs")
     .eq("id", source.account_id)
     .maybeSingle();
+  const owner = ownerFull.error
+    ? await supabase
+        .from("accounts")
+        .select("ls_status, trial_ends_at")
+        .eq("id", source.account_id)
+        .maybeSingle()
+    : ownerFull;
+  const ownerBilling = owner.data ?? account;
+  const catalogCount = await countAccountCatalogs(source.account_id);
 
-  if (!canPublishNewCatalog(owner ?? account)) {
-    return { error: "Subscribe to add another shop. This one stays live." };
+  if (!canPublishNewCatalog(ownerBilling, { email: user?.email, catalogCount })) {
+    return { error: "Subscribe to add another shop, or ask us to raise the catalog limit." };
   }
 
   const slug = await uniqueBranchSlug(name);

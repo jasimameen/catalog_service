@@ -29,6 +29,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.cursor/debug-*.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -44,3 +45,10 @@ next-env.d.ts
 # Instant Catalog Ops app is a separate project — do not track in this website repo
 /mobile-app/
 /Instant Catalog — Ops App.html
+
+# Remotion promo video is local-only — do not track in this website repo
+/remotion-ops-promo/
+
+# Supabase CLI local cache — do not track
+/supabase/.temp/
+/supabase/.branches/

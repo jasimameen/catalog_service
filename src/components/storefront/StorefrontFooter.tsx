@@ -1,3 +1,4 @@
+import { LegalLinks } from "@/components/brand/LegalLinks";
 import { COMPANY_NAME, COMPANY_URL } from "@/lib/brand";
 import {
   instagramHandle,
@@ -190,6 +191,8 @@ export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
           >
             Powered by {COMPANY_NAME}
           </a>
+          <span aria-hidden> · </span>
+          <LegalLinks />
           {catalog.usedPlaceholderImages ? (
             <span className="mt-1 block text-[10px]">Some photos via Unsplash</span>
           ) : null}

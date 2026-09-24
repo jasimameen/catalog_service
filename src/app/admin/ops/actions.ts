@@ -99,3 +99,36 @@ export async function transferCatalog(input: {
   revalidatePath(`/admin/${catalog.id}`);
   return { ok: true, invited: resolved.invited, email };
 }
+
+export async function grantAccountPlan(input: {
+  accountId: string;
+  comp: boolean;
+  maxCatalogs: number | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const gate = await requirePlatformOperator();
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const maxCatalogs =
+    input.maxCatalogs == null || !Number.isFinite(input.maxCatalogs)
+      ? null
+      : Math.max(0, Math.floor(input.maxCatalogs));
+
+  const service = getServiceClient();
+  const { error } = await service
+    .from("accounts")
+    .update({ comp: input.comp, max_catalogs: maxCatalogs })
+    .eq("id", input.accountId);
+
+  if (error) {
+    if (error.code === "PGRST204" || error.message?.includes("comp") || error.message?.includes("max_catalogs")) {
+      return { ok: false, error: "Run supabase/account-comp.sql in the SQL editor, then try again." };
+    }
+    console.error("grantAccountPlan failed", error);
+    return { ok: false, error: "Could not save the grant. Try again." };
+  }
+
+  revalidatePath("/admin/ops");
+  revalidatePath("/admin");
+  revalidatePath("/admin/settings");
+  return { ok: true };
+}

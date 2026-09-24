@@ -2,6 +2,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { hasSupabaseSecretKey, isSupabaseConfigured } from "@/lib/supabase/env";
 import { parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { sendPushToAccount } from "@/lib/push/send";
+import { catalogStorefrontLive } from "@/lib/billing/account-access";
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured() || !hasSupabaseSecretKey()) {
@@ -20,6 +21,9 @@ export async function POST(request: Request) {
     .eq("id", catalogId)
     .maybeSingle();
   if (!catalog || catalog.status !== "live") return Response.json({ error: "Not available." }, { status: 404 });
+  if (!(await catalogStorefrontLive(catalogId))) {
+    return Response.json({ error: "This shop is paused." }, { status: 403 });
+  }
   const settings = parseTemplateSettings(catalog.template_settings);
   if (kind === "waiter" && !settings.restaurant.callWaiter) {
     return Response.json({ error: "Call waiter is off." }, { status: 403 });
@@ -44,6 +48,8 @@ export async function POST(request: Request) {
     title: kind === "bill" ? "Request bill" : "Call waiter",
     body: tableNo ? `Table ${tableNo}` : "A table needs you",
     data: { kind: "service_request", requestKind: kind, tableNo: tableNo || "", catalogId },
+  }).then((result) => {
+    if (!result.ok) console.error("service-request push", result.reason);
   });
 
   return Response.json({ ok: true });

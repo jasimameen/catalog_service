@@ -143,16 +143,31 @@ export async function fetchOrderEvents(orderIds: string[]): Promise<OrderStatusE
   return (data ?? []) as OrderStatusEventRow[];
 }
 
+export function isOpenServiceRequest(row: ServiceRequestRow): boolean {
+  return !row.resolved_at;
+}
+
 export async function fetchServiceRequests(catalogId: string, limit = 20): Promise<ServiceRequestRow[]> {
   const supabase = getBrowserSupabase();
-  const { data, error } = await supabase
+  const open = await supabase
     .from("service_requests")
     .select("*")
     .eq("catalog_id", catalogId)
+    .is("resolved_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) return [];
-  return ((data ?? []) as ServiceRequestRow[]).filter((row) => row.catalog_id === catalogId);
+  const result = open.error
+    ? await supabase
+        .from("service_requests")
+        .select("*")
+        .eq("catalog_id", catalogId)
+        .order("created_at", { ascending: false })
+        .limit(limit)
+    : open;
+  if (result.error) return [];
+  return ((result.data ?? []) as ServiceRequestRow[]).filter(
+    (row) => row.catalog_id === catalogId && isOpenServiceRequest(row),
+  );
 }
 
 export function asCatalogReservation(value: unknown, catalogId: string): ReservationRow | null {

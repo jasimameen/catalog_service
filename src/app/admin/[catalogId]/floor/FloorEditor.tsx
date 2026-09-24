@@ -35,6 +35,7 @@ import {
   type StudioTable,
   type StudioTableShape,
 } from "@/lib/catalog/floor-plan";
+import { catalogDineUrl } from "@/app/admin/_lib/urls";
 import { saveFloorPlan } from "./actions";
 
 type Tool =
@@ -207,6 +208,7 @@ export function FloorEditor({
   const [pending, setPending] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const guestHref = `/s/${slug}/reserve`;
+  const dineHref = `/s/${slug}/dine`;
 
   const floor = plan.floors[Math.min(floorIdx, plan.floors.length - 1)] ?? plan.floors[0]!;
   const stats = useMemo(() => planStats(plan), [plan]);
@@ -898,7 +900,22 @@ export function FloorEditor({
               Delete
             </button>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-[var(--cat-muted)]">Drag the table to move it, or drag the handles to change its footprint. Arrow keys nudge, Delete removes.</p>
+          <button
+            type="button"
+            onClick={() => {
+              const href = catalogDineUrl(slug, selTable.no);
+              void navigator.clipboard?.writeText(href).then(
+                () => flash("Copied dine-in table link"),
+                () => window.prompt("Copy this dine-in table link", href),
+              );
+            }}
+            className="mt-3 h-11 w-full rounded-[9px] border border-[var(--cat-border)] bg-white text-[12.5px] font-bold"
+          >
+            Copy dine-in link · table {selTable.no}
+          </button>
+          <p className="mt-3 text-xs leading-relaxed text-[var(--cat-muted)]">
+            Table QR uses /dine?table={selTable.no} — not the regular menu. Drag to move, handles to resize.
+          </p>
         </div>
       ) : selItem ? (
         <div>
@@ -1187,11 +1204,18 @@ export function FloorEditor({
         </button>
       </div>
       <Link
+        href={dineHref}
+        target="_blank"
+        className="inline-flex h-9 cursor-pointer items-center rounded-[9px] border border-[var(--cat-border)] bg-white px-3.5 text-[12.5px] font-semibold text-[var(--cat-ink)] no-underline transition-colors duration-150 hover:bg-[#f7f8fa]"
+      >
+        Dine-in
+      </Link>
+      <Link
         href={guestHref}
         target="_blank"
         className="inline-flex h-9 cursor-pointer items-center rounded-[9px] border border-[var(--cat-border)] bg-white px-3.5 text-[12.5px] font-semibold text-[var(--cat-ink)] no-underline transition-colors duration-150 hover:bg-[#f7f8fa]"
       >
-        Guest view
+        Reserve
       </Link>
       <button
         type="button"

@@ -1,11 +1,11 @@
-import Link from "next/link";
-import { requireAccount } from "@/lib/auth/current-account";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { countAccountCatalogs } from "@/lib/billing/account-access";
 import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
-import { catalogUrl } from "@/app/admin/_lib/urls";
+import { catalogDineUrl, catalogReserveUrl, catalogUrl } from "@/app/admin/_lib/urls";
 import { formatMoney } from "@/lib/catalog/currency";
 import { isTerminalStatus, parseOrderStatuses } from "@/lib/catalog/order-statuses";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { CopyLinkButton } from "@/components/admin/CopyLinkButton";
+import { StorefrontLinks } from "@/components/admin/StorefrontLinks";
 import { LookSettingsForm } from "./LookSettingsForm";
 import { HoursCard } from "./HoursCard";
 import { BranchesCard } from "./BranchesCard";
@@ -62,6 +62,7 @@ export default async function CatalogDashboardPage({
     reservationsRes,
     todayReservationsRes,
     ownerAccountRes,
+    user,
   ] = await Promise.all([
     requireAccount(),
     getCatalogOrNotFound(catalogId),
@@ -70,7 +71,7 @@ export default async function CatalogDashboardPage({
       .select("*", { count: "exact", head: true })
       .eq("catalog_id", catalogId)
       .gte("created_at", startOfMonthIso()),
-    supabase.from("orders").select("subtotal, status").eq("catalog_id", catalogId),
+    supabase.from("orders").select("subtotal, status, created_at").eq("catalog_id", catalogId),
     supabase
       .from("catalog_items")
       .select("*", { count: "exact", head: true })
@@ -101,9 +102,10 @@ export default async function CatalogDashboardPage({
       .eq("day", todayIso),
     supabase
       .from("accounts")
-      .select("ls_status, trial_ends_at")
+      .select("ls_status, trial_ends_at, comp, max_catalogs")
       .eq("id", (await getCatalogOrNotFound(catalogId)).account_id)
       .maybeSingle(),
+    getSessionUser(),
   ]);
 
   const loadFailed = Boolean(
@@ -120,7 +122,11 @@ export default async function CatalogDashboardPage({
   const visibleItemCount = visibleItemsCountRes.count ?? 0;
   const recentOrders = (recentOrdersRes.data ?? []) as OrderRow[];
   const recentReservations = (reservationsRes.data ?? []) as ReservationRow[];
-  const canAddShop = canPublishNewCatalog(ownerAccountRes.data ?? account);
+  const ownerCatalogCount = await countAccountCatalogs(catalog.account_id);
+  const canAddShop = canPublishNewCatalog(ownerAccountRes.data ?? account, {
+    email: user?.email,
+    catalogCount: ownerCatalogCount,
+  });
   const locations = parseLocations(catalog.locations);
   const settings = parseTemplateSettings(catalog.template_settings);
   const showReservations = settings.restaurant.enableReserve || recentReservations.length > 0;
@@ -134,6 +140,10 @@ export default async function CatalogDashboardPage({
   const openTickets = (ordersRes.data ?? []).filter(
     (row) => !isTerminalStatus(String((row as { status?: string }).status ?? ""), statuses),
   ).length;
+  const leftoverPriorDay = (ordersRes.data ?? []).filter((row) => {
+    const created = String((row as { created_at?: string }).created_at ?? "");
+    return created && created < `${todayIso}T00:00:00.000Z` && !isTerminalStatus(String((row as { status?: string }).status ?? ""), statuses);
+  }).length;
   const bookedToday = (todayReservationsRes.data ?? []).filter(
     (row) => reservationTone(row.status) === "booked",
   ).length;
@@ -162,7 +172,10 @@ export default async function CatalogDashboardPage({
   const maxQty = topItems[0]?.qty ?? 1;
 
   const url = catalogUrl(catalog.slug);
-  const host = url.replace(/^https?:\/\//, "");
+  const dineUrl = catalogDineUrl(catalog.slug);
+  const reserveUrl = catalogReserveUrl(catalog.slug);
+  const fulfillmentModes = parseFulfillmentModes(catalog.fulfillment_modes);
+  const showDineLink = fulfillmentModes.includes("dine_in");
   const stats = [
     { label: "Views this month", value: viewsThisMonth.toLocaleString(), note: "So far this month" },
     { label: "Orders", value: orderCount.toLocaleString(), note: `${orderCount} total` },
@@ -290,19 +303,20 @@ export default async function CatalogDashboardPage({
           acceptOrders={acceptOrders}
           kitchenOpen={settings.restaurant.kitchenOpen}
           openTickets={openTickets}
+          leftoverPriorDay={leftoverPriorDay}
           bookedToday={bookedToday}
         />
 
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#86868b]">
-          <span className="truncate font-mono text-[12px]">{host}</span>
-          <CopyLinkButton url={url} className="ops-press min-h-9 bg-transparent px-0 text-[13px] text-[#5a6472]" />
-          <Link href={`/admin/${catalogId}/share`} className="ops-press inline-flex min-h-9 items-center text-[13px] text-[#5a6472] no-underline">
-            QR
-          </Link>
-          <a href={url} target="_blank" rel="noreferrer" className="ops-press inline-flex min-h-9 items-center text-[13px] text-[#0b5fce] no-underline">
-            View
-          </a>
-          {showAlert ? <span className="text-[#0b5fce]">Alert on</span> : null}
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <StorefrontLinks
+            menuUrl={url}
+            dineUrl={dineUrl}
+            reserveUrl={reserveUrl}
+            shareHref={`/admin/${catalogId}/share`}
+            showDine={showDineLink}
+            showReserve={settings.restaurant.enableReserve}
+          />
+          {showAlert ? <span className="text-[13px] text-[#0b5fce]">Alert on</span> : null}
         </div>
 
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start">

@@ -1,11 +1,18 @@
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { AccountSignOutCard, ChangePasswordForm, UpdateEmailForm } from "./AccountForms";
+import { getServerSupabase } from "@/lib/supabase/server";
+import { AccountSignOutCard, ChangePasswordForm, ReportIssueForm, UpdateEmailForm } from "./AccountForms";
 
 export default async function AccountPage() {
   const account = await requireAccount();
   const user = await getSessionUser();
   const email = user?.email ?? "";
+  const supabase = await getServerSupabase();
+  const { data: catalogs } = await supabase
+    .from("catalogs")
+    .select("id, name")
+    .eq("account_id", account.id)
+    .order("name", { ascending: true });
 
   return (
     <>
@@ -14,6 +21,10 @@ export default async function AccountPage() {
         <ChangePasswordForm />
         <UpdateEmailForm email={email} />
         <AccountSignOutCard email={email} />
+        <ReportIssueForm
+          email={email}
+          catalogs={(catalogs ?? []).map((row) => ({ id: row.id, name: row.name }))}
+        />
       </div>
     </>
   );

@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { StorefrontCatalog, StorefrontItem } from "@/lib/catalog/types";
+import { catalogOffersDineIn, guestStorefrontPaths } from "@/lib/catalog/storefront-paths";
 import { useCart } from "@/lib/catalog/cart-context";
 import { formatMoney } from "@/lib/catalog/currency";
 import { checkoutAllowsItemNotes, fulfillmentLabel, FULFILLMENTS } from "@/lib/catalog/checkout-form";
 import { submitCatalogOrder } from "@/lib/catalog/place-order";
+import type { OrderResult } from "@/lib/catalog/order-types";
 import { isDineInTableSession, isFloorPlanEnabled, orderCtaLabel } from "@/lib/catalog/template-settings";
 import { TableTicketList, useTableTicket } from "./TableTicket";
 import { needsOptionPick, optionsCue } from "@/lib/catalog/item-options";
@@ -26,9 +29,11 @@ const PHOTO = "var(--cat-photo-bg)";
 export function RestaurantMenu({
   catalog,
   onOpenCart,
+  onPlaced,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  onPlaced?: (result: OrderResult) => void;
 }) {
   const session = useStorefrontSessionRequired();
   const { quantities, increment, decrement, itemCount, subtotal, acceptOrders, lines, clear } = useCart();
@@ -85,6 +90,10 @@ export function RestaurantMenu({
       return;
     }
     clear();
+    if (onPlaced && !rest.kitchenRounds) {
+      onPlaced(placed.result);
+      return;
+    }
     setWaiterMsg("Sent to kitchen");
     window.setTimeout(() => setWaiterMsg(""), 2500);
     void refreshTicket();
@@ -174,7 +183,17 @@ export function RestaurantMenu({
     window.setTimeout(() => setWaiterMsg(""), 2500);
   }
 
-  const reserveHref = catalog.id.startsWith("builder") ? undefined : `/s/${catalog.slug}/reserve`;
+  const pathname = usePathname();
+  const paths = guestStorefrontPaths(catalog.slug, pathname);
+  const reserveHref = catalog.id.startsWith("builder") ? undefined : paths.reserve;
+  const dineHref = catalog.id.startsWith("builder") ? undefined : paths.dine;
+  const showDineLink = session.channel === "menu" && catalogOffersDineIn(catalog.fulfillmentModes) && Boolean(dineHref);
+  const hideTakeaway = rest.hideTakeawayOnDine;
+  const showMenuLink =
+    session.channel === "dine" &&
+    !hideTakeaway &&
+    catalog.fulfillmentModes.some((mode) => mode === "pickup" || mode === "delivery");
+  const placeFromCart = !tableSession || !rest.skipDineInDetails;
 
   return (
     <div className="min-h-screen bg-[var(--cat-bg)] text-[var(--cat-ink)]">
@@ -205,7 +224,7 @@ export function RestaurantMenu({
           {tableSession ? (
             <div className="flex items-center gap-2">
               <div className="inline-flex min-h-11 items-center rounded-[10px] bg-[var(--cat-ink)] px-3 text-[13px] font-bold text-white">
-                Table {session.tableNo}
+                Table {session.tableNo} · Dine-in
               </div>
               {session.canChangePresence ? (
                 <button
@@ -217,7 +236,7 @@ export function RestaurantMenu({
                 </button>
               ) : null}
             </div>
-          ) : session.presence === "here" ? (
+          ) : session.channel === "dine" || session.presence === "here" ? (
             <div className="flex items-center gap-2">
               <div className="inline-flex min-h-11 items-center rounded-[10px] bg-[var(--cat-ink)] px-3 text-[13px] font-bold text-white">
                 Dine in
@@ -264,6 +283,22 @@ export function RestaurantMenu({
               ) : null}
             </div>
           ) : null}
+          {showDineLink ? (
+            <a
+              href={dineHref}
+              className="inline-flex min-h-11 items-center rounded-[10px] border border-[var(--cat-border)] bg-white px-3 text-[12px] font-bold text-[var(--cat-ink)] sm:px-3.5 sm:text-[13px]"
+            >
+              Dine in
+            </a>
+          ) : null}
+          {showMenuLink ? (
+            <a
+              href={paths.menu}
+              className="inline-flex min-h-11 items-center rounded-[10px] border border-[var(--cat-border)] bg-white px-3 text-[12px] font-bold text-[var(--cat-ink)] sm:px-3.5 sm:text-[13px]"
+            >
+              Pickup & delivery
+            </a>
+          ) : null}
           {rest.enableReserve && reserveHref ? (
             <a
               href={reserveHref}
@@ -272,12 +307,12 @@ export function RestaurantMenu({
               Reserve
             </a>
           ) : null}
-          {tableSession ? (
+          {tableSession && !placeFromCart ? (
             <button
               type="button"
               disabled={!acceptOrders || itemCount === 0 || sending}
               onClick={() => void sendToKitchen()}
-              className="hidden min-h-11 items-center gap-2 rounded-[10px] px-4 text-[14px] font-bold text-white disabled:bg-[var(--cat-photo-bg)] disabled:text-[var(--cat-muted)] sm:inline-flex"
+              className="hidden min-h-11 items-center gap-2 rounded-[10px] px-4 text-[14px] font-bold text-white active:scale-[0.98] disabled:bg-[var(--cat-photo-bg)] disabled:text-[var(--cat-muted)] motion-reduce:active:scale-100 sm:inline-flex"
               style={{ background: itemCount > 0 ? catalog.accent : undefined }}
             >
               {sending ? "Sending…" : kitchenCta}
@@ -291,10 +326,10 @@ export function RestaurantMenu({
             <button
               type="button"
               onClick={onOpenCart}
-              className="hidden min-h-11 items-center gap-2 rounded-[10px] px-4 text-[14px] font-bold text-white sm:inline-flex"
+              className="hidden min-h-11 items-center gap-2 rounded-[10px] px-4 text-[14px] font-bold text-white active:scale-[0.98] motion-reduce:active:scale-100 sm:inline-flex"
               style={{ background: catalog.accent }}
             >
-              Order
+              {tableSession ? kitchenCta : "Order"}
               <span className="inline-flex min-w-[22px] justify-center rounded-full bg-white px-1.5 text-[12px]" style={{ color: catalog.accent }}>
                 {itemCount}
               </span>
@@ -386,10 +421,10 @@ export function RestaurantMenu({
             <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
                 <div className="font-catalog-display text-[22px] font-semibold">
-                  Table {session.tableNo}
+                  Table {session.tableNo} · Dine-in
                 </div>
                 <div className="mt-1 text-[12.5px] text-white/70">
-                  {floorOn ? settings.floor.name : "Dine-in"}
+                  {floorOn ? settings.floor.name : "You're at this table"}
                   {ticket && ticket.itemCount > 0 ? ` · ${ticket.itemCount} sent` : ""}
                 </div>
               </div>
@@ -404,7 +439,7 @@ export function RestaurantMenu({
                     Request bill
                   </button>
                 ) : null}
-                {floorOn ? (
+                {floorOn && !session.tableLocked ? (
                   <button type="button" onClick={() => setTableOpen(true)} className="h-11 rounded-[9px] px-3.5 text-[13px] font-bold text-white" style={{ background: catalog.accent }}>
                     Change table
                   </button>
@@ -589,11 +624,19 @@ export function RestaurantMenu({
             <div>
               <div className="font-catalog-display mb-2 text-[22px] font-semibold">Ordering</div>
               <div className="flex flex-col gap-2 text-[14px] text-[var(--cat-muted)]">
-                {catalog.fulfillmentModes.includes("delivery") ? (
-                  <span>Delivery · {rest.deliveryFee > 0 ? formatMoney(rest.deliveryFee, catalog.currency) : "no extra fee"}</span>
+                {session.channel === "dine" ? <span>Dine-in at the table</span> : null}
+                {session.channel !== "dine" || !hideTakeaway ? (
+                  <>
+                    {catalog.fulfillmentModes.includes("delivery") ? (
+                      <span>Delivery · {rest.deliveryFee > 0 ? formatMoney(rest.deliveryFee, catalog.currency) : "no extra fee"}</span>
+                    ) : null}
+                    {catalog.fulfillmentModes.includes("pickup") && rest.pickupReadyCopy ? <span>{rest.pickupReadyCopy}</span> : null}
+                  </>
                 ) : null}
                 {rest.minOrder > 0 ? <span>Minimum order · {formatMoney(rest.minOrder, catalog.currency)}</span> : null}
-                {catalog.fulfillmentModes.includes("pickup") && rest.pickupReadyCopy ? <span>{rest.pickupReadyCopy}</span> : null}
+                {showDineLink && dineHref ? (
+                  <a href={dineHref} className="font-bold text-[var(--cat-accent)]">Order at the table →</a>
+                ) : null}
                 {rest.enableReserve && reserveHref ? (
                   <a href={reserveHref} className="font-bold text-[var(--cat-accent)]">Reserve a table →</a>
                 ) : null}
@@ -603,14 +646,14 @@ export function RestaurantMenu({
         </section>
       </main>
 
-      {tableSession ? (
+      {tableSession && !placeFromCart ? (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--cat-border)] bg-white/95 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
           <button
             type="button"
             onClick={() => setTicketOpen(true)}
-            className="mb-2 flex w-full items-center justify-between text-left"
+            className="mb-2 flex min-h-11 w-full items-center justify-between text-left"
           >
-            <span className="text-[12px] font-bold text-[var(--cat-muted)]">Table {session.tableNo} ticket</span>
+            <span className="text-[12px] font-bold text-[var(--cat-muted)]">Table {session.tableNo} · Dine-in</span>
             <span className="text-[12px] text-[var(--cat-muted)]">
               {ticket && ticket.itemCount > 0 ? `${ticket.itemCount} sent · view` : "Nothing sent yet"}
             </span>
@@ -619,7 +662,7 @@ export function RestaurantMenu({
             type="button"
             disabled={!acceptOrders || itemCount === 0 || sending}
             onClick={() => void sendToKitchen()}
-            className="flex h-[54px] w-full items-center gap-3 rounded-[13px] px-4 font-bold text-white disabled:bg-[var(--cat-photo-bg)] disabled:text-[var(--cat-muted)]"
+            className="flex h-[54px] w-full items-center gap-3 rounded-[13px] px-4 font-bold text-white active:scale-[0.98] disabled:bg-[var(--cat-photo-bg)] disabled:text-[var(--cat-muted)] motion-reduce:active:scale-100"
             style={{ background: itemCount > 0 ? catalog.accent : undefined }}
           >
             <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/20 text-[13px]">{itemCount}</span>
@@ -636,7 +679,7 @@ export function RestaurantMenu({
             style={{ background: catalog.accent }}
           >
             <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/20 text-[13px]">{itemCount}</span>
-            <span>{session.fulfillment ? fulfillmentLabel(session.fulfillment) : "Order"}</span>
+            <span>{tableSession ? kitchenCta : session.fulfillment ? fulfillmentLabel(session.fulfillment) : "Order"}</span>
             <span className="ml-auto">{formatMoney(subtotal, catalog.currency)}</span>
           </button>
         </div>

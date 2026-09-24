@@ -116,6 +116,17 @@ export default function SignUpPage() {
             />
           </div>
           {error ? <p className="text-sm text-[#b2432b]">{error}</p> : null}
+          <p className="mt-1 text-[12px] leading-snug text-[var(--cat-muted)]">
+            By starting you agree to the{" "}
+            <Link href="/terms" className="font-medium text-[var(--cat-ink)] underline">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="font-medium text-[var(--cat-ink)] underline">
+              Privacy
+            </Link>
+            .
+          </p>
           <button
             type="submit"
             disabled={status === "loading"}

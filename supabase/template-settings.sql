@@ -18,6 +18,7 @@ create table if not exists reservations (
   name text not null,
   phone text not null,
   note text,
+  track_token text,
   created_at timestamptz not null default now()
 );
 
@@ -30,8 +31,12 @@ create table if not exists service_requests (
   table_no text,
   kind text not null,
   note text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
 );
+
+alter table service_requests
+  add column if not exists resolved_at timestamptz;
 
 alter table reservations enable row level security;
 alter table service_requests enable row level security;
@@ -70,3 +75,10 @@ grant select, insert, update, delete on table reservations to authenticated, ser
 grant select, insert, update, delete on table service_requests to authenticated, service_role;
 grant all on table reservations to service_role;
 grant all on table service_requests to service_role;
+
+alter table reservations
+  add column if not exists track_token text;
+
+create unique index if not exists reservations_track_token_uidx
+  on reservations (track_token)
+  where track_token is not null;

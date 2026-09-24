@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCatalogAdminClient, getCatalogOrNotFound } from "@/app/admin/_lib/data";
 import {
   ORDER_STATUSES_SQL_HINT,
+  isTerminalStatus,
   parseDefaultOrderStatus,
   parseOrderStatuses,
   validateStatuses,
@@ -12,7 +13,7 @@ import {
 import { newTrackToken, ORDER_HISTORY_SQL_HINT, trackingUrl } from "@/lib/catalog/order-tracking";
 import type { OrderStatusEventRow } from "@/lib/supabase/types";
 import { requireAccount } from "@/lib/auth/current-account";
-import { ORDER_CLAIMS_SQL_HINT } from "@/lib/catalog/template-settings";
+import { ORDER_CLAIMS_SQL_HINT, SERVICE_REQUESTS_SQL_HINT } from "@/lib/catalog/template-settings";
 
 function isMissingColumn(error: { code?: string; message?: string } | null): boolean {
   if (!error) return false;
@@ -130,6 +131,81 @@ export async function ensureTrackLink(
     .order("kind", { ascending: true });
   const custom = (domain ?? []).find((row) => row.kind === "custom");
   return { url: trackingUrl(catalog.slug, token, custom?.hostname ?? null) };
+}
+
+export async function resolveServiceRequest(
+  catalogId: string,
+  requestId: string,
+): Promise<{ error?: string }> {
+  await getCatalogOrNotFound(catalogId);
+  const supabase = await getCatalogAdminClient();
+  const { error } = await supabase
+    .from("service_requests")
+    .update({ resolved_at: new Date().toISOString() })
+    .eq("id", requestId)
+    .eq("catalog_id", catalogId);
+  if (error) {
+    if (error.code === "42703" || error.message.includes("resolved_at")) {
+      return { error: SERVICE_REQUESTS_SQL_HINT };
+    }
+    return { error: "Could not mark this as taken." };
+  }
+  revalidatePath(`/admin/${catalogId}/orders`);
+  revalidatePath(`/admin/${catalogId}/floor`);
+  revalidatePath(`/admin/${catalogId}`);
+  return {};
+}
+
+/** Marks leftover open tickets from before `beforeIso` as done. Keeps history. */
+export async function clearPriorDayOrders(
+  catalogId: string,
+  beforeIso: string,
+): Promise<{ error?: string; cleared?: number }> {
+  const catalog = await getCatalogOrNotFound(catalogId);
+  const before = new Date(beforeIso);
+  if (!Number.isFinite(before.getTime())) return { error: "Invalid time." };
+  if (before.getTime() > Date.now() + 60_000) return { error: "Cannot clear future tickets." };
+
+  const statuses = parseOrderStatuses(catalog.order_statuses);
+  const done = statuses.find((row) => row.is_done)?.id ?? "done";
+  const supabase = await getCatalogAdminClient();
+  const { data: rows, error: loadError } = await supabase
+    .from("orders")
+    .select("id, status")
+    .eq("catalog_id", catalogId)
+    .lt("created_at", before.toISOString());
+  if (loadError) return { error: "Could not load leftover tickets." };
+
+  const leftover = (rows ?? []).filter((row) => !isTerminalStatus(row.status, statuses) && row.status !== done);
+  for (const row of leftover) {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: done })
+      .eq("id", row.id)
+      .eq("catalog_id", catalogId);
+    if (isStatusCheck(error) || isMissingColumn(error)) return { error: ORDER_STATUSES_SQL_HINT };
+    if (error) return { error: "Could not clear leftover tickets." };
+    await supabase.from("order_status_events").insert({
+      order_id: row.id,
+      from_status: row.status,
+      to_status: done,
+      actor: "merchant",
+    });
+  }
+
+  const { error: requestError } = await supabase
+    .from("service_requests")
+    .update({ resolved_at: new Date().toISOString() })
+    .eq("catalog_id", catalogId)
+    .is("resolved_at", null)
+    .lt("created_at", before.toISOString());
+  if (requestError && requestError.code !== "42703" && !requestError.message.includes("resolved_at")) {
+    return { error: "Orders cleared. Table calls could not be dismissed." };
+  }
+
+  revalidatePath(`/admin/${catalogId}/orders`);
+  revalidatePath(`/admin/${catalogId}`);
+  return { cleared: leftover.length };
 }
 
 export async function saveOrderStatuses(

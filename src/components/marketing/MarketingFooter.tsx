@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CompanyContact } from "@/components/brand/CompanyContact";
+import { LegalLinks } from "@/components/brand/LegalLinks";
 import { COMPANY_NAME, COMPANY_URL } from "@/lib/brand";
 
 type MarketingFooterProps = {
@@ -68,6 +69,7 @@ export function MarketingFooter({ variant = "inner" }: MarketingFooterProps) {
           <Link href="/admin" className="mkt-press">
             Dashboard
           </Link>
+          <LegalLinks className="mkt-press" />
         </div>
       </div>
     </footer>

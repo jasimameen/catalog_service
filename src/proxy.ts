@@ -30,16 +30,26 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Any other Host header is a tenant storefront — either {slug}.<root> or
-    // a fully custom domain that's been added under Domains. Internally
-    // rewrite to the catch-all storefront route; the visible URL in the
-    // browser is untouched. Storefront is a single page (cart/checkout are
-    // client state), so every path on a tenant host renders the same route.
-    const url = request.nextUrl.clone();
-    if (pathname.startsWith("/track/")) {
-      url.pathname = `/s/${encodeURIComponent(host)}${pathname}`;
+    // Tenant hosts keep dedicated guest paths: /dine, /dine/t/{code}, /reserve,
+    // /track/*. Everything else is the regular menu. Old table QR on the root
+    // (?table=) redirects to /dine so printed codes keep working.
+    const forwarded = tenantStorefrontPath(pathname);
+    if (forwarded) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/s/${encodeURIComponent(host)}${forwarded}`;
       return NextResponse.rewrite(url);
     }
+
+    if (pathname === "/" || pathname === "") {
+      const table = request.nextUrl.searchParams.get("table")?.trim();
+      if (table) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/dine";
+        return NextResponse.redirect(url);
+      }
+    }
+
+    const url = request.nextUrl.clone();
     url.pathname = `/s/${encodeURIComponent(host)}`;
     return NextResponse.rewrite(url);
   }
@@ -79,6 +89,13 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+function tenantStorefrontPath(pathname: string): string | null {
+  if (pathname === "/dine" || pathname.startsWith("/dine/")) return pathname;
+  if (pathname === "/reserve" || pathname.startsWith("/reserve/")) return pathname;
+  if (pathname.startsWith("/track/")) return pathname;
+  return null;
 }
 
 function tenantCatalogIconPath(pathname: string): string | null {

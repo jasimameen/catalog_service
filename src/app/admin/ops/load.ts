@@ -27,6 +27,8 @@ export type OpsUserRow = {
   plan: OpsPlanKind;
   planLabel: string;
   accountId: string | null;
+  comp: boolean;
+  maxCatalogs: number | null;
 };
 
 export type OpsStats = {
@@ -61,6 +63,8 @@ type AccountPick = {
   trial_ends_at: string;
   created_at: string;
   order_email: string | null;
+  comp?: boolean | null;
+  max_catalogs?: number | null;
 };
 
 type MemberPick = {
@@ -98,16 +102,20 @@ async function listAuthUsers() {
 export async function loadOpsDesk(): Promise<OpsDeskData> {
   const service = getServiceClient();
 
-  const [catalogsRes, accountsRes, membersRes, inquiriesRes, authUsers] = await Promise.all([
+  const [catalogsRes, accountsFullRes, membersRes, inquiriesRes, authUsers] = await Promise.all([
     service
       .from("catalogs")
       .select("id, account_id, name, slug, status, updated_at, transferred_at")
       .order("updated_at", { ascending: false }),
-    service.from("accounts").select("id, name, ls_status, trial_ends_at, created_at, order_email"),
+    service.from("accounts").select("id, name, ls_status, trial_ends_at, created_at, order_email, comp, max_catalogs"),
     service.from("account_members").select("account_id, user_id, role, created_at"),
     service.from("setup_inquiries").select("*", { count: "exact", head: true }).eq("status", "new"),
     listAuthUsers(),
   ]);
+
+  const accountsRes = accountsFullRes.error
+    ? await service.from("accounts").select("id, name, ls_status, trial_ends_at, created_at, order_email")
+    : accountsFullRes;
 
   const catalogs = (catalogsRes.data ?? []) as CatalogPick[];
   const accounts = (accountsRes.data ?? []) as AccountPick[];
@@ -151,7 +159,7 @@ export async function loadOpsDesk(): Promise<OpsDeskData> {
   const catalogRows: OpsCatalogRow[] = catalogs.map((catalog) => {
     const account = accountById.get(catalog.account_id);
     const owner = ownerForAccount(catalog.account_id);
-    const billing: Pick<AccountRow, "ls_status" | "trial_ends_at"> = account ?? {
+    const billing: Pick<AccountRow, "ls_status" | "trial_ends_at" | "comp" | "max_catalogs"> = account ?? {
       ls_status: null,
       trial_ends_at: new Date(0).toISOString(),
     };
@@ -163,8 +171,8 @@ export async function loadOpsDesk(): Promise<OpsDeskData> {
       accountId: catalog.account_id,
       ownerEmail: owner.email,
       ownerUserId: owner.userId,
-      plan: planKind(billing),
-      planLabel: planLabel(billing),
+      plan: planKind(billing, owner.email),
+      planLabel: planLabel(billing, owner.email),
       updatedAt: catalog.updated_at,
       transferredAt: catalog.transferred_at ?? null,
     };
@@ -186,7 +194,7 @@ export async function loadOpsDesk(): Promise<OpsDeskData> {
     const preferred = fallbackAccountId && ids.includes(fallbackAccountId) ? fallbackAccountId : ids[0];
     const paid = ids
       .map((id) => accountById.get(id))
-      .find((row) => row && planKind(row) === "subscribed");
+      .find((row) => row && planKind(row, emailByUserId.get(userId)) === "subscribed");
     const account = paid ?? (preferred ? accountById.get(preferred) : undefined);
     return account ?? {
       ls_status: null,
@@ -197,7 +205,7 @@ export async function loadOpsDesk(): Promise<OpsDeskData> {
   for (const user of authUsers) {
     seenUsers.add(user.id);
     const membership = memberByUser.get(user.id);
-    const billing: Pick<AccountRow, "ls_status" | "trial_ends_at"> = billingForUser(
+    const billing: Pick<AccountRow, "ls_status" | "trial_ends_at" | "comp" | "max_catalogs"> = billingForUser(
       user.id,
       membership?.account_id,
     );
@@ -206,27 +214,32 @@ export async function loadOpsDesk(): Promise<OpsDeskData> {
       email: user.email,
       createdAt: user.created_at,
       catalogCount: catalogsForUser(user.id),
-      plan: planKind(billing),
-      planLabel: planLabel(billing),
+      plan: planKind(billing, user.email),
+      planLabel: planLabel(billing, user.email),
       accountId: membership?.account_id ?? null,
+      comp: billing.comp === true,
+      maxCatalogs: typeof billing.max_catalogs === "number" ? billing.max_catalogs : null,
     });
   }
 
   for (const member of members) {
     if (seenUsers.has(member.user_id)) continue;
     const account = accountById.get(member.account_id);
-    const billing: Pick<AccountRow, "ls_status" | "trial_ends_at"> = account ?? {
+    const billing: Pick<AccountRow, "ls_status" | "trial_ends_at" | "comp" | "max_catalogs"> = account ?? {
       ls_status: null,
       trial_ends_at: new Date(0).toISOString(),
     };
+    const email = (account?.order_email ?? "").toLowerCase() || member.user_id;
     userRows.push({
       userId: member.user_id,
-      email: (account?.order_email ?? "").toLowerCase() || member.user_id,
+      email,
       createdAt: member.created_at,
       catalogCount: catalogCountByAccount.get(member.account_id) ?? 0,
-      plan: planKind(billing),
-      planLabel: planLabel(billing),
+      plan: planKind(billing, email),
+      planLabel: planLabel(billing, email),
       accountId: member.account_id,
+      comp: billing.comp === true,
+      maxCatalogs: typeof billing.max_catalogs === "number" ? billing.max_catalogs : null,
     });
   }
 

@@ -98,6 +98,8 @@ export type RestaurantSettings = {
   skipDineInDetails: boolean;
   /** When on, guests without a table QR must say if they are already at the venue. */
   requireInRestaurantCheck: boolean;
+  /** When on, /dine does not advertise pickup, delivery, or the public menu. */
+  hideTakeawayOnDine: boolean;
   venueLat: number | null;
   venueLng: number | null;
   venueRadiusM: number;
@@ -137,6 +139,8 @@ export type TemplateSettings = {
   restaurant: RestaurantSettings;
   notify: NotifySoundSettings;
   floor: FloorPlan;
+  /** Staff-authored kitchen ticket HTML. Empty uses the default receipt. */
+  printTicketHtml: string;
 };
 
 const DEFAULT_DIETS: DietFilterDef[] = [
@@ -190,6 +194,7 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
     enableClaim: true,
     skipDineInDetails: true,
     requireInRestaurantCheck: true,
+    hideTakeawayOnDine: false,
     venueLat: null,
     venueLng: null,
     venueRadiusM: DEFAULT_VENUE_RADIUS_M,
@@ -207,6 +212,7 @@ export const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
     tables: [],
     floors: emptyPlan("Ground floor").floors,
   },
+  printTicketHtml: "",
 };
 
 function asObj(raw: unknown): Record<string, unknown> {
@@ -227,6 +233,11 @@ function asNum(value: unknown, fallback: number, min = 0, max = 1_000_000): numb
 function asStr(value: unknown, fallback: string, max = 240): string {
   if (typeof value !== "string") return fallback;
   return value.trim().slice(0, max);
+}
+
+function asPrintHtml(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.slice(0, 40_000);
 }
 
 function asMode(value: unknown): OrderFulfillment | "" {
@@ -422,6 +433,7 @@ export function parseTemplateSettings(raw: unknown): TemplateSettings {
       enableClaim: asBool(restaurant.enableClaim, true),
       skipDineInDetails: asBool(restaurant.skipDineInDetails, true),
       requireInRestaurantCheck: asBool(restaurant.requireInRestaurantCheck, true),
+      hideTakeawayOnDine: asBool(restaurant.hideTakeawayOnDine, false),
       venueLat: asVenueCoord(restaurant.venueLat, 90),
       venueLng: asVenueCoord(restaurant.venueLng, 180),
       venueRadiusM: asNum(restaurant.venueRadiusM, DEFAULT_VENUE_RADIUS_M, 50, 5_000),
@@ -435,6 +447,7 @@ export function parseTemplateSettings(raw: unknown): TemplateSettings {
       emailCc: asStr(notify.emailCc, "", 400),
     },
     floor,
+    printTicketHtml: asPrintHtml(root.printTicketHtml),
   };
 }
 
@@ -484,6 +497,8 @@ export function orderCtaLabel(
 
 export const TEMPLATE_SETTINGS_SQL_HINT =
   "Run supabase/template-settings.sql in the Supabase SQL editor, then try again.";
+
+export const SERVICE_REQUESTS_SQL_HINT = TEMPLATE_SETTINGS_SQL_HINT;
 
 export const ORDER_CLAIMS_SQL_HINT =
   "Run supabase/order-claims.sql in the Supabase SQL editor, then try again.";

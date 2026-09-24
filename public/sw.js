@@ -107,11 +107,19 @@ async function openAdmin(href) {
   for (const client of windows) {
     if (!client.url.startsWith(self.location.origin)) continue;
     const path = new URL(client.url).pathname;
-    if (path.startsWith("/admin")) {
-      await client.focus();
-      if ("navigate" in client) await client.navigate(target);
-      return;
+    if (!path.startsWith("/admin")) continue;
+    if ("navigate" in client) {
+      try {
+        await client.navigate(target);
+        await client.focus();
+        return;
+      } catch {
+        // fall through to postMessage
+      }
     }
+    client.postMessage({ type: "hv-open", href });
+    await client.focus();
+    return;
   }
   await self.clients.openWindow(target);
 }

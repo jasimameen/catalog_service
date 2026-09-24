@@ -8,6 +8,7 @@ import type { ItemThumb } from "@/lib/catalog/combos";
 import {
   findDuplicateRefs,
   formatOrderTime,
+  isTerminalStatus,
   nextWorkflowAction,
   ORDER_FILTER_INCLUDE_EVENT,
   statusLabel,
@@ -28,10 +29,11 @@ import {
 } from "@/components/admin/ops/OpsChrome";
 import { TypeMark } from "@/components/orders/FulfillmentTypeBadge";
 import { enableAdminPush } from "@/lib/pwa/admin-push";
+import { openAddToHomeScreen } from "@/lib/pwa/install";
 import { LANE_TONE, orderIdentity, orderTicketIntensity, ticketSurface } from "@/lib/catalog/order-identity";
 import type { CheckoutFormField, OrderItemRow, OrderRow, ReservationRow } from "@/lib/supabase/types";
 import type { OrderStatusEventRow } from "@/lib/supabase/types";
-import { claimOrder, setOrderStatus } from "./actions";
+import { claimOrder, clearPriorDayOrders, setOrderStatus } from "./actions";
 import { OrderDetailDrawer } from "./OrderDetailDrawer";
 import { ReservationsBoardRail } from "./ReservationsInbox";
 import {
@@ -94,8 +96,16 @@ function writeFilterUrl(catalogId: string, ids: string[]) {
   window.history.replaceState(null, "", next);
 }
 
+function startOfLocalDayIso(): string {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return start.toISOString();
+}
+
 export function OrdersBoard({
   catalogId,
+  catalogName,
+  printTicketHtml,
   currency,
   showFulfillment,
   statuses,
@@ -115,6 +125,8 @@ export function OrdersBoard({
   children,
 }: {
   catalogId: string;
+  catalogName: string;
+  printTicketHtml?: string | null;
   currency: string;
   showFulfillment: boolean;
   statuses: OrderStatusDef[];
@@ -151,6 +163,8 @@ export function OrdersBoard({
   const [notifyPermission, setNotifyPermission] = useState<NotificationPermission | "unsupported">(
     "unsupported",
   );
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+  const [clearingDay, setClearingDay] = useState(false);
   const dragRef = useRef<DragState | null>(null);
 
   const itemsByOrder = useMemo(() => {
@@ -273,8 +287,11 @@ export function OrdersBoard({
   }, [catalogId]);
 
   async function enableNotify() {
-    const next = await enableAdminPush();
-    setNotifyPermission(next);
+    setNotifyError(null);
+    const result = await enableAdminPush();
+    setNotifyPermission(result.permission);
+    if (result.needsHomeScreen) openAddToHomeScreen();
+    if (!result.registered) setNotifyError(result.error ?? "Could not enable alerts.");
   }
 
   function pickView(next: ViewMode) {
@@ -293,6 +310,30 @@ export function OrdersBoard({
     } catch {
       // ignore
     }
+  }
+
+  async function clearYesterday() {
+    const beforeIso = startOfLocalDayIso();
+    const leftover = orders.filter(
+      (order) => order.created_at < beforeIso && !isTerminalStatus(order.status, statuses),
+    );
+    if (leftover.length === 0) {
+      setToast("Nothing left from before today.");
+      return;
+    }
+    const ok = window.confirm(
+      `Clear ${leftover.length} leftover ticket${leftover.length === 1 ? "" : "s"} from before today? They stay in All.`,
+    );
+    if (!ok) return;
+    setClearingDay(true);
+    const result = await clearPriorDayOrders(catalogId, beforeIso);
+    setClearingDay(false);
+    if (result.error) {
+      setToast(result.error);
+      return;
+    }
+    setToast(`Cleared ${result.cleared ?? leftover.length} leftover tickets.`);
+    router.refresh();
   }
 
   useEffect(() => {
@@ -560,9 +601,19 @@ export function OrdersBoard({
             >
               Filter{filterActive ? " · on" : ""}
             </OpsGhostButton>
-            {notifyPermission === "default" ? (
-              <OpsGhostButton onClick={() => void enableNotify()}>Notify</OpsGhostButton>
+            {notifyPermission !== "granted" || notifyError ? (
+              <span className="flex flex-col items-end">
+                <OpsGhostButton onClick={() => void enableNotify()}>Notify</OpsGhostButton>
+                {notifyError ? (
+                  <span className="mt-1 max-w-[16rem] text-right text-[12px] leading-snug text-[#c43c1b]">
+                    {notifyError}
+                  </span>
+                ) : null}
+              </span>
             ) : null}
+            <OpsGhostButton onClick={() => void clearYesterday()} disabled={clearingDay}>
+              {clearingDay ? "Clearing…" : "End of day"}
+            </OpsGhostButton>
             <a
               href={`/admin/${catalogId}/orders/export`}
               className="ops-press inline-flex min-h-9 items-center px-2.5 text-[13px] text-[#86868b] no-underline hover:text-[var(--cat-ink)]"
@@ -783,6 +834,8 @@ export function OrdersBoard({
       {openOrder ? (
         <OrderDetailDrawer
           catalogId={catalogId}
+          catalogName={catalogName}
+          printTicketHtml={printTicketHtml}
           order={openOrder}
           lines={itemsByOrder.get(openOrder.id) ?? []}
           events={events.filter((event) => event.order_id === openOrder.id)}

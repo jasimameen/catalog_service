@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { canOperatePlatform } from "@/lib/auth/platform";
+import { countAccountCatalogs } from "@/lib/billing/account-access";
 import { canPublishNewCatalog } from "@/lib/billing/status";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
@@ -151,7 +152,8 @@ export default async function CatalogsPage({
   }
 
   const liveCount = cards.filter((c) => c.catalog.status === "live").length;
-  const canPublish = canPublishNewCatalog(account);
+  const catalogCount = scope === "own" ? cards.length : await countAccountCatalogs(account.id);
+  const canPublish = canPublishNewCatalog(account, { email: user?.email, catalogCount });
   const subtitle =
     scope === "all"
       ? `All shops · ${cards.length} ${cards.length === 1 ? "catalog" : "catalogs"} · ${liveCount} live`

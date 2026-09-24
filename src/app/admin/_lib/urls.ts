@@ -7,6 +7,16 @@ export function catalogUrl(slug: string): string {
   return `${scheme}://${slug}.${root}`;
 }
 
+/** Dedicated dine-in URL. Table QR must use this, never the menu root. */
+export function catalogDineUrl(slug: string, table?: string): string {
+  const no = table?.trim();
+  return no ? `${catalogUrl(slug)}/dine?table=${encodeURIComponent(no)}` : `${catalogUrl(slug)}/dine`;
+}
+
+export function catalogReserveUrl(slug: string): string {
+  return `${catalogUrl(slug)}/reserve`;
+}
+
 /** Just the host part, e.g. "acme.catalog.hevyf.com" — for display text (no protocol). */
 export function catalogHost(slug: string): string {
   return `${slug}.${getRootDomain()}`;

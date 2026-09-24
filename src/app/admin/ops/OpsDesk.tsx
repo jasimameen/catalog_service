@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { dashBtnGhost, dashBtnPrimary, dashCard, dashHint, dashInput, dashKicker } from "@/components/admin/dashboard/styles";
-import { transferCatalog } from "./actions";
+import { grantAccountPlan, transferCatalog } from "./actions";
 import type { OpsCatalogRow, OpsDeskData, OpsUserRow } from "./load";
 
 type Tab = "catalogs" | "users" | "subscribed";
@@ -24,6 +24,7 @@ export function OpsDesk({ data }: { data: OpsDeskData }) {
   const [tab, setTab] = useState<Tab>("catalogs");
   const [query, setQuery] = useState("");
   const [transferId, setTransferId] = useState<string | null>(null);
+  const [grantUserId, setGrantUserId] = useState<string | null>(null);
   const q = query.trim().toLowerCase();
 
   const catalogs = useMemo(
@@ -45,6 +46,7 @@ export function OpsDesk({ data }: { data: OpsDeskData }) {
   );
 
   const transferRow = data.catalogs.find((row) => row.id === transferId) ?? null;
+  const grantRow = data.users.find((row) => row.userId === grantUserId) ?? null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -113,7 +115,10 @@ export function OpsDesk({ data }: { data: OpsDeskData }) {
       {tab === "catalogs" ? (
         <CatalogsPanel rows={catalogs} onTransfer={setTransferId} />
       ) : (
-        <UsersPanel rows={tab === "subscribed" ? subscribed : users} />
+        <UsersPanel
+          rows={tab === "subscribed" ? subscribed : users}
+          onGrant={setGrantUserId}
+        />
       )}
 
       {transferRow ? (
@@ -122,6 +127,7 @@ export function OpsDesk({ data }: { data: OpsDeskData }) {
           onClose={() => setTransferId(null)}
         />
       ) : null}
+      {grantRow ? <GrantDialog user={grantRow} onClose={() => setGrantUserId(null)} /> : null}
     </div>
   );
 }
@@ -265,7 +271,13 @@ function CatalogsPanel({
   );
 }
 
-function UsersPanel({ rows }: { rows: OpsUserRow[] }) {
+function UsersPanel({
+  rows,
+  onGrant,
+}: {
+  rows: OpsUserRow[];
+  onGrant: (userId: string) => void;
+}) {
   if (rows.length === 0) {
     return <p className={`${dashCard} p-5 text-[14px] text-[var(--cat-muted)]`}>No users match.</p>;
   }
@@ -280,6 +292,7 @@ function UsersPanel({ rows }: { rows: OpsUserRow[] }) {
               <th className="px-3.5 py-2.5 font-semibold">Created</th>
               <th className="px-3.5 py-2.5 font-semibold">Catalogs</th>
               <th className="px-3.5 py-2.5 font-semibold">Plan</th>
+              <th className="px-3.5 py-2.5 font-semibold" />
             </tr>
           </thead>
           <tbody>
@@ -292,6 +305,17 @@ function UsersPanel({ rows }: { rows: OpsUserRow[] }) {
                 <td className="px-3.5 py-3 align-top text-[var(--cat-muted)]">{formatWhen(row.createdAt)}</td>
                 <td className="px-3.5 py-3 align-top text-[var(--cat-ink)]">{row.catalogCount}</td>
                 <td className="px-3.5 py-3 align-top text-[var(--cat-muted)]">{row.planLabel}</td>
+                <td className="px-3.5 py-3 align-top">
+                  {row.accountId ? (
+                    <button
+                      type="button"
+                      onClick={() => onGrant(row.userId)}
+                      className={`${dashBtnGhost} min-h-9 px-3 text-[12px]`}
+                    >
+                      Grant
+                    </button>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -305,6 +329,15 @@ function UsersPanel({ rows }: { rows: OpsUserRow[] }) {
             <p className="mt-1 text-[12px] text-[var(--cat-muted)]">
               {formatWhen(row.createdAt)} · {row.catalogCount} catalogs · {row.planLabel}
             </p>
+            {row.accountId ? (
+              <button
+                type="button"
+                onClick={() => onGrant(row.userId)}
+                className={`${dashBtnGhost} mt-3 text-[12px]`}
+              >
+                Grant
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -404,6 +437,100 @@ function TransferDialog({
               </button>
               <button type="submit" className={`${dashBtnPrimary} flex-1`} disabled={pending}>
                 {pending ? "Moving…" : "Transfer catalog"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GrantDialog({ user, onClose }: { user: OpsUserRow; onClose: () => void }) {
+  const router = useRouter();
+  const [comp, setComp] = useState(user.comp);
+  const [maxCatalogs, setMaxCatalogs] = useState(user.maxCatalogs == null ? "" : String(user.maxCatalogs));
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [pending, start] = useTransition();
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!user.accountId) {
+      setError("This login has no company account yet.");
+      return;
+    }
+    setError(null);
+    const raw = maxCatalogs.trim();
+    const parsed = raw === "" ? null : Number(raw);
+    if (raw && (!Number.isFinite(parsed) || (parsed ?? 0) < 0)) {
+      setError("Leave max catalogs blank for unlimited, or enter a number.");
+      return;
+    }
+    start(async () => {
+      const result = await grantAccountPlan({
+        accountId: user.accountId!,
+        comp,
+        maxCatalogs: parsed,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+      setDone(true);
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101720]/40 p-3 sm:items-center">
+      <div role="dialog" aria-labelledby="ops-grant-title" className="w-full max-w-md rounded-[16px] border border-[var(--cat-border)] bg-white p-5 shadow-lg">
+        <h2 id="ops-grant-title" className="m-0 text-[17px] font-semibold tracking-tight text-[var(--cat-ink)]">
+          Grant {user.email || "this account"}
+        </h2>
+        <p className={`${dashHint} mt-1.5`}>
+          Comp keeps their public shop live without Lemon. Max catalogs is optional — blank means unlimited on this grant.
+        </p>
+        {done ? (
+          <div className="mt-4">
+            <p className="text-[13px] leading-relaxed text-[var(--cat-ink)]">Saved.</p>
+            <button type="button" onClick={onClose} className={`${dashBtnPrimary} mt-4 w-full`}>
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+            <label className="flex items-start gap-2.5 rounded-[11px] border border-[#e2e7ee] bg-[#fbfbfd] px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={comp}
+                onChange={(event) => setComp(event.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-[13px] font-medium text-[var(--cat-ink)]">Comp / free</span>
+                <span className={`${dashHint} mt-0.5 block`}>Shop stays live. No Lemon subscription required.</span>
+              </span>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[12px] font-medium text-[#5a6472]">Max catalogs</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={maxCatalogs}
+                onChange={(event) => setMaxCatalogs(event.target.value)}
+                placeholder="Unlimited"
+                className={dashInput}
+              />
+            </label>
+            {error ? <p className="text-[13px] text-[#b2432b]">{error}</p> : null}
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className={`${dashBtnGhost} flex-1`} disabled={pending}>
+                Cancel
+              </button>
+              <button type="submit" className={`${dashBtnPrimary} flex-1`} disabled={pending}>
+                {pending ? "Saving…" : "Save grant"}
               </button>
             </div>
           </form>

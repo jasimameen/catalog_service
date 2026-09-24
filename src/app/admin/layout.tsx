@@ -5,15 +5,20 @@ import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { PRODUCT_NAME } from "@/lib/brand";
 import { isBillingConfigured } from "@/lib/billing/config";
 import { MONTHLY_PRICE_LABEL } from "@/lib/billing/plan";
+import { countAccountCatalogs } from "@/lib/billing/account-access";
 import {
   billingBannerCopy,
   canPublishNewCatalog,
   formatRenewsAt,
+  hasActiveAccess,
+  isComp,
+  isOperatorActor,
   isPaid,
   trialDaysLeft,
 } from "@/lib/billing/status";
 import { canOperatePlatform } from "@/lib/auth/platform";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { LegalLinks } from "@/components/brand/LegalLinks";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
 
 export const metadata: Metadata = {
@@ -29,25 +34,33 @@ export const metadata: Metadata = {
 };
 
 async function TrialCard() {
-  const account = await requireAccount();
+  const [account, user] = await Promise.all([requireAccount(), getSessionUser()]);
+  const email = user?.email ?? "";
+  const operator = isOperatorActor(email);
   const paid = isPaid(account);
   const daysLeft = trialDaysLeft(account.trial_ends_at);
   const renews = formatRenewsAt(account.ls_renews_at);
   const configured = isBillingConfigured();
   const pastDue = account.ls_status === "past_due";
-  const ended = account.ls_status === "cancelled" || (!paid && daysLeft === 0);
+  const ended = !hasActiveAccess(account, email);
 
   let title = `Trial · ${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`;
   let body = `Then ${MONTHLY_PRICE_LABEL}. Your catalogs stay live.`;
-  if (paid) {
+  if (operator) {
+    title = "Operator";
+    body = "Unlimited. Customer shops follow their own plan.";
+  } else if (isComp(account)) {
+    title = "Comp";
+    body = "Granted by Instant Catalog. The public shop stays live.";
+  } else if (paid) {
     title = `Pro · ${MONTHLY_PRICE_LABEL}`;
     body = renews ? `Renews ${renews}.` : "Your catalogs stay live.";
   } else if (pastDue) {
     title = "Past due";
-    body = "Subscribe to keep publishing new catalogs. Existing ones stay live.";
+    body = "Subscribe to open the shop again. Settings and billing stay available.";
   } else if (ended) {
     title = "Trial ended";
-    body = "Subscribe to publish a new catalog. Existing catalogs stay live.";
+    body = "The public shop is paused. Subscribe here to turn it back on.";
   }
 
   return (
@@ -56,7 +69,7 @@ async function TrialCard() {
       <p className="m-0 mb-2.5 mt-1.5 text-xs leading-relaxed break-words text-[var(--cat-muted)]">
         {body}
       </p>
-      {paid ? (
+      {operator || isComp(account) || paid ? (
         <Link
           href="/admin/settings"
           className="block w-full min-h-11 rounded-lg border border-[#d2d2d7] bg-white text-center text-xs font-medium leading-[44px] text-[var(--cat-ink)]"
@@ -80,8 +93,9 @@ function TrialCardFallback() {
 }
 
 async function BillingBanner() {
-  const account = await requireAccount();
-  const message = billingBannerCopy(account);
+  const [account, user] = await Promise.all([requireAccount(), getSessionUser()]);
+  const catalogCount = await countAccountCatalogs(account.id);
+  const message = billingBannerCopy(account, { email: user?.email, catalogCount });
   if (!message) return null;
 
   return (
@@ -108,6 +122,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <TrialCard />
         </Suspense>
       }
+      legal={
+        <p className="m-0 hidden text-[11px] text-[var(--cat-muted)] md:block md:group-data-[collapsed=true]/shell:hidden">
+          <LegalLinks />
+        </p>
+      }
     >
       <Suspense fallback={null}>
         <BillingBanner />
@@ -118,8 +137,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 }
 
 async function NewCatalogLink() {
-  const account = await requireAccount();
-  const allowed = canPublishNewCatalog(account);
+  const [account, user] = await Promise.all([requireAccount(), getSessionUser()]);
+  const catalogCount = await countAccountCatalogs(account.id);
+  const allowed = canPublishNewCatalog(account, { email: user?.email, catalogCount });
 
   const plus = (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>

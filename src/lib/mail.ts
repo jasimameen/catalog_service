@@ -29,6 +29,7 @@ export function publicMailError(err: unknown): string {
 export async function sendMail(options: {
   to: string;
   cc?: string;
+  replyTo?: string;
   subject: string;
   text: string;
   html?: string;
@@ -58,6 +59,7 @@ export async function sendMail(options: {
       from,
       to: options.to,
       cc: options.cc || undefined,
+      replyTo: options.replyTo || undefined,
       subject: options.subject,
       text: options.text,
       ...(options.html ? { html: options.html } : {}),

@@ -25,6 +25,7 @@ import { newTrackToken, trackingPath, trackingUrl } from "@/lib/catalog/order-tr
 import { parseNotifyEmails, parseTemplateSettings } from "@/lib/catalog/template-settings";
 import type { CatalogItemRow, CatalogRow, OrderFulfillment } from "@/lib/supabase/types";
 import { sendPushToAccount } from "@/lib/push/send";
+import { catalogStorefrontLive } from "@/lib/billing/account-access";
 
 function clean(value: unknown, max = 300): string {
   if (typeof value !== "string") return "";
@@ -77,6 +78,9 @@ export async function POST(request: Request) {
   }
   if (catalog.accept_orders === false) {
     return Response.json({ error: "This catalog is not taking orders." }, { status: 403 });
+  }
+  if (!(await catalogStorefrontLive(catalog.id))) {
+    return Response.json({ error: "This shop is paused." }, { status: 403 });
   }
 
   const checkout = parseCheckoutFields(catalog.checkout_fields);
@@ -283,6 +287,8 @@ export async function POST(request: Request) {
       catalogId,
       fulfillment: fulfillment ?? "",
     },
+  }).then((result) => {
+    if (!result.ok) console.error("order push", result.reason);
   });
 
   const { data: domainRows } = await supabase

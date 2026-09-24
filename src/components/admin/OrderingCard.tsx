@@ -33,6 +33,7 @@ import {
   dashSection,
   dashTextarea,
 } from "@/components/admin/dashboard/styles";
+import { DEFAULT_PRINT_TICKET_HTML, PRINT_TICKET_PLACEHOLDERS } from "@/lib/catalog/print-ticket";
 
 const FIELD_MODES = [
   { value: "required", label: "Required" },
@@ -219,6 +220,27 @@ export function OrderingCard({
                   className={dashInput}
                 />
                 <span className={dashHint}>Comma-separated extra addresses for this catalog.</span>
+              </label>
+            </div>
+
+            <div className={dashSection}>
+              <p className={dashKicker}>Print ticket</p>
+              <p className={`m-0 ${dashHint}`}>
+                HTML for kitchen tickets. Preview and Print sit on each order. Empty uses the
+                default receipt. Placeholders: {PRINT_TICKET_PLACEHOLDERS.join(" ")}
+              </p>
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Ticket HTML</span>
+                <textarea
+                  value={tplSettings.printTicketHtml}
+                  onChange={(e) =>
+                    setTplSettings((prev) => ({ ...prev, printTicketHtml: e.target.value }))
+                  }
+                  rows={10}
+                  spellCheck={false}
+                  placeholder={DEFAULT_PRINT_TICKET_HTML}
+                  className={`${dashTextarea} min-h-[12rem] font-mono text-[12px]`}
+                />
               </label>
             </div>
 

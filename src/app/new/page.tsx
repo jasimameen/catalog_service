@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
 import { isBillingConfigured } from "@/lib/billing/config";
-import { canPublishNewCatalog, isPaid, trialDaysLeft } from "@/lib/billing/status";
+import { countAccountCatalogs } from "@/lib/billing/account-access";
+import { canPublishNewCatalog, hasActiveAccess, isPaid, trialDaysLeft } from "@/lib/billing/status";
 import { MONTHLY_PRICE_LABEL } from "@/lib/billing/plan";
 import { SubscribeButton } from "@/components/admin/SubscribeButton";
 import { getRootDomain } from "@/lib/tenant";
@@ -23,16 +24,19 @@ export const dynamic = "force-dynamic";
 export default async function NewCatalogPage() {
   const account = await requireAccount({ next: "/new" });
   const user = await getSessionUser();
+  const catalogCount = await countAccountCatalogs(account.id);
 
-  if (!canPublishNewCatalog(account)) {
+  if (!canPublishNewCatalog(account, { email: user?.email, catalogCount })) {
+    const ended = !hasActiveAccess(account, user?.email);
     return (
       <div className="mx-auto flex min-h-screen max-w-[480px] flex-col justify-center px-6">
         <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
-          Subscribe to publish
+          {ended ? "Subscribe to open the shop" : "Catalog limit reached"}
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-[#6e6e73]">
-          Your trial or subscription isn’t active, so new catalogs can’t be published.
-          Existing catalogs stay live.
+          {ended
+            ? "Your trial or subscription isn’t active, so the public shop is paused. Subscribe to turn it back on and publish again."
+            : "This plan has a catalog limit. Subscribe or ask us to raise it."}
         </p>
         <div className="mt-6">
           <SubscribeButton configured={isBillingConfigured()} variant="solid" />

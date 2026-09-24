@@ -15,6 +15,9 @@ import type { ReservationTableRef } from "@/lib/catalog/reservation-tables";
 import { ReserveMap, type ReserveMapMark } from "@/components/storefront/ReserveMap";
 import { ReserveMenu } from "@/components/storefront/ReserveMenu";
 import type { ReservationRow, ReservationStatus } from "@/lib/supabase/types";
+import { guestStorefrontPaths } from "@/lib/catalog/storefront-paths";
+import { telHref } from "@/lib/catalog/merchandising";
+import { usePathname } from "next/navigation";
 
 type BookedSnap = {
   id: string;
@@ -27,6 +30,8 @@ type BookedSnap = {
   confirmedAt: string | null;
   cancelledAt: string | null;
   seatedAt: string | null;
+  trackPath?: string;
+  trackToken?: string;
 };
 
 export function ReserveClient({ catalog }: { catalog: StorefrontCatalog }) {
@@ -43,6 +48,9 @@ export function ReserveClient({ catalog }: { catalog: StorefrontCatalog }) {
 }
 
 function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
+  const pathname = usePathname();
+  const paths = guestStorefrontPaths(catalog.slug, pathname);
+  const menuHref = paths.menu;
   const rest = catalog.settings.restaurant;
   const floorOn = isFloorPlanEnabled(catalog.settings);
   const floors = catalog.settings.floor.floors;
@@ -145,7 +153,13 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
       }),
     });
     const data = (await res.json().catch(() => null)) as
-      | { error?: string; reservation?: ReservationRow; reservationId?: string }
+      | {
+          error?: string;
+          reservation?: ReservationRow;
+          reservationId?: string;
+          trackPath?: string;
+          trackToken?: string;
+        }
       | null;
     setPending(false);
     if (!res.ok) {
@@ -175,6 +189,8 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
       confirmedAt: row?.confirmed_at ?? null,
       cancelledAt: row?.cancelled_at ?? null,
       seatedAt: row?.seated_at ?? null,
+      trackPath: typeof data?.trackPath === "string" ? data.trackPath : undefined,
+      trackToken: typeof data?.trackToken === "string" ? data.trackToken : row?.track_token ?? undefined,
     });
   }
 
@@ -211,8 +227,8 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
     return (
       <main className="mx-auto min-h-screen max-w-md bg-[var(--cat-bg)] px-4 py-16 text-center text-[var(--cat-ink)]">
         <h1 className="font-catalog-display text-2xl font-semibold">{catalog.name}</h1>
-        <p className="mt-2 text-sm text-[var(--cat-muted)]">Reservations are not open.</p>
-        <a href={`/s/${catalog.slug}`} className="mt-4 inline-block font-bold" style={{ color: catalog.accent }}>
+        <p className="mt-2 text-sm text-[var(--cat-muted)]">Reservations are closed right now.</p>
+        <a href={menuHref} className="mt-4 inline-block font-bold" style={{ color: catalog.accent }}>
           Browse the menu
         </a>
       </main>
@@ -223,6 +239,8 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
     const meta = RESERVATION_STATUS_META[booked.status];
     const tablesCopy =
       booked.tables.length > 0 ? booked.tables.map((t) => `Table ${t.no}`).join(" + ") : "No table preference — we'll seat you";
+    const trackHref = booked.trackToken ? paths.track(booked.trackToken) : booked.trackPath;
+    const shopTel = telHref(catalog.phone);
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--cat-bg)] px-4 text-[var(--cat-ink)]">
         <div className="w-full max-w-[460px] rounded-[18px] border border-[var(--cat-border)] bg-white p-7 text-center">
@@ -251,16 +269,38 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
           ) : null}
           <p className="mt-2 text-[13px] text-[var(--cat-muted)]">{rest.holdPolicy}</p>
           {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+          {trackHref && booked.status !== "cancelled" ? (
+            <p className="mt-3 text-[13px] text-[var(--cat-muted)]">
+              Keep the tracking link. Open it and enter the phone number you booked with.
+            </p>
+          ) : null}
           <div className="mt-5 flex flex-col gap-2">
+            {trackHref && booked.status !== "cancelled" ? (
+              <a
+                href={trackHref}
+                className="inline-flex min-h-12 items-center justify-center rounded-[10px] px-5 font-bold text-white active:scale-[0.98] motion-reduce:active:scale-100"
+                style={{ background: catalog.accent }}
+              >
+                Track booking
+              </a>
+            ) : null}
             {guestCanCancelReservation(booked.status) ? (
               <button
                 type="button"
                 disabled={cancelPending}
                 onClick={() => void cancelBooking()}
-                className="inline-flex h-12 items-center justify-center rounded-[10px] border border-[var(--cat-border)] px-5 font-bold"
+                className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-[var(--cat-border)] px-5 font-bold active:scale-[0.98] motion-reduce:active:scale-100"
               >
                 {cancelPending ? "Cancelling…" : "Cancel booking"}
               </button>
+            ) : null}
+            {catalog.phone ? (
+              <a
+                href={shopTel ?? undefined}
+                className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-[var(--cat-border)] px-5 font-bold"
+              >
+                Call {catalog.phone}
+              </a>
             ) : null}
             <button
               type="button"
@@ -269,11 +309,14 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
                 setBookedFood(0);
                 setError("");
               }}
-              className="inline-flex h-12 items-center justify-center rounded-[10px] border border-[var(--cat-border)] px-5 font-bold"
+              className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-[var(--cat-border)] px-5 font-bold"
             >
               Book another
             </button>
-            <a href={`/s/${catalog.slug}`} className="inline-flex h-12 items-center justify-center rounded-[10px] px-5 font-bold text-white" style={{ background: catalog.accent }}>
+            <a
+              href={menuHref}
+              className="inline-flex min-h-12 items-center justify-center rounded-[10px] border border-[var(--cat-border)] px-5 font-bold active:scale-[0.98] motion-reduce:active:scale-100"
+            >
               Browse the menu
             </a>
           </div>
@@ -290,7 +333,7 @@ function ReserveFlow({ catalog }: { catalog: StorefrontCatalog }) {
             <div className="font-catalog-display text-[26px] font-semibold">{catalog.name}</div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--cat-muted)]">Reserve a table</div>
           </div>
-          <a href={`/s/${catalog.slug}`} className="inline-flex h-11 items-center rounded-[10px] border border-[var(--cat-border)] px-4 text-[13px] font-bold">
+          <a href={menuHref} className="inline-flex h-11 items-center rounded-[10px] border border-[var(--cat-border)] px-4 text-[13px] font-bold">
             Browse the menu
           </a>
         </div>

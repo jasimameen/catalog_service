@@ -13,6 +13,7 @@ Copy `.env.example` to `.env.local`. Then do this once:
 6. Optional — order, welcome, password-changed, and reset emails: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `ORDER_FROM_EMAIL`. Checkout still saves without these. If messages do not arrive, see **Emails not arriving** below.
 7. Optional — item photo uploads: **SQL Editor** → run [`supabase/catalog-images.sql`](supabase/catalog-images.sql) (creates the public `catalog-images` bucket).
 8. Billing — **SQL Editor** → run [`supabase/billing.sql`](supabase/billing.sql) (Lemon Squeezy columns on `accounts`). Then see **Lemon Squeezy** below.
+8b. Comp / catalog caps — **SQL Editor** → run [`supabase/account-comp.sql`](supabase/account-comp.sql) (`accounts.comp`, `accounts.max_catalogs`). Operator desk → Users → Grant. Trial default is 1 catalog; paid is unlimited unless you set a cap. `@hevyf.com` / operator emails are always unlimited.
 9. Restaurant ordering — **SQL Editor** → run [`supabase/restaurant.sql`](supabase/restaurant.sql) (item variants, dine-in/pickup/delivery, kitchen status, custom checkout form). Safe to skip for trade catalogs.
 10. Concierge inquiries — **SQL Editor** → run [`supabase/setup-inquiries.sql`](supabase/setup-inquiries.sql) (private `setup-inquiries` bucket + inbox table). Optional demo catalog: [`supabase/harbor-demo.sql`](supabase/harbor-demo.sql) (slug `harbor`, generic restaurant — not Tea Day).
 

@@ -1,7 +1,8 @@
 "use server";
 
-import { requireAccount } from "@/lib/auth/current-account";
-import { canPublishNewCatalog } from "@/lib/billing/status";
+import { getSessionUser, requireAccount } from "@/lib/auth/current-account";
+import { countAccountCatalogs } from "@/lib/billing/account-access";
+import { canPublishNewCatalog, catalogLimit, hasActiveAccess } from "@/lib/billing/status";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { isValidSlug, normalizeSlug } from "@/lib/catalog/slug";
 import { revalidateStorefrontCatalog } from "@/lib/catalog/storefront-cache";
@@ -47,11 +48,23 @@ export type PublishResult =
 
 export async function publishCatalog(input: PublishInput): Promise<PublishResult> {
   const account = await requireAccount({ next: "/new" });
+  const user = await getSessionUser();
+  const catalogCount = await countAccountCatalogs(account.id);
 
-  if (!canPublishNewCatalog(account)) {
+  if (!canPublishNewCatalog(account, { email: user?.email, catalogCount })) {
+    if (!hasActiveAccess(account, user?.email)) {
+      return {
+        ok: false,
+        error: "Subscribe to publish a new catalog. The public shop is paused until you do.",
+      };
+    }
+    const limit = catalogLimit(account, user?.email);
     return {
       ok: false,
-      error: "Subscribe to publish a new catalog. Existing catalogs stay live.",
+      error:
+        limit != null
+          ? `This plan includes ${limit} ${limit === 1 ? "catalog" : "catalogs"}.`
+          : "Could not publish another catalog on this plan.",
     };
   }
 

@@ -266,10 +266,6 @@ export function CartPanel({
     setGeoLng(null);
     setStep("review");
     setStatus("idle");
-    if (skipDetails) {
-      onClose();
-      return;
-    }
     onPlaced(placed.result);
   }
 
@@ -383,7 +379,7 @@ export function CartPanel({
                 No payment now — we confirm the order
                 {fulfillment ? ` for ${fulfillmentLabel(fulfillment).toLowerCase()}` : ""}.
               </p>
-              {availableModes.length > 0 && !tableSession ? (
+              {availableModes.length > 1 && !tableSession && session?.channel !== "dine" ? (
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-[var(--cat-muted)]">Order type *</p>
                   <div className="grid grid-cols-3 gap-2">

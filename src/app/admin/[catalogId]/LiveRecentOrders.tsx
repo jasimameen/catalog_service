@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatMoney } from "@/lib/catalog/currency";
 import { formatOrderDateTime, statusById, workflowLane, type OrderStatusDef } from "@/lib/catalog/order-statuses";
 import { enableAdminPush } from "@/lib/pwa/admin-push";
+import { openAddToHomeScreen } from "@/lib/pwa/install";
 import type { OrderRow } from "@/lib/supabase/types";
 import { OrderHero, StatusCue } from "@/components/admin/ops/OpsChrome";
 import {
@@ -40,6 +41,7 @@ export function LiveRecentOrders({
 }) {
   const [orders, setOrders] = useState(initialOrders.filter((order) => order.catalog_id === catalogId));
   const [notifyAsk, setNotifyAsk] = useState<"hidden" | "ask" | "on">("hidden");
+  const [notifyError, setNotifyError] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
@@ -89,9 +91,12 @@ export function LiveRecentOrders({
   useEffect(() => {
     const start = window.setTimeout(() => {
       setNow(Date.now());
-      if (typeof Notification === "undefined") return;
+      if (typeof Notification === "undefined") {
+        setNotifyAsk("ask");
+        return;
+      }
       if (Notification.permission === "granted") setNotifyAsk("on");
-      else if (Notification.permission === "default") setNotifyAsk("ask");
+      else setNotifyAsk("ask");
     }, 0);
     const tick = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => {
@@ -113,18 +118,25 @@ export function LiveRecentOrders({
           </h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {notifyAsk === "ask" ? (
-            <button
-              type="button"
-              onClick={() => {
-                void enableAdminPush().then((permission) => {
-                  setNotifyAsk(permission === "granted" ? "on" : "hidden");
-                });
-              }}
-              className="ops-press min-h-11 text-[13px] text-[#5a6472] hover:text-[var(--cat-ink)]"
-            >
-              Notify
-            </button>
+          {notifyAsk !== "on" || notifyError ? (
+            <span className="flex flex-col items-end">
+              <button
+                type="button"
+                onClick={() => {
+                  void enableAdminPush().then((result) => {
+                    setNotifyAsk(result.registered ? "on" : "ask");
+                    setNotifyError(result.registered ? null : result.error ?? "Could not enable alerts.");
+                    if (result.needsHomeScreen) openAddToHomeScreen();
+                  });
+                }}
+                className="ops-press min-h-11 text-[13px] text-[#5a6472] hover:text-[var(--cat-ink)]"
+              >
+                Notify
+              </button>
+              {notifyError ? (
+                <span className="max-w-[16rem] text-right text-[12px] leading-snug text-[#c43c1b]">{notifyError}</span>
+              ) : null}
+            </span>
           ) : null}
           <Link href={`/admin/${catalogId}/orders`} className="ops-press min-h-11 text-[13px] leading-[44px] text-[#0b5fce]">
             Open

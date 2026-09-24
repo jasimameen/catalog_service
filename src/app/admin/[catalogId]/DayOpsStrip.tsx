@@ -4,18 +4,21 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { setDayService } from "./actions";
+import { clearPriorDayOrders } from "./orders/actions";
 
 export function DayOpsStrip({
   catalogId,
   acceptOrders,
   kitchenOpen,
   openTickets,
+  leftoverPriorDay = 0,
   bookedToday,
 }: {
   catalogId: string;
   acceptOrders: boolean;
   kitchenOpen: boolean;
   openTickets: number;
+  leftoverPriorDay?: number;
   bookedToday: number;
 }) {
   const router = useRouter();
@@ -88,6 +91,31 @@ export function DayOpsStrip({
           >
             {kitchen ? "Close kitchen" : "Open kitchen"}
           </button>
+          {leftoverPriorDay > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                const before = new Date();
+                before.setHours(0, 0, 0, 0);
+                const ok = window.confirm(
+                  `Clear ${leftoverPriorDay} leftover ticket${leftoverPriorDay === 1 ? "" : "s"} from before today? They stay in All.`,
+                );
+                if (!ok) return;
+                startTransition(async () => {
+                  const result = await clearPriorDayOrders(catalogId, before.toISOString());
+                  if (result.error) {
+                    setError(result.error);
+                    return;
+                  }
+                  router.refresh();
+                });
+              }}
+              disabled={pending}
+              className="ops-press inline-flex min-h-11 items-center rounded-[11px] bg-black/[0.04] px-4 text-[14px] font-medium text-[var(--cat-ink)]"
+            >
+              End of day
+            </button>
+          ) : null}
         </div>
       </div>
       {error ? <p className="m-0 mt-3 text-[13px] text-[#b42318]">{error}</p> : null}

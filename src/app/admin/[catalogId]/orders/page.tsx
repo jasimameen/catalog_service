@@ -99,7 +99,7 @@ export default async function OrdersPage({
     .order("created_at", { ascending: false })
     .limit(20);
   const serviceRequests = ((requestRows ?? []) as ServiceRequestRow[]).filter(
-    (row) => row.catalog_id === catalogId,
+    (row) => row.catalog_id === catalogId && !row.resolved_at,
   );
   const activeInbox = showReservations && inbox === "reservations" ? "reservations" : "orders";
 
@@ -142,6 +142,8 @@ export default async function OrdersPage({
         ) : (
           <OrdersBoard
             catalogId={catalogId}
+            catalogName={catalog.name}
+            printTicketHtml={settings.printTicketHtml}
             currency={catalog.currency}
             showFulfillment={showFulfillment}
             statuses={statuses}

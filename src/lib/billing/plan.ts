@@ -3,6 +3,11 @@ export const MONTHLY_PRICE_LABEL = "$24.99/mo";
 export const TRIAL_DAYS = 30;
 export const TRIAL_DAYS_LABEL = "30 days free";
 
+/** Trial / unpaid accounts. Paid and operator-comp default to unlimited. */
+export const FREE_TIER_MAX_CATALOGS = 1;
+/** `null` = no cap. Operator can still set `accounts.max_catalogs`. */
+export const PAID_MAX_CATALOGS: number | null = null;
+
 /**
  * Lemon Squeezy keeps charging whatever price is on the existing variant.
  * In-app copy is $24.99 — Jasim must change the Instant Catalog monthly

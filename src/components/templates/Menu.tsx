@@ -15,23 +15,26 @@ import { BrandHeader } from "./BrandHeader";
 import { imageFitClass, isItemAvailable } from "@/lib/catalog/merchandising";
 import { isRestaurantCatalog } from "@/lib/catalog/template-settings";
 import { RestaurantMenu } from "@/components/storefront/RestaurantMenu";
+import type { OrderResult } from "@/lib/catalog/order-types";
 
 /** Sectioned food menu — photos use cover by default. Combos get their own section. */
 export function MenuTemplate({
   catalog,
   onOpenCart,
+  onPlaced,
   filters,
   featured,
 }: {
   catalog: StorefrontCatalog;
   onOpenCart: () => void;
+  onPlaced?: (result: OrderResult) => void;
   filters?: ReactNode;
   featured?: ReactNode;
 }) {
   const [selected, setSelected] = useState<StorefrontItem | null>(null);
   const { quantities, increment, decrement, acceptOrders, pausedMessage } = useCart();
   if (isRestaurantCatalog(catalog.template, catalog.fulfillmentModes)) {
-    return <RestaurantMenu catalog={catalog} onOpenCart={onOpenCart} />;
+    return <RestaurantMenu catalog={catalog} onOpenCart={onOpenCart} onPlaced={onPlaced} />;
   }
 
   const { comboItems, otherSections } = useMemo(() => {

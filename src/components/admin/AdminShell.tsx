@@ -46,12 +46,14 @@ function IconPanel({ expanded }: { expanded: boolean }) {
 export function AdminShell({
   newCatalog,
   trial,
+  legal,
   showInquiries = false,
   showOps = false,
   children,
 }: {
   newCatalog: ReactNode;
   trial: ReactNode;
+  legal?: ReactNode;
   showInquiries?: boolean;
   showOps?: boolean;
   children: ReactNode;
@@ -125,6 +127,7 @@ export function AdminShell({
           className={`mt-auto hidden min-w-0 flex-col gap-3 md:flex ${collapsed ? "w-full items-center" : ""}`}
         >
           {collapsed ? null : <div className="min-w-0">{trial}</div>}
+          {legal}
           <SignOutButton variant="nav" compact={collapsed} />
         </div>
       </aside>

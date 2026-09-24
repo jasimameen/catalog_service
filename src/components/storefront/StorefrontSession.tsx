@@ -5,6 +5,10 @@ import type { OrderFulfillment } from "@/lib/supabase/types";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { resolvedDefaultMode } from "@/lib/catalog/template-settings";
 import {
+  fulfillmentModesForChannel,
+  type StorefrontChannel,
+} from "@/lib/catalog/storefront-paths";
+import {
   clearPresenceChoice,
   firstOffPremise,
   readPresenceChoice,
@@ -17,6 +21,7 @@ export type DineInPresence = "here" | "away" | "qr" | null;
 type StorefrontSessionValue = {
   catalog: StorefrontCatalog;
   restaurant: boolean;
+  channel: StorefrontChannel;
   fulfillment: OrderFulfillment | null;
   setFulfillment: (mode: OrderFulfillment) => void;
   tableNo: string;
@@ -26,6 +31,7 @@ type StorefrontSessionValue = {
   gateOpen: boolean;
   canChangePresence: boolean;
   nearbyNote: string;
+  tableLocked: boolean;
   chooseHere: (note?: string) => void;
   chooseAway: (note?: string) => void;
   resetPresence: () => void;
@@ -36,21 +42,29 @@ const StorefrontSessionContext = createContext<StorefrontSessionValue | null>(nu
 export function StorefrontSessionProvider({
   catalog,
   restaurant,
+  channel = "menu",
   initialTable,
   children,
 }: {
   catalog: StorefrontCatalog;
   restaurant: boolean;
+  channel?: StorefrontChannel;
   initialTable: string;
   children: ReactNode;
 }) {
   const rest = catalog.settings.restaurant;
-  const modes = catalog.fulfillmentModes;
-  const qrLocked = Boolean(initialTable && rest.dineInQr && modes.includes("dine_in"));
+  const modes = fulfillmentModesForChannel(catalog.fulfillmentModes, channel);
+  const dineChannel = channel === "dine" && modes.includes("dine_in");
+  const qrLocked = Boolean(dineChannel && initialTable && rest.dineInQr);
   const needsGate =
-    restaurant && modes.includes("dine_in") && rest.requireInRestaurantCheck && !qrLocked;
+    channel === "menu" &&
+    restaurant &&
+    modes.includes("dine_in") &&
+    rest.requireInRestaurantCheck &&
+    !qrLocked;
 
   const [fulfillment, setFulfillmentState] = useState<OrderFulfillment | null>(() => {
+    if (dineChannel) return "dine_in";
     if (qrLocked) return "dine_in";
     if (needsGate) return null;
     return resolvedDefaultMode(modes, rest.defaultMode);
@@ -65,6 +79,12 @@ export function StorefrontSessionProvider({
   const gateOpen = gatePending && presenceReady;
 
   useEffect(() => {
+    if (dineChannel) {
+      setFulfillmentState("dine_in");
+      if (qrLocked) setTableNoState(initialTable);
+      setPresenceReady(true);
+      return;
+    }
     if (qrLocked) {
       setFulfillmentState("dine_in");
       setTableNoState(initialTable);
@@ -84,7 +104,7 @@ export function StorefrontSessionProvider({
       setFulfillmentState(firstOffPremise(modes));
     }
     setPresenceReady(true);
-  }, [catalog.id, initialTable, modes, needsGate, qrLocked]);
+  }, [catalog.id, dineChannel, initialTable, modes, needsGate, qrLocked]);
 
   const chooseHere = useCallback(
     (note = "") => {
@@ -119,12 +139,13 @@ export function StorefrontSessionProvider({
 
   const setFulfillment = useCallback(
     (mode: OrderFulfillment) => {
+      if (dineChannel && mode !== "dine_in") return;
       if (qrLocked && mode !== "dine_in") return;
       if (presence === "here" && mode !== "dine_in") return;
       if (presence === "away" && mode === "dine_in") return;
       setFulfillmentState(mode);
     },
-    [presence, qrLocked],
+    [dineChannel, presence, qrLocked],
   );
 
   function setTableNo(no: string) {
@@ -141,7 +162,8 @@ export function StorefrontSessionProvider({
     () => ({
       catalog,
       restaurant,
-      fulfillment: qrLocked ? "dine_in" : fulfillment,
+      channel,
+      fulfillment: dineChannel || qrLocked ? "dine_in" : fulfillment,
       setFulfillment,
       tableNo: qrLocked && !tableNo ? initialTable : tableNo,
       setTableNo,
@@ -150,6 +172,7 @@ export function StorefrontSessionProvider({
       gateOpen,
       canChangePresence,
       nearbyNote,
+      tableLocked: qrLocked,
       chooseHere,
       chooseAway,
       resetPresence,
@@ -157,8 +180,10 @@ export function StorefrontSessionProvider({
     [
       canChangePresence,
       catalog,
+      channel,
       chooseAway,
       chooseHere,
+      dineChannel,
       effectivePresence,
       fulfillment,
       gateOpen,

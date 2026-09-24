@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { catalogIncomingMeta } from "@/app/admin/[catalogId]/actions";
+import { resolveServiceRequest } from "@/app/admin/[catalogId]/orders/actions";
 import {
   incomingStackLabel,
   demoIncomingTicket,
@@ -113,6 +114,13 @@ function IncomingTicketListener({ catalogId }: { catalogId: string }) {
 
   const onRealtime = useCallback(
     (table: "orders" | "service_requests" | "reservations", eventType: string, row: unknown) => {
+      if (eventType === "UPDATE" && table === "service_requests") {
+        const request = asCatalogServiceRequest(row, catalogId);
+        if (request?.resolved_at) {
+          setTickets((prev) => prev.filter((ticket) => ticket.id !== request.id));
+        }
+        return;
+      }
       if (eventType !== "INSERT") return;
       const cid = rowCatalogId(row);
       if (cid && cid !== catalogId) return;
@@ -174,10 +182,18 @@ function IncomingTicketListener({ catalogId }: { catalogId: string }) {
     router.push(ticket.href);
   }
 
+  function takeLatest() {
+    if (!latest) return;
+    const ticket = latest;
+    dismiss(ticket.id);
+    if (ticket.kind === "service") void resolveServiceRequest(catalogId, ticket.id);
+  }
+
   return (
     <IncomingTicketOverlay
       tickets={tickets}
       onOpen={openLatest}
+      onTake={latest?.kind === "service" ? takeLatest : undefined}
       onDismiss={dismissLatest}
     />
   );
@@ -186,10 +202,12 @@ function IncomingTicketListener({ catalogId }: { catalogId: string }) {
 function IncomingTicketOverlay({
   tickets,
   onOpen,
+  onTake,
   onDismiss,
 }: {
   tickets: IncomingTicket[];
   onOpen: () => void;
+  onTake?: () => void;
   onDismiss: () => void;
 }) {
   const latest = tickets[0] ?? null;
@@ -252,7 +270,11 @@ function IncomingTicketOverlay({
           </div>
           <div className="mt-3.5 flex items-center justify-end gap-2">
             <OpsGhostButton onClick={onDismiss}>Later</OpsGhostButton>
-            <OpsPrimaryButton onClick={onOpen}>Open</OpsPrimaryButton>
+            {onTake ? (
+              <OpsPrimaryButton onClick={onTake}>Taken</OpsPrimaryButton>
+            ) : (
+              <OpsPrimaryButton onClick={onOpen}>Open</OpsPrimaryButton>
+            )}
           </div>
         </div>
       </div>

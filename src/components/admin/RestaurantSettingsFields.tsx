@@ -120,14 +120,15 @@ export function RestaurantSettingsFields({
       </div>
 
       <div>
-        <p className={dashKicker}>Reserve a table</p>
+        <p className={dashKicker}>Reservations</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <Toggle label="Guests can reserve" checked={r.enableReserve} onChange={(v) => patch({ enableReserve: v })} />
         </div>
         <p className={`mt-2 ${dashHint}`}>
-          {canEnableFloor
-            ? "Reservations work without a floor plan. Turn Floor plan on under Place if you want rooms and tables."
-            : "Reservations work without a floor plan."}
+          {r.enableReserve
+            ? "Guests see Reserve on the menu and can book. Works without a floor plan and without dine-in QR."
+            : "Public booking is closed. Existing reservations still appear in the dashboard."}
+          {canEnableFloor ? " Floor plan is a separate switch under Place." : ""}
         </p>
         <label className="mt-2 flex flex-col gap-1.5">
           <span className={dashLabel}>Hold policy</span>
@@ -174,10 +175,16 @@ export function RestaurantSettingsFields({
           <Toggle label="Call waiter" checked={r.callWaiter} onChange={(v) => patch({ callWaiter: v })} />
           <Toggle label="Request bill" checked={r.requestBill} onChange={(v) => patch({ requestBill: v })} />
           <Toggle label="Kitchen rounds" checked={r.kitchenRounds} onChange={(v) => patch({ kitchenRounds: v })} />
+          <Toggle
+            label="Hide takeaway menu on dine-in"
+            checked={r.hideTakeawayOnDine}
+            onChange={(v) => patch({ hideTakeawayOnDine: v })}
+          />
         </div>
         <p className={`mt-2 ${dashHint}`}>
+          Table QR and dine-in orders use the dedicated /dine link, not the regular menu.
+          Hide takeaway keeps pickup and delivery off the table QR — share the regular menu separately.
           Skip guest details asks only for the table. Pickup and delivery still collect name and phone.
-          The in-restaurant check is skipped when a guest opens a table QR.
         </p>
         {modes.includes("dine_in") ? (
           <div className="mt-3 rounded-[12px] border border-[#e2e7ee] bg-[#fbfbfd] p-3">

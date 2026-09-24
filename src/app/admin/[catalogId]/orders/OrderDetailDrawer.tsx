@@ -23,6 +23,7 @@ import type {
 } from "@/lib/supabase/types";
 import { StatusTimeline } from "@/components/orders/StatusTimeline";
 import { ensureTrackLink } from "./actions";
+import { renderPrintTicketHtml } from "@/lib/catalog/print-ticket";
 
 const BUILTIN_FIELD_IDS = new Set([
   "shopName",
@@ -79,6 +80,8 @@ function LinePhoto({ src, name }: { src: string; name: string }) {
 
 export function OrderDetailDrawer({
   catalogId,
+  catalogName,
+  printTicketHtml,
   order,
   lines,
   events,
@@ -92,6 +95,8 @@ export function OrderDetailDrawer({
   onCopied,
 }: {
   catalogId: string;
+  catalogName: string;
+  printTicketHtml?: string | null;
   order: OrderRow;
   lines: OrderItemRow[];
   events: OrderStatusEventRow[];
@@ -105,6 +110,34 @@ export function OrderDetailDrawer({
   onCopied: (message: string) => void;
 }) {
   const [copying, setCopying] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  const ticketHtml = renderPrintTicketHtml({
+    template: printTicketHtml,
+    shop: catalogName,
+    order,
+    lines,
+    currency,
+  });
+
+  function printTicket() {
+    const popup = window.open("", "_blank", "noopener,width=420,height=640");
+    if (!popup) {
+      onCopied("Allow pop-ups to print this ticket.");
+      return;
+    }
+    popup.document.open();
+    popup.document.write(ticketHtml);
+    popup.document.close();
+    popup.focus();
+    popup.addEventListener("load", () => popup.print());
+    window.setTimeout(() => {
+      try {
+        popup.print();
+      } catch {
+        // popup may already be printing
+      }
+    }, 250);
+  }
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -362,14 +395,40 @@ export function OrderDetailDrawer({
             </section>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => void copyLink()}
-            disabled={copying}
-            className="min-h-11 w-full cursor-pointer rounded-[11px] border border-[#e2e7ee] bg-[#fbfbfd] text-[14px] text-[var(--cat-ink)] hover:border-[#c3ccd9] disabled:opacity-50"
-          >
-            {copying ? "Copying…" : "Copy tracking link"}
-          </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPrintOpen((prev) => !prev)}
+                className="min-h-11 flex-1 cursor-pointer rounded-[11px] border border-[#e2e7ee] bg-[#fbfbfd] text-[14px] text-[var(--cat-ink)] hover:border-[#c3ccd9]"
+              >
+                {printOpen ? "Hide preview" : "Preview ticket"}
+              </button>
+              <button
+                type="button"
+                onClick={printTicket}
+                className="min-h-11 flex-1 cursor-pointer rounded-[11px] bg-[var(--cat-ink)] text-[14px] font-semibold text-white"
+              >
+                Print
+              </button>
+            </div>
+            {printOpen ? (
+              <iframe
+                title="Print ticket preview"
+                srcDoc={ticketHtml}
+                sandbox=""
+                className="h-[280px] w-full rounded-[11px] border border-[#e2e7ee] bg-white"
+              />
+            ) : null}
+            <button
+              type="button"
+              onClick={() => void copyLink()}
+              disabled={copying}
+              className="min-h-11 w-full cursor-pointer rounded-[11px] border border-[#e2e7ee] bg-[#fbfbfd] text-[14px] text-[var(--cat-ink)] hover:border-[#c3ccd9] disabled:opacity-50"
+            >
+              {copying ? "Copying…" : "Copy tracking link"}
+            </button>
+          </div>
         </div>
       </aside>
       <style>{`

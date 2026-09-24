@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 import { CartProvider } from "@/lib/catalog/cart-context";
 import { TEMPLATE_COMPONENTS } from "@/components/templates";
@@ -13,16 +13,29 @@ import { CategoryChips } from "./CategoryChips";
 import { StorefrontFooter } from "./StorefrontFooter";
 import type { OrderResult } from "@/lib/catalog/order-types";
 import { formatMoney } from "@/lib/catalog/currency";
-import { storefrontCategories } from "@/lib/catalog/merchandising";
+import { storefrontCategories, telHref } from "@/lib/catalog/merchandising";
 import { isTemplateKey } from "@/lib/catalog/templates";
 import { isRestaurantCatalog } from "@/lib/catalog/template-settings";
+import {
+  fulfillmentModesForChannel,
+  guestStorefrontPaths,
+  storefrontTakesOrders,
+  type StorefrontChannel,
+} from "@/lib/catalog/storefront-paths";
 import { StorefrontSessionProvider } from "./StorefrontSession";
 import { DineInPresenceGate } from "./DineInPresenceGate";
 import { StorefrontMarquee } from "./StorefrontMarquee";
 import { PausedNote } from "./PausedNote";
-import { trackingPath } from "@/lib/catalog/order-tracking";
 
-export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
+export function StorefrontApp({
+  catalog,
+  channel = "menu",
+  initialTable = "",
+}: {
+  catalog: StorefrontCatalog;
+  channel?: StorefrontChannel;
+  initialTable?: string;
+}) {
   const [cartOpen, setCartOpen] = useState(false);
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [category, setCategory] = useState("");
@@ -32,7 +45,10 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   const Template = TEMPLATE_COMPONENTS[templateKey] ?? TEMPLATE_COMPONENTS.grid;
   const restaurant = isRestaurantCatalog(templateKey, catalog.fulfillmentModes);
   const showChips = !restaurant && storefrontCategories(catalog.items).length >= 2;
-  const initialTable = (searchParams.get("table") ?? "").trim();
+  const tableFromQuery = channel === "dine" ? (searchParams.get("table") ?? "").trim() : "";
+  const tableNo = channel === "dine" ? (initialTable || tableFromQuery) : "";
+  const channelModes = fulfillmentModesForChannel(catalog.fulfillmentModes, channel);
+  const takeOrders = storefrontTakesOrders(catalog.acceptOrders, catalog.fulfillmentModes, channel);
   const viewCatalog = useMemo<StorefrontCatalog>(() => {
     if (!category) return catalog;
     return {
@@ -45,10 +61,15 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
     <CartProvider
       catalogId={catalog.id}
       items={catalog.items}
-      acceptOrders={catalog.acceptOrders}
+      acceptOrders={takeOrders}
       pausedMessage={catalog.ordersPausedMessage}
     >
-    <StorefrontSessionProvider catalog={viewCatalog} restaurant={restaurant} initialTable={initialTable}>
+    <StorefrontSessionProvider
+      catalog={viewCatalog}
+      restaurant={restaurant}
+      channel={channel}
+      initialTable={tableNo}
+    >
       <DineInPresenceGate />
       {order ? (
         <OrderConfirmation catalog={catalog} restaurant={restaurant} order={order} onBack={() => setOrder(null)} />
@@ -62,6 +83,10 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
           <Template
             catalog={viewCatalog}
             onOpenCart={() => setCartOpen(true)}
+            onPlaced={(result) => {
+              setCartOpen(false);
+              setOrder(result);
+            }}
             filters={
               showChips ? (
                 <CategoryChips items={catalog.items} selected={category} onSelect={setCategory} />
@@ -70,13 +95,13 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
             featured={restaurant ? undefined : <FeaturedStrip catalog={catalog} />}
           />
           {!restaurant ? <StorefrontFooter catalog={catalog} /> : null}
-          {catalog.acceptOrders ? (
+          {takeOrders ? (
             <CartPanel
               catalogId={catalog.id}
               currency={catalog.currency}
               checkoutFields={catalog.checkoutFields}
               checkoutForm={catalog.checkoutForm}
-              fulfillmentModes={catalog.fulfillmentModes}
+              fulfillmentModes={channelModes}
               open={cartOpen}
               onClose={() => setCartOpen(false)}
               onPlaced={(result) => {
@@ -92,9 +117,9 @@ export function StorefrontApp({ catalog }: { catalog: StorefrontCatalog }) {
   );
 }
 
-function trackHref(order: OrderResult, slug: string): string | undefined {
+function trackHref(order: OrderResult, slug: string, pathname: string | null): string | undefined {
+  if (order.trackToken) return guestStorefrontPaths(slug, pathname).track(order.trackToken);
   if (order.trackPath) return order.trackPath;
-  if (order.trackToken) return trackingPath(slug, order.trackToken);
   return order.trackUrl;
 }
 
@@ -109,16 +134,32 @@ function OrderConfirmation({
   order: OrderResult;
   onBack: () => void;
 }) {
-  const href = trackHref(order, catalog.slug);
+  const pathname = usePathname();
+  const href = trackHref(order, catalog.slug, pathname);
+  const tel = telHref(catalog.phone);
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    if (!href) return;
+    const absolute = href.startsWith("http") ? href : `${window.location.origin}${href}`;
+    try {
+      await navigator.clipboard.writeText(absolute);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 py-10 text-center">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-4 py-10 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--cat-success-bg)]">
         <span className="text-3xl text-[var(--cat-success-ink)]">✓</span>
       </div>
-      <h1 className="font-catalog-display text-2xl font-bold text-[var(--cat-ink)]">
+      <h1 className="font-catalog-display text-2xl font-bold tracking-tight text-[var(--cat-ink)]">
         {restaurant ? `Order received at ${catalog.name}` : "Order placed"}
       </h1>
-      <p className="mt-2 text-sm text-[var(--cat-muted)]">
+      <p className="mt-2 text-sm leading-relaxed text-[var(--cat-muted)]">
         {restaurant
           ? order.phone
             ? `${catalog.name} will confirm on ${order.phone}.`
@@ -136,11 +177,33 @@ function OrderConfirmation({
         <Row label="Subtotal" value={formatMoney(order.total, catalog.currency)} bold last />
       </div>
       {href ? (
+        <p className="mt-4 text-[13px] leading-relaxed text-[var(--cat-muted)]">
+          Keep this link. Open it and enter the phone or table number you used.
+        </p>
+      ) : null}
+      {href ? (
         <a
           href={href}
-          className="mt-6 flex w-full items-center justify-center rounded-[9px] bg-[var(--cat-accent)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+          className="mt-5 flex min-h-12 w-full items-center justify-center rounded-[12px] bg-[var(--cat-accent)] text-sm font-semibold text-white active:scale-[0.98] motion-reduce:active:scale-100"
         >
           Track order
+        </a>
+      ) : null}
+      {href ? (
+        <button
+          type="button"
+          onClick={() => void copyLink()}
+          className="mt-2 flex min-h-12 w-full items-center justify-center rounded-[12px] border border-[var(--cat-border)] bg-white text-sm font-semibold text-[var(--cat-ink)] active:scale-[0.98] motion-reduce:active:scale-100"
+        >
+          {copied ? "Link copied" : "Copy tracking link"}
+        </button>
+      ) : null}
+      {catalog.phone ? (
+        <a
+          href={tel ?? undefined}
+          className="mt-2 flex min-h-12 w-full items-center justify-center rounded-[12px] border border-[var(--cat-border)] bg-white text-sm font-semibold text-[var(--cat-ink)] active:scale-[0.98] motion-reduce:active:scale-100"
+        >
+          Call {catalog.phone}
         </a>
       ) : null}
       <button
@@ -148,8 +211,8 @@ function OrderConfirmation({
         onClick={onBack}
         className={
           href
-            ? "mt-3 w-full rounded-[9px] border border-[var(--cat-border)] bg-white py-2.5 text-sm font-semibold text-[var(--cat-ink)] transition hover:bg-[var(--cat-photo-bg)]"
-            : "mt-6 w-full rounded-[9px] bg-[var(--cat-accent)] py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+            ? "mt-2 min-h-12 w-full rounded-[12px] text-sm font-semibold text-[var(--cat-muted)]"
+            : "mt-6 min-h-12 w-full rounded-[12px] bg-[var(--cat-accent)] text-sm font-semibold text-white"
         }
       >
         {restaurant ? "Back to menu" : "Back to catalogue"}

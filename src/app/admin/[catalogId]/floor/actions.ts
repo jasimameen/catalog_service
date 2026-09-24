@@ -35,6 +35,7 @@ export async function saveFloorPlan(
   revalidatePath(`/admin/${catalogId}`);
   revalidatePath(`/admin/${catalogId}/floor`);
   revalidatePath(`/s/${catalog.slug}`);
+  revalidatePath(`/s/${catalog.slug}/dine`);
   revalidatePath(`/s/${catalog.slug}/reserve`);
   revalidateStorefrontCatalog();
   return { saved: true };

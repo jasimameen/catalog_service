@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { SignOutButton } from "@/components/admin/SignOutButton";
+import { reportIssue, type ReportIssueState } from "./actions";
 
 const fieldClass =
   "w-full rounded-[10px] border border-[var(--cat-border)] bg-white px-3 py-2 text-[13px] text-[var(--cat-ink)] outline-none focus:border-[var(--cat-accent)]";
@@ -164,6 +165,78 @@ export function UpdateEmailForm({ email }: { email: string }) {
         ) : null}
         <button type="submit" disabled={status === "loading"} className={buttonClass}>
           {status === "loading" ? "Saving…" : "Update email"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export function ReportIssueForm({
+  email,
+  catalogs,
+}: {
+  email: string;
+  catalogs: { id: string; name: string }[];
+}) {
+  const [state, formAction, pending] = useActionState<ReportIssueState, FormData>(reportIssue, null);
+  const [pageUrl, setPageUrl] = useState("");
+
+  useEffect(() => {
+    setPageUrl(window.location.href);
+  }, []);
+
+  return (
+    <div id="report" className="rounded-xl border border-[var(--cat-border)] bg-white p-4 lg:col-span-2">
+      <h3 className="m-0 mb-1.5 text-[14px] font-semibold text-[var(--cat-ink)]">Report an issue</h3>
+      <p className="m-0 mb-2.5 text-[12px] leading-snug text-[var(--cat-muted)]">
+        Send a note to Instant Catalog. We’ll see your signed-in email
+        {email ? ` (${email})` : ""}, the catalog if you pick one, and the page you were on.
+      </p>
+      <form action={formAction} className="flex flex-col gap-2.5">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]" htmlFor="report-catalog">
+            Catalog
+          </label>
+          <select id="report-catalog" name="catalog_id" defaultValue="" className={fieldClass}>
+            <option value="">No specific catalog</option>
+            {catalogs.map((catalog) => (
+              <option key={catalog.id} value={catalog.id}>
+                {catalog.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]" htmlFor="report-url">
+            Page or URL
+          </label>
+          <input
+            id="report-url"
+            name="page_url"
+            type="text"
+            value={pageUrl}
+            onChange={(event) => setPageUrl(event.target.value)}
+            placeholder="Dashboard, orders, a shop link…"
+            className={fieldClass}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--cat-muted)]" htmlFor="report-message">
+            What happened
+          </label>
+          <textarea
+            id="report-message"
+            name="message"
+            required
+            minLength={8}
+            rows={4}
+            className={fieldClass}
+          />
+        </div>
+        {state?.error ? <p className="m-0 text-xs text-[#b2432b]">{state.error}</p> : null}
+        {state?.sent ? <p className="m-0 text-xs text-[#1e9e4a]">Sent. We’ll take a look.</p> : null}
+        <button type="submit" disabled={pending} className={buttonClass}>
+          {pending ? "Sending…" : "Send note"}
         </button>
       </form>
     </div>
