@@ -7,7 +7,7 @@ import {
   telHref,
   whatsappHref,
 } from "@/lib/catalog/merchandising";
-import { osmEmbedSrc, websiteHref } from "@/lib/catalog/locations";
+import { googleMapsEmbedSrc, websiteHref } from "@/lib/catalog/locations";
 import type { StorefrontCatalog } from "@/lib/catalog/types";
 
 export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
@@ -22,8 +22,14 @@ export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
   const igLabel = instagramHandle(catalog.instagram);
   const tel = telHref(phone);
   const mail = mailtoHref(email);
-  const showMap =
-    catalog.showMap && catalog.geoLat != null && catalog.geoLng != null;
+  const mapSrc = catalog.showMap
+    ? googleMapsEmbedSrc({
+        address: catalog.address,
+        lat: catalog.geoLat,
+        lng: catalog.geoLng,
+      })
+    : null;
+  const showMap = Boolean(mapSrc);
   const hasContact = Boolean(phone || email || address);
   const hasHours = Boolean(hours);
   const hasLocations = locations.length > 0;
@@ -131,13 +137,14 @@ export function StorefrontFooter({ catalog }: { catalog: StorefrontCatalog }) {
                     })}
                   </ul>
                 ) : null}
-                {showMap && catalog.geoLat != null && catalog.geoLng != null ? (
+                {showMap && mapSrc ? (
                   <div className="mt-3 overflow-hidden rounded-[12px] border border-[var(--cat-border)]">
                     <iframe
                       title="Shop location"
-                      src={osmEmbedSrc(catalog.geoLat, catalog.geoLng)}
+                      src={mapSrc}
                       className="h-40 w-full border-0"
                       loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
                     />
                   </div>
                 ) : null}

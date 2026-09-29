@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { CatalogTemplate } from "@/lib/supabase/types";
 import type { TemplateSettings } from "@/lib/catalog/template-settings";
 import { dashHint, dashInput, dashKicker, dashLabel } from "@/components/admin/dashboard/styles";
@@ -14,16 +15,22 @@ function Toggle({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[11px] border border-[#e2e7ee] bg-[#fbfbfd] px-3.5 text-[13px] has-[:checked]:border-[#9dc0ef] has-[:checked]:bg-[#eef4fd]">
+    <label className="settings-row cursor-pointer md:rounded-[11px] md:border md:border-[#e2e7ee] md:bg-white">
+      <span className="min-w-0 flex-1 text-[16px] font-medium tracking-tight text-[var(--cat-ink)] md:text-[13px]">
+        {label}
+      </span>
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 accent-[#0b5fce]"
       />
-      {label}
     </label>
   );
+}
+
+function ToggleGroup({ children }: { children: ReactNode }) {
+  return <div className="settings-inset md:grid md:grid-cols-2">{children}</div>;
 }
 
 export function TemplateSettingsFields({
@@ -57,10 +64,10 @@ export function TemplateSettingsFields({
             </label>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <ToggleGroup>
           <Toggle label="Show item codes" checked={g.showCodes} onChange={(v) => onChange({ ...settings, grid: { ...g, showCodes: v } })} />
           <Toggle label="Quantity steppers" checked={g.qtySteppers} onChange={(v) => onChange({ ...settings, grid: { ...g, qtySteppers: v } })} />
-        </div>
+        </ToggleGroup>
       </div>
     );
   }
@@ -70,11 +77,11 @@ export function TemplateSettingsFields({
     return (
       <div className="flex flex-col gap-2.5">
         <p className={dashKicker}>Restaurant Menu layout</p>
-        <div className="flex flex-wrap gap-2">
+        <ToggleGroup>
           <Toggle label="Show photos" checked={m.showPhotos} onChange={(v) => onChange({ ...settings, menu: { ...m, showPhotos: v } })} />
           <Toggle label="Diet filters" checked={m.dietFilters} onChange={(v) => onChange({ ...settings, menu: { ...m, dietFilters: v } })} />
           <Toggle label="Sort options" checked={m.sorts} onChange={(v) => onChange({ ...settings, menu: { ...m, sorts: v } })} />
-        </div>
+        </ToggleGroup>
         <div className="flex flex-wrap gap-2">
           {(["cards", "rows"] as const).map((style) => (
             <label
@@ -113,48 +120,48 @@ export function TemplateSettingsFields({
   if (template === "lookbook") {
     const l = settings.lookbook;
     return (
-      <div className="flex flex-wrap gap-2">
+      <ToggleGroup>
         <Toggle label="Show prices" checked={l.showPrices} onChange={(v) => onChange({ ...settings, lookbook: { ...l, showPrices: v } })} />
         <Toggle label="Show descriptions" checked={l.showDescriptions} onChange={(v) => onChange({ ...settings, lookbook: { ...l, showDescriptions: v } })} />
-      </div>
+      </ToggleGroup>
     );
   }
 
   if (template === "cards") {
     const c = settings.cards;
     return (
-      <div className="flex flex-wrap gap-2">
+      <ToggleGroup>
         <Toggle label="Show description" checked={c.showDescription} onChange={(v) => onChange({ ...settings, cards: { ...c, showDescription: v } })} />
         <Toggle label="Show codes" checked={c.showCodes} onChange={(v) => onChange({ ...settings, cards: { ...c, showCodes: v } })} />
-      </div>
+      </ToggleGroup>
     );
   }
 
   if (template === "compact") {
     const c = settings.compact;
     return (
-      <div className="flex flex-wrap gap-2">
+      <ToggleGroup>
         <Toggle label="Show codes" checked={c.showCodes} onChange={(v) => onChange({ ...settings, compact: { ...c, showCodes: v } })} />
         <Toggle label="Quantity steppers" checked={c.qtySteppers} onChange={(v) => onChange({ ...settings, compact: { ...c, qtySteppers: v } })} />
-      </div>
+      </ToggleGroup>
     );
   }
 
   if (template === "spotlight") {
     const s = settings.spotlight;
     return (
-      <div className="flex flex-wrap gap-2">
+      <ToggleGroup>
         <Toggle label="Show hero item" checked={s.showHero} onChange={(v) => onChange({ ...settings, spotlight: { ...s, showHero: v } })} />
         <Toggle label="Show codes" checked={s.showCodes} onChange={(v) => onChange({ ...settings, spotlight: { ...s, showCodes: v } })} />
-      </div>
+      </ToggleGroup>
     );
   }
 
   const p = settings.pricelist;
   return (
-    <div className="flex flex-wrap gap-2">
+    <ToggleGroup>
       <Toggle label="Show codes" checked={p.showCodes} onChange={(v) => onChange({ ...settings, pricelist: { ...p, showCodes: v } })} />
       <Toggle label="Compact rows" checked={p.compactRows} onChange={(v) => onChange({ ...settings, pricelist: { ...p, compactRows: v } })} />
-    </div>
+    </ToggleGroup>
   );
 }

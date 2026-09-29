@@ -14,11 +14,13 @@ import {
   dashKicker,
   dashSection,
 } from "@/components/admin/dashboard/styles";
+import { TemplatePreview } from "@/components/builder/TemplatePreview";
 import { updateCatalogLook, type LookState } from "./actions";
 import type { TemplateSettings } from "@/lib/catalog/template-settings";
 import { parseTemplateSettings } from "@/lib/catalog/template-settings";
 import { TemplateSettingsFields } from "@/components/admin/TemplateSettingsFields";
 import type { OrderFulfillment } from "@/lib/supabase/types";
+import type { CatalogTemplateKey } from "@/lib/catalog/types";
 
 const PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
 const MAX_LOGO_BYTES = 4 * 1024 * 1024;
@@ -34,6 +36,8 @@ export function LookSettingsForm({
   placeholderImageUrl,
   templateSettings: initialSettings,
   fulfillmentModes,
+  currency = "AED",
+  liveUrl = "",
   embedded = false,
 }: {
   catalogId: string;
@@ -46,6 +50,8 @@ export function LookSettingsForm({
   placeholderImageUrl: string;
   templateSettings: TemplateSettings;
   fulfillmentModes: OrderFulfillment[];
+  currency?: string;
+  liveUrl?: string;
   embedded?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<LookState, FormData>(
@@ -199,23 +205,24 @@ export function LookSettingsForm({
           <div className={dashSection}>
             <p className={dashKicker}>Photo fit</p>
             <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-              Default for item photos. Cover fills the frame (best for food). Contain shows the
-              whole photo.
+              Cover fills the frame. Contain shows the whole photo.
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="settings-inset md:grid md:grid-cols-2">
               {(["cover", "contain"] as const).map((fit) => (
                 <label
                   key={fit}
-                  className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-[13px] capitalize ${dashChipOff} has-[:checked]:border-[#9dc0ef] has-[:checked]:bg-[#eef4fd]`}
+                  className={`settings-row cursor-pointer capitalize md:justify-center md:rounded-none ${dashChipOff} has-[:checked]:bg-[#eef4fd]`}
                 >
+                  <span className="min-w-0 flex-1 text-[16px] font-medium tracking-tight text-[var(--cat-ink)] md:flex-none md:text-[13px]">
+                    {fit}
+                  </span>
                   <input
                     type="radio"
                     name="imageFit"
                     value={fit}
                     defaultChecked={imageFit === fit}
-                    className="accent-[#0b5fce]"
+                    className="h-4 w-4 accent-[#0b5fce] md:sr-only"
                   />
-                  {fit}
                 </label>
               ))}
             </div>
@@ -223,30 +230,48 @@ export function LookSettingsForm({
 
           <div className={dashSection}>
             <p className={dashKicker}>Template</p>
+            <div className="overflow-hidden rounded-[14px] border border-[#edf0f4] bg-[#fbfbfd]">
+              <div className="h-[280px] min-h-[240px] md:h-[360px]">
+                <TemplatePreview
+                  template={picked as CatalogTemplateKey}
+                  accent={pickedAccent}
+                  catalogName={catalogName}
+                  currency={currency}
+                  liveUrl={liveUrl}
+                />
+              </div>
+            </div>
             <div className="flex flex-col gap-2">
-              {TEMPLATES.map((tpl) => (
-                <label
-                  key={tpl.key}
-                  className="flex min-w-0 cursor-pointer gap-2.5 rounded-xl border border-[#e2e7ee] bg-white p-3 has-[:checked]:border-[#9dc0ef] has-[:checked]:bg-[#f7faff]"
-                >
-                  <input
-                    type="radio"
-                    name="template"
-                    value={tpl.key}
-                    checked={tpl.key === picked}
-                    onChange={() => setPicked(tpl.key)}
-                    className="mt-1 accent-[#0b5fce]"
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-[14px] font-medium text-[var(--cat-ink)]">
-                      {tpl.name}
+              {TEMPLATES.map((tpl) => {
+                const selected = tpl.key === picked;
+                return (
+                  <label
+                    key={tpl.key}
+                    className={`ops-press flex min-w-0 cursor-pointer gap-2.5 rounded-xl border p-3 transition-opacity duration-200 motion-reduce:transition-none ${
+                      selected
+                        ? "border-[#9dc0ef] bg-[#f7faff] opacity-100"
+                        : "border-[#e2e7ee] bg-white opacity-40 hover:opacity-75"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="template"
+                      value={tpl.key}
+                      checked={selected}
+                      onChange={() => setPicked(tpl.key)}
+                      className="mt-1 accent-[#0b5fce]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[14px] font-medium text-[var(--cat-ink)]">
+                        {tpl.name}
+                      </span>
+                      <span className="mt-1 block text-xs leading-snug text-[#5a6472]">
+                        {tpl.blurb}
+                      </span>
                     </span>
-                    <span className="mt-1 block text-xs leading-snug text-[#5a6472]">
-                      {tpl.blurb}
-                    </span>
-                  </span>
-                </label>
-              ))}
+                  </label>
+                );
+              })}
             </div>
             <input type="hidden" name="template_settings" value={JSON.stringify(tplSettings)} />
             <div className="mt-3">

@@ -6,6 +6,7 @@ import type { TemplateSettings } from "@/lib/catalog/template-settings";
 import { FULFILLMENTS } from "@/lib/catalog/checkout-form";
 import { parsePastedCoords } from "@/lib/catalog/dine-in-presence";
 import { dashHint, dashInput, dashKicker, dashLabel, dashTextarea } from "@/components/admin/dashboard/styles";
+import { SettingsSwitch } from "@/components/admin/SettingsSwitch";
 
 function Toggle({
   label,
@@ -121,45 +122,56 @@ export function RestaurantSettingsFields({
 
       <div>
         <p className={dashKicker}>Reservations</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Toggle label="Guests can reserve" checked={r.enableReserve} onChange={(v) => patch({ enableReserve: v })} />
+        <div className="settings-inset">
+          <label className="settings-row cursor-pointer">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[16px] font-medium tracking-tight text-[var(--cat-ink)]">
+                Guests can reserve
+              </span>
+              <span className="mt-0.5 block text-[13px] text-[#86868b]">
+                {r.enableReserve
+                  ? "Reserve shows on the menu. No floor plan required."
+                  : "Public booking is closed. Existing bookings stay on the dashboard."}
+                {canEnableFloor ? " Floor plan is under Place." : ""}
+              </span>
+            </span>
+            <SettingsSwitch checked={r.enableReserve} onChange={(v) => patch({ enableReserve: v })} />
+          </label>
+          {r.enableReserve ? (
+            <div className="flex flex-col gap-3 px-4 py-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Hold policy</span>
+                <textarea value={r.holdPolicy} onChange={(e) => patch({ holdPolicy: e.target.value })} rows={2} className={dashTextarea} />
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex flex-col gap-1.5">
+                  <span className={dashLabel}>Min guests</span>
+                  <input type="number" min={1} value={r.guestMin} onChange={(e) => patch({ guestMin: Number(e.target.value) })} className={dashInput} />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={dashLabel}>Max guests</span>
+                  <input type="number" min={1} value={r.guestMax} onChange={(e) => patch({ guestMax: Number(e.target.value) })} className={dashInput} />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={dashLabel}>Days ahead</span>
+                  <input type="number" min={1} max={14} value={r.dayCount} onChange={(e) => patch({ dayCount: Number(e.target.value) })} className={dashInput} />
+                </label>
+              </div>
+              <label className="flex flex-col gap-1.5">
+                <span className={dashLabel}>Time slots (comma separated)</span>
+                <input
+                  value={r.timeSlots.join(", ")}
+                  onChange={(e) =>
+                    patch({
+                      timeSlots: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                    })
+                  }
+                  className={dashInput}
+                />
+              </label>
+            </div>
+          ) : null}
         </div>
-        <p className={`mt-2 ${dashHint}`}>
-          {r.enableReserve
-            ? "Guests see Reserve on the menu and can book. Works without a floor plan and without dine-in QR."
-            : "Public booking is closed. Existing reservations still appear in the dashboard."}
-          {canEnableFloor ? " Floor plan is a separate switch under Place." : ""}
-        </p>
-        <label className="mt-2 flex flex-col gap-1.5">
-          <span className={dashLabel}>Hold policy</span>
-          <textarea value={r.holdPolicy} onChange={(e) => patch({ holdPolicy: e.target.value })} rows={2} className={dashTextarea} />
-        </label>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <label className="flex flex-col gap-1.5">
-            <span className={dashLabel}>Min guests</span>
-            <input type="number" min={1} value={r.guestMin} onChange={(e) => patch({ guestMin: Number(e.target.value) })} className={dashInput} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={dashLabel}>Max guests</span>
-            <input type="number" min={1} value={r.guestMax} onChange={(e) => patch({ guestMax: Number(e.target.value) })} className={dashInput} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={dashLabel}>Days ahead</span>
-            <input type="number" min={1} max={14} value={r.dayCount} onChange={(e) => patch({ dayCount: Number(e.target.value) })} className={dashInput} />
-          </label>
-        </div>
-        <label className="mt-2 flex flex-col gap-1.5">
-          <span className={dashLabel}>Time slots (comma separated)</span>
-          <input
-            value={r.timeSlots.join(", ")}
-            onChange={(e) =>
-              patch({
-                timeSlots: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
-              })
-            }
-            className={dashInput}
-          />
-        </label>
       </div>
 
       <div>

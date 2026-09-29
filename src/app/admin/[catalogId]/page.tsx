@@ -261,6 +261,8 @@ export default async function CatalogDashboardPage({
           placeholderImageUrl={catalog.placeholder_image_url ?? ""}
           templateSettings={parseTemplateSettings(catalog.template_settings)}
           fulfillmentModes={parseFulfillmentModes(catalog.fulfillment_modes)}
+          currency={catalog.currency}
+          liveUrl={url}
           embedded={embedded}
         />
       ),

@@ -359,14 +359,11 @@ export function OrderingCard({
               <p className={dashKicker}>{fields.length > 0 ? "Extra questions" : "Guest checkout fields"}</p>
               {fields.length > 0 ? (
                 <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-                  These are the questions guests answer at checkout. They replace the simple
-                  name / phone / address switches.
+                  Custom checkout questions replace the simple name / phone / address switches.
                 </p>
               ) : (
                 <p className="m-0 text-[13px] leading-snug text-[#5a6472]">
-                  Built-in guest fields. Required must be filled. Hidden is not shown. Add extra
-                  questions only if you need more than these five — that custom form then replaces
-                  this list.
+                  Built-in guest fields. Add extra questions only if you need more than these five.
                 </p>
               )}
               {fields.length > 0
@@ -462,7 +459,21 @@ export function OrderingCard({
                   Adding a question switches to a custom form and hides the switches above.
                 </p>
               ) : (
-                <div className="flex flex-col gap-2.5">
+                <details className="settings-disclosure settings-inset" open>
+                  <summary className="settings-row ops-press cursor-pointer">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[16px] font-medium tracking-tight text-[var(--cat-ink)]">
+                        Extra questions
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-[#86868b]">
+                        {fields.length} {fields.length === 1 ? "question" : "questions"}
+                      </span>
+                    </span>
+                    <span aria-hidden className="text-[16px] text-[#c3ccd9]">
+                      ▾
+                    </span>
+                  </summary>
+                <div className="flex flex-col gap-2.5 px-3 pb-3">
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
@@ -560,6 +571,7 @@ export function OrderingCard({
                     </div>
                   ))}
                 </div>
+                </details>
               )}
             </div>
           </div>

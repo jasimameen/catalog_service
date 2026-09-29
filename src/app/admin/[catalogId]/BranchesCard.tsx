@@ -85,7 +85,7 @@ export function BranchesCard({
         <div className="px-4 pb-1 pt-4">
           <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Locations</p>
           <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-            Branches of {catalogName} only — same menu and link. Another shop is under Advanced.
+            Branches of {catalogName} only — same menu and link. A new catalog is under Advanced.
           </p>
         </div>
       )}

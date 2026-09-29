@@ -6,12 +6,14 @@ export function SettingsSheet({
   open,
   title,
   subtitle,
+  onBack,
   onClose,
   children,
 }: {
   open: boolean;
   title: string;
   subtitle?: string;
+  onBack?: () => void;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -50,6 +52,16 @@ export function SettingsSheet({
         className="settings-sheet relative flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[18px] bg-white shadow-[0_18px_50px_rgba(16,23,32,0.18)] md:max-h-[86dvh] md:rounded-[18px]"
       >
         <div className="ops-glass sticky top-0 z-[1] flex items-start gap-3 border-b border-[#edf0f4] px-4 py-3">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="ops-press grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#f4f6f9] text-[22px] leading-none text-[var(--cat-ink)]"
+              aria-label="Back"
+            >
+              ‹
+            </button>
+          ) : null}
           <div className="min-w-0 flex-1">
             <h2
               id="settings-sheet-title"

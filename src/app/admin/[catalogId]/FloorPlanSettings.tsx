@@ -5,10 +5,8 @@ import Link from "next/link";
 import {
   dashBtnGhost,
   dashCard,
-  dashChipOff,
-  dashHint,
-  dashKicker,
 } from "@/components/admin/dashboard/styles";
+import { SettingsSwitch } from "@/components/admin/SettingsSwitch";
 import { setCatalogFloorPlan } from "./actions";
 
 export function FloorPlanSettings({
@@ -56,20 +54,23 @@ export function FloorPlanSettings({
       )}
 
       <div className="flex min-w-0 flex-col gap-3 px-4 py-3">
-        <p className={dashKicker}>Floor plan</p>
-        <label
-          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[11px] border px-3.5 text-[13px] has-[:checked]:border-[#9dc0ef] has-[:checked]:bg-[#eef4fd] ${dashChipOff}`}
-        >
-          <input
-            type="checkbox"
-            checked={on}
-            disabled={pending}
-            onChange={(e) => void toggle(e.target.checked)}
-            className="h-4 w-4 accent-[#0b5fce]"
-          />
-          Floor plan
-        </label>
-        <p className={dashHint}>Draw rooms and tables. Reservations work without this.</p>
+        <div className="settings-inset">
+          <label className="settings-row cursor-pointer">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[16px] font-medium tracking-tight text-[var(--cat-ink)]">
+                Floor plan
+              </span>
+              <span className="mt-0.5 block text-[13px] text-[#86868b]">
+                Draw rooms and tables. Reservations work without this.
+              </span>
+            </span>
+            <SettingsSwitch
+              checked={on}
+              disabled={pending}
+              onChange={(next) => void toggle(next)}
+            />
+          </label>
+        </div>
         {on ? (
           <div className="flex flex-wrap items-center gap-3">
             {tableCount > 0 ? (

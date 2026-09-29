@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { catalogNavMeta } from "@/app/admin/[catalogId]/actions";
+import { isCatalogSettingsHash } from "@/app/admin/[catalogId]/SettingsHub";
 
 type NavItem = {
   label: string;
@@ -162,6 +163,7 @@ export function AdminNav({
   showOps?: boolean;
 }) {
   const pathname = usePathname();
+  const [hash, setHash] = useState("");
   const segments = pathname.split("/").filter(Boolean); // ["admin", ...]
   const second = segments[1];
   const reserved =
@@ -220,6 +222,13 @@ export function AdminNav({
   }, [catalogId]);
 
   useEffect(() => {
+    const apply = () => setHash(window.location.hash);
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, [pathname]);
+
+  useEffect(() => {
     const scroller = scrollerRef.current;
     const active = scroller?.querySelector<HTMLElement>("[data-nav-active='true']");
     if (!scroller || !active) return;
@@ -238,7 +247,7 @@ export function AdminNav({
       }`}
     >
       {rootItems.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+        <NavLink key={item.href} item={item} pathname={pathname} hash={hash} collapsed={collapsed} />
       ))}
 
       {catalogId ? (
@@ -255,6 +264,7 @@ export function AdminNav({
                 key={item.href}
                 item={item}
                 pathname={pathname}
+                hash={hash}
                 collapsed={collapsed}
                 nested
               />
@@ -266,24 +276,41 @@ export function AdminNav({
       <div className="hidden md:my-2 md:block md:h-px md:bg-[#e2e7ee] md:group-data-[collapsed=true]/shell:w-8" />
 
       {accountItems.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+        <NavLink key={item.href} item={item} pathname={pathname} hash={hash} collapsed={collapsed} />
       ))}
     </nav>
   );
 }
 
+function navItemActive(item: NavItem, pathname: string, hash: string): boolean {
+  if (item.href.includes("#settings")) {
+    const base = item.href.split("#")[0] ?? item.href;
+    return pathname === base && isCatalogSettingsHash(hash);
+  }
+  if (item.exact) {
+    if (pathname !== item.href) return false;
+    if (item.href.startsWith("/admin/") && item.href.split("/").length === 3 && isCatalogSettingsHash(hash)) {
+      return false;
+    }
+    return true;
+  }
+  return pathname.startsWith(item.href);
+}
+
 function NavLink({
   item,
   pathname,
+  hash,
   collapsed,
   nested = false,
 }: {
   item: NavItem;
   pathname: string;
+  hash: string;
   collapsed: boolean;
   nested?: boolean;
 }) {
-  const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  const active = navItemActive(item, pathname, hash);
   return (
     <Link
       href={item.href}

@@ -1,16 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import {
   dashBtnPrimary,
   dashCard,
-  dashChipOff,
   dashHint,
   dashInput,
-  dashKicker,
   dashLabel,
 } from "@/components/admin/dashboard/styles";
+import { SettingsSwitch } from "@/components/admin/SettingsSwitch";
+import { googleMapsEmbedSrc, parseCoord } from "@/lib/catalog/locations";
 import { updateCatalogPlace, type PlaceState } from "./actions";
+
+const MENU_FLAGS = [
+  { name: "showContact", label: "Show contact", hint: "Phone, email, address" },
+  { name: "showSocial", label: "Show social", hint: "WhatsApp and Instagram" },
+  { name: "showMap", label: "Show map", hint: "Google Map on the menu" },
+] as const;
 
 export function PlaceContactCard({
   catalogId,
@@ -43,12 +49,23 @@ export function PlaceContactCard({
     updateCatalogPlace.bind(null, catalogId),
     null,
   );
+  const [addr, setAddr] = useState(address);
+  const [lat, setLat] = useState(geoLat != null ? String(geoLat) : "");
+  const [lng, setLng] = useState(geoLng != null ? String(geoLng) : "");
+  const flagDefaults = { showContact, showSocial, showMap };
+
+  const mapSrc = useMemo(
+    () => googleMapsEmbedSrc({ address: addr, lat: parseCoord(lat), lng: parseCoord(lng) }),
+    [addr, lat, lng],
+  );
 
   return (
     <section id={embedded ? undefined : "contact"} className={embedded ? "min-w-0" : dashCard}>
       {embedded ? null : (
         <div className="px-4 pb-1 pt-4">
-          <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Contact</p>
+          <p className="m-0 text-[16px] font-semibold tracking-[-0.02em] text-[var(--cat-ink)]">
+            Contact
+          </p>
           <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
             Main number and address for this shop.
           </p>
@@ -57,27 +74,19 @@ export function PlaceContactCard({
 
       <form action={formAction} className="flex min-w-0 flex-col">
         <div className="flex min-w-0 flex-col gap-3 px-4 py-3">
-          <p className={dashKicker}>Shown on the menu</p>
-          <div className="flex flex-col gap-2">
-            {(
-              [
-                { name: "showContact", label: "Show contact", checked: showContact },
-                { name: "showSocial", label: "Show social", checked: showSocial },
-                { name: "showMap", label: "Show map", checked: showMap },
-              ] as const
-            ).map((toggle) => (
-              <label
-                key={toggle.name}
-                className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-[11px] border px-3.5 text-[13px] has-[:checked]:border-[#9dc0ef] has-[:checked]:bg-[#eef4fd] ${dashChipOff}`}
-              >
-                <input
-                  type="checkbox"
-                  name={toggle.name}
-                  value="1"
-                  defaultChecked={toggle.checked}
-                  className="h-4 w-4 accent-[#0b5fce]"
-                />
-                {toggle.label}
+          <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#8a93a2]">
+            Shown on the menu
+          </p>
+          <div className="settings-inset">
+            {MENU_FLAGS.map((toggle) => (
+              <label key={toggle.name} className="settings-row cursor-pointer">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[16px] font-medium tracking-tight text-[var(--cat-ink)]">
+                    {toggle.label}
+                  </span>
+                  <span className="mt-0.5 block text-[13px] text-[#86868b]">{toggle.hint}</span>
+                </span>
+                <SettingsSwitch name={toggle.name} defaultChecked={flagDefaults[toggle.name]} />
               </label>
             ))}
           </div>
@@ -107,12 +116,56 @@ export function PlaceContactCard({
             <span className={dashLabel}>Address</span>
             <input
               name="companyAddress"
-              defaultValue={address}
+              value={addr}
+              onChange={(event) => setAddr(event.target.value)}
               maxLength={200}
               placeholder="Lusail, Doha"
               className={dashInput}
             />
           </label>
+
+          {mapSrc ? (
+            <div className="overflow-hidden rounded-[12px] border border-[#edf0f4] bg-[#f4f6f9]">
+              <iframe
+                title="Shop location preview"
+                src={mapSrc}
+                className="h-40 w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          ) : (
+            <p className={`m-0 ${dashHint}`}>Add an address or coordinates to preview the map.</p>
+          )}
+
+          <div className="grid min-w-0 grid-cols-2 gap-2">
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className={dashLabel}>Latitude</span>
+              <input
+                name="companyLat"
+                value={lat}
+                onChange={(event) => setLat(event.target.value)}
+                placeholder="25.3548"
+                inputMode="decimal"
+                className={dashInput}
+              />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className={dashLabel}>Longitude</span>
+              <input
+                name="companyLng"
+                value={lng}
+                onChange={(event) => setLng(event.target.value)}
+                placeholder="51.1839"
+                inputMode="decimal"
+                className={dashInput}
+              />
+            </label>
+          </div>
+          <p className={`m-0 ${dashHint}`}>
+            Google Maps preview. Hidden on the menu if Show map is off.
+          </p>
+
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className={dashLabel}>WhatsApp</span>
             <input
@@ -133,29 +186,6 @@ export function PlaceContactCard({
               className={dashInput}
             />
           </label>
-          <div className="flex min-w-0 flex-col gap-3">
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className={dashLabel}>Map latitude</span>
-              <input
-                name="companyLat"
-                defaultValue={geoLat ?? ""}
-                placeholder="25.3548"
-                inputMode="decimal"
-                className={dashInput}
-              />
-            </label>
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className={dashLabel}>Map longitude</span>
-              <input
-                name="companyLng"
-                defaultValue={geoLng ?? ""}
-                placeholder="51.1839"
-                inputMode="decimal"
-                className={dashInput}
-              />
-            </label>
-          </div>
-          <p className={`m-0 ${dashHint}`}>OpenStreetMap embed. Hidden if off or empty.</p>
         </div>
 
         <div className="sticky bottom-0 z-[1] flex flex-wrap items-center gap-3 border-t border-[#edf0f4] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">

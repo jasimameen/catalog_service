@@ -47,17 +47,17 @@ export function DangerCard({
         <div className="px-4 pb-1 pt-4">
           <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Advanced</p>
           <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-            Another shop, or delete this one.
+            New catalog, or delete this one.
           </p>
         </div>
       )}
 
       <div className="flex min-w-0 flex-col gap-4 px-4 py-3">
         <div className="rounded-[12px] bg-[#f4f6f9] px-3 py-3">
-          <p className="m-0 text-[14px] font-medium text-[var(--cat-ink)]">Another shop</p>
+          <p className="m-0 text-[14px] font-medium text-[var(--cat-ink)]">New catalog</p>
           <p className={`m-0 mt-1 ${dashHint}`}>
-            A second shop with its own menu and link is a new catalog — not a location of this one.
-            Locations of this shop live under Place.
+            Create another shop on this account. New menu and link — not a branch of this shop.
+            Branches live under Place → Locations.
           </p>
           {canAddShop ? (
             <Link
@@ -71,7 +71,7 @@ export function DangerCard({
               href={subscribeHref}
               className="ops-press mt-3 inline-flex min-h-11 items-center text-[13px] font-medium text-[#0b5fce] no-underline"
             >
-              Subscribe to add another shop
+              Subscribe to add another catalog
             </Link>
           )}
         </div>

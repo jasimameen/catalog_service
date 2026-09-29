@@ -8,11 +8,11 @@ import { LANE_TONE, orderIdentity } from "@/lib/catalog/order-identity";
 import { formatSelectedOptions } from "@/lib/catalog/item-options";
 import {
   formatComboIncludes,
-  osmEmbedUrl,
   parseComboSnapshot,
   thumbForSku,
   type ItemThumb,
 } from "@/lib/catalog/combos";
+import { googleMapsEmbedSrc, googleMapsOpenHref } from "@/lib/catalog/locations";
 import { formatOrderDateTime, nextWorkflowAction, statusLabel, workflowLane, type OrderStatusDef } from "@/lib/catalog/order-statuses";
 import type {
   CheckoutFormField,
@@ -305,18 +305,19 @@ export function OrderDetailDrawer({
                   <div className="overflow-hidden rounded-xl border border-[#e2e7ee] bg-[#eef1f5]">
                     <iframe
                       title="Order location"
-                      src={osmEmbedUrl(lat, lng)}
+                      src={googleMapsEmbedSrc({ lat, lng }) ?? ""}
                       className="block h-[180px] w-full border-0"
                       loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
                     />
                   </div>
                   <a
-                    href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`}
+                    href={googleMapsOpenHref({ lat, lng }) ?? "#"}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[13px] text-[var(--cat-accent)] hover:text-[var(--cat-accent-dark)]"
                   >
-                    Open in OpenStreetMap
+                    Open in Google Maps
                   </a>
                 </>
               ) : null}

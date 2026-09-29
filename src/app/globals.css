@@ -247,6 +247,10 @@ body {
   box-shadow: 0 1px 2px rgba(16, 23, 32, 0.04);
 }
 
+.settings-inset > * + * {
+  border-top: 1px solid #edf0f4;
+}
+
 .settings-row {
   display: flex;
   min-height: 44px;
@@ -262,13 +266,101 @@ body {
   border-top: 1px solid #edf0f4;
 }
 
+.settings-switch {
+  position: relative;
+  display: inline-flex;
+  width: 51px;
+  height: 31px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.settings-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #e5e7eb;
+  transition: background-color 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.settings-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 23, 32, 0.22);
+  transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.settings-switch:has(:checked) .settings-switch-track {
+  background: #0b5fce;
+}
+
+.settings-switch:has(:checked) .settings-switch-track::after {
+  transform: translateX(20px);
+}
+
+.settings-seg {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 3px;
+  border-radius: 12px;
+  background: #eef1f5;
+  scrollbar-width: none;
+}
+
+.settings-seg::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-seg-btn {
+  flex: 1 0 auto;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: -0.012em;
+  color: #5a6472;
+  white-space: nowrap;
+}
+
+.settings-seg-btn[aria-selected="true"] {
+  background: #fff;
+  color: var(--cat-ink);
+  box-shadow: 0 1px 2px rgba(16, 23, 32, 0.08);
+}
+
+.settings-tab-pane {
+  animation: settings-tab-in 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.settings-disclosure > summary {
+  list-style: none;
+}
+
+.settings-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
 .settings-sheet {
   animation: settings-sheet-in 0.36s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .settings-sheet {
+  .settings-sheet,
+  .settings-tab-pane {
     animation: settings-sheet-fade 0.2s ease;
+  }
+
+  .settings-switch-track,
+  .settings-switch-track::after {
+    transition: opacity 200ms ease;
   }
 }
 
@@ -289,6 +381,17 @@ body {
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes settings-tab-in {
+  from {
+    opacity: 0.55;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

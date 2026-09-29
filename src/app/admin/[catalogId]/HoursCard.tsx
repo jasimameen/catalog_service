@@ -2,13 +2,13 @@
 
 import { useActionState, useMemo, useState } from "react";
 import {
-  dashBtnGhost,
   dashBtnPrimary,
   dashCard,
   dashHint,
   dashInput,
   dashLabel,
 } from "@/components/admin/dashboard/styles";
+import { SettingsSwitch } from "@/components/admin/SettingsSwitch";
 import {
   WEEK_DAYS,
   formatCatalogHours,
@@ -17,6 +17,11 @@ import {
   type CatalogHours,
 } from "@/lib/catalog/hours";
 import { updateCatalogHours, type HoursState } from "./actions";
+
+function daySummary(day: CatalogDayHours): string {
+  if (day.closed) return "Closed";
+  return `${day.open}–${day.close}`;
+}
 
 export function HoursCard({
   catalogId,
@@ -35,6 +40,7 @@ export function HoursCard({
   );
   const [week, setWeek] = useState<CatalogHours>(() => parseCatalogHours(hours));
   const [visible, setVisible] = useState(showHours);
+  const [openDay, setOpenDay] = useState<number | null>(null);
   const preview = useMemo(() => formatCatalogHours(week), [week]);
 
   function setDay(index: number, patch: Partial<CatalogDayHours>) {
@@ -65,88 +71,101 @@ export function HoursCard({
     <section id={embedded ? undefined : "hours"} className={embedded ? "min-w-0" : dashCard}>
       {embedded ? null : (
         <div className="px-4 pb-1 pt-4">
-          <p className="m-0 text-[16px] font-semibold tracking-tight text-[var(--cat-ink)]">Hours</p>
+          <p className="m-0 text-[16px] font-semibold tracking-[-0.02em] text-[var(--cat-ink)]">
+            Hours
+          </p>
           <p className="m-0 mt-1 text-[13px] leading-snug text-[#5a6472]">
-            Open and close for each day. Guests see this on the menu.
+            Tap a day to edit. Guests see this on the menu.
           </p>
         </div>
       )}
 
       <form action={formAction} className="flex min-w-0 flex-col">
         <input type="hidden" name="hoursJson" value={JSON.stringify(week)} />
-        <div className="flex min-w-0 flex-col gap-2 px-4 py-3">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-[13px] text-[var(--cat-ink)]">
-              <input
-                type="checkbox"
-                name="showHours"
-                value="1"
-                checked={visible}
-                onChange={(event) => setVisible(event.target.checked)}
-                className="h-4 w-4 accent-[#0b5fce]"
-              />
-              Show hours on the menu
+        <div className="flex min-w-0 flex-col gap-3 px-4 py-3">
+          <div className="settings-inset">
+            <label className="settings-row cursor-pointer">
+              <span className="min-w-0 flex-1 text-[16px] font-medium tracking-tight text-[var(--cat-ink)]">
+                Show hours on the menu
+              </span>
+              <SettingsSwitch name="showHours" checked={visible} onChange={setVisible} />
             </label>
-            <button type="button" onClick={copyWeekdays} className={`${dashBtnGhost} ops-press min-h-10 w-full px-3 text-[12px] sm:w-auto`}>
-              Copy weekdays
+            <button
+              type="button"
+              onClick={copyWeekdays}
+              className="settings-row ops-press text-[16px] font-medium text-[#0b5fce]"
+            >
+              Copy weekdays from Monday
             </button>
           </div>
 
-          <div className="flex min-w-0 flex-col gap-2">
+          <div className="settings-inset">
             {week.days.map((day, index) => {
               const label = WEEK_DAYS[index]?.label ?? day.day;
+              const expanded = openDay === index;
               return (
-                <div
-                  key={day.day}
-                  className="min-w-0 rounded-[12px] border border-[#edf0f4] bg-[#fbfbfd] px-3 py-2.5"
-                >
-                  <div className="flex min-w-0 items-center justify-between gap-3">
-                    <p className="m-0 min-w-0 truncate text-[14px] font-medium text-[var(--cat-ink)]">
+                <div key={day.day}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenDay(expanded ? null : index)}
+                    className="settings-row ops-press"
+                    aria-expanded={expanded}
+                  >
+                    <span className="min-w-0 flex-1 text-[16px] font-medium tracking-tight text-[var(--cat-ink)]">
                       {label}
-                    </p>
-                    <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 text-[13px] text-[#5a6472]">
-                      <input
-                        type="checkbox"
-                        checked={day.closed}
-                        onChange={(event) => setDay(index, { closed: event.target.checked })}
-                        className="h-4 w-4 accent-[#0b5fce]"
-                      />
-                      Closed
-                    </label>
-                  </div>
-
-                  {day.closed ? null : (
-                    <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                      <label className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className={dashLabel}>Opens</span>
-                        <input
-                          type="time"
-                          value={day.open}
-                          onChange={(event) => setDay(index, { open: event.target.value || "11:00" })}
-                          className={dashInput}
+                    </span>
+                    <span className="shrink-0 text-[13px] tabular-nums text-[#86868b]">
+                      {daySummary(day)}
+                    </span>
+                    <span aria-hidden className="text-[16px] text-[#c3ccd9]">
+                      {expanded ? "▴" : "›"}
+                    </span>
+                  </button>
+                  {expanded ? (
+                    <div className="flex min-w-0 flex-col gap-2 px-4 pb-3">
+                      <label className="inline-flex min-h-11 cursor-pointer items-center justify-between gap-3 text-[14px] text-[var(--cat-ink)]">
+                        Closed
+                        <SettingsSwitch
+                          checked={day.closed}
+                          onChange={(next) => setDay(index, { closed: next })}
                         />
                       </label>
-                      <span className="hidden px-1 text-[13px] text-[#86868b] sm:mt-5 sm:block">–</span>
-                      <label className="flex min-w-0 flex-1 flex-col gap-1">
-                        <span className={dashLabel}>Closes</span>
-                        <input
-                          type="time"
-                          value={day.close}
-                          onChange={(event) => setDay(index, { close: event.target.value || "22:00" })}
-                          className={dashInput}
-                        />
-                      </label>
+                      {day.closed ? null : (
+                        <div className="grid min-w-0 grid-cols-2 gap-2">
+                          <label className="flex min-w-0 flex-col gap-1">
+                            <span className={dashLabel}>Opens</span>
+                            <input
+                              type="time"
+                              value={day.open}
+                              onChange={(event) =>
+                                setDay(index, { open: event.target.value || "11:00" })
+                              }
+                              className={dashInput}
+                            />
+                          </label>
+                          <label className="flex min-w-0 flex-col gap-1">
+                            <span className={dashLabel}>Closes</span>
+                            <input
+                              type="time"
+                              value={day.close}
+                              onChange={(event) =>
+                                setDay(index, { close: event.target.value || "22:00" })
+                              }
+                              className={dashInput}
+                            />
+                          </label>
+                        </div>
+                      )}
+                      {index > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => copyFromPrevious(index)}
+                          className="ops-press min-h-11 text-left text-[13px] text-[#0b5fce]"
+                        >
+                          Same as yesterday
+                        </button>
+                      ) : null}
                     </div>
-                  )}
-
-                  {index > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => copyFromPrevious(index)}
-                      className="ops-press mt-2 min-h-9 text-left text-[12px] text-[#0b5fce]"
-                    >
-                      Same as yesterday
-                    </button>
                   ) : null}
                 </div>
               );

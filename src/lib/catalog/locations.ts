@@ -134,10 +134,35 @@ export function parseCoord(value: unknown): number | null {
   return n;
 }
 
+/** Free Google Maps embed — no Maps JS key. Prefers coordinates, then address. */
+export function googleMapsEmbedSrc(opts: {
+  address?: string;
+  lat?: number | null;
+  lng?: number | null;
+}): string | null {
+  if (opts.lat != null && opts.lng != null) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(`${opts.lat},${opts.lng}`)}&output=embed`;
+  }
+  const query = opts.address?.trim();
+  if (!query) return null;
+  return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+}
+
+export function googleMapsOpenHref(opts: {
+  address?: string;
+  lat?: number | null;
+  lng?: number | null;
+}): string | null {
+  if (opts.lat != null && opts.lng != null) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(`${opts.lat},${opts.lng}`)}`;
+  }
+  const query = opts.address?.trim();
+  if (!query) return null;
+  return `https://www.google.com/maps?q=${encodeURIComponent(query)}`;
+}
+
 export function osmEmbedSrc(lat: number, lng: number): string {
-  const pad = 0.012;
-  const bbox = `${lng - pad},${lat - pad},${lng + pad},${lat + pad}`;
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
+  return googleMapsEmbedSrc({ lat, lng }) ?? "";
 }
 
 export function websiteHref(raw: string): string | null {
